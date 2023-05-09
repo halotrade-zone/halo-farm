@@ -2,7 +2,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::Uint128;
 use halo_pool::state::{RewardTokenInfo};
-use crate::state::ConfigResponse;
+use crate::state::{ConfigResponse};
 
 #[cw_serde]
 pub struct InstantiateMsg {

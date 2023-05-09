@@ -2,13 +2,15 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn, Response,
-    StdError, StdResult, SubMsg, WasmMsg, Uint128,
+    StdError, StdResult, SubMsg, WasmMsg, Uint128, QuerierWrapper, QueryRequest, WasmQuery,
 };
 use cw2::set_contract_version;
-use crate::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
-use halo_pool::state::RewardTokenInfo;
+use crate::{msg::{ExecuteMsg, InstantiateMsg, QueryMsg}, state::{TMP_POOL_INFO, POOLS}};
+use halo_pool::state::{RewardTokenInfo, PoolInfo};
 use halo_pool::msg::InstantiateMsg as PoolInstantiateMsg;
 use crate::state::{Config, CONFIG, ConfigResponse,};
+use cw_utils::parse_reply_instantiate_data;
+use halo_pool::msg::QueryMsg as PoolQueryMsg;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:halo-pool-factory";
@@ -140,6 +142,34 @@ pub fn execute_create_pool(
         }))
 }
 
+/// This just stores the result for future query
+#[cfg_attr(not(feature = "library"), entry_point)]
+pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
+    let tmp_pool_info = TMP_POOL_INFO.load(deps.storage)?;
+
+    let reply = parse_reply_instantiate_data(msg).unwrap();
+
+    let pool_contract = &reply.contract_address;
+    let pool_info = query_pair_info_from_pair(&deps.querier, Addr::unchecked(pool_contract))?;
+
+    POOLS.save(
+        deps.storage,
+        &tmp_pool_info.pool_key,
+        &PoolInfo {
+            staked_token: pool_info.staked_token.clone(),
+            reward_token: pool_info.reward_token,
+            reward_per_second: pool_info.reward_per_second,
+            start_time: pool_info.start_time,
+            end_time: pool_info.end_time,
+        },
+    )?;
+
+    Ok(Response::new().add_attributes(vec![
+        ("pool_contract_addr", pool_contract),
+        ("staked_token_addr", &pool_info.staked_token),
+    ]))
+}
+
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
@@ -155,4 +185,16 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     };
 
     Ok(resp)
+}
+
+pub fn query_pair_info_from_pair(
+    querier: &QuerierWrapper,
+    pair_contract: Addr,
+) -> StdResult<PoolInfo> {
+    let pair_info: PoolInfo = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: pair_contract.to_string(),
+        msg: to_binary(&PoolQueryMsg::Pool {})?,
+    }))?;
+
+    Ok(pair_info)
 }

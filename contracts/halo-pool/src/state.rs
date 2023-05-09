@@ -63,3 +63,10 @@ pub struct PoolInfo {
     pub start_time: u64,
     pub end_time: u64,
 }
+
+// We define a custom struct for each query response
+#[cw_serde]
+pub struct PoolResponse {
+    pub staked_token: String,
+    pub total_share: Uint128,
+}
