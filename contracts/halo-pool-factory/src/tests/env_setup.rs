@@ -9,6 +9,15 @@ pub mod env {
         query as HaloPoolFactoryQuery, reply as HaloPoolFactoryReply,
     };
 
+    use cw20_base::contract::{
+        execute as Cw20Execute, instantiate as Cw20Instantiate, query as Cw20Query,
+    };
+
+    use cw20_base::msg::{
+        ExecuteMsg as Cw20ExecuteMsg, InstantiateMsg as Cw20InstantiateMsg,
+        QueryMsg as Cw20QueryMsg,
+    };
+
     use halo_pool::contract::{
         instantiate as HaloPoolInstantiate,
         execute as HaloPoolExecute,
@@ -73,6 +82,82 @@ pub mod env {
     fn halo_pool_contract_template() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(HaloPoolExecute, HaloPoolInstantiate, HaloPoolQuery);
         Box::new(contract)
+    }
+
+    // halo lp token contract
+    // create instantiate message for contract
+    fn halo_lp_token_contract_template() -> Box<dyn Contract<Empty>> {
+        let contract = ContractWrapper::new(Cw20Execute, Cw20Instantiate, Cw20Query);
+        Box::new(contract)
+    }
+
+    pub fn instantiate_contracts() -> (App, Vec<ContractInfo>) {
+        // Create a new app instance
+        let mut app = mock_app();
+        // Create a vector to store all contract info ([halo factory - [0])
+        let mut contract_info_vec: Vec<ContractInfo> = Vec::new();
+
+        // store code of all contracts to the app and get the code ids
+        let halo_contract_code_id = app.store_code(halo_pool_factory_contract_template());
+        let halo_lp_token_contract_code_id = app.store_code(halo_lp_token_contract_template());
+
+        // halo pool factory contract
+        // create instantiate message for contract
+        let halo_pool_factory_instantiate_msg = HaloPoolFactoryInstantiateMsg {
+            pool_code_id: app.store_code(halo_pool_contract_template()),
+        };
+
+        // instantiate contract
+        let halo_pool_factory_contract_addr = app
+            .instantiate_contract(
+                halo_contract_code_id,
+                Addr::unchecked(ADMIN),
+                &halo_pool_factory_instantiate_msg,
+                &[],
+                "test instantiate contract",
+                None,
+            )
+            .unwrap();
+
+        // add contract info to vector
+        contract_info_vec.push(ContractInfo {
+            contract_addr: halo_pool_factory_contract_addr.to_string(),
+            contract_code_id: halo_contract_code_id,
+        });
+
+        // halo lp token contract
+        // create instantiate message for contract
+        let halo_lp_token_instantiate_msg = Cw20InstantiateMsg {
+            name: "Halo LP Token".to_string(),
+            symbol: "HALO-LP".to_string(),
+            decimals: 6,
+            initial_balances: vec![],
+            mint: Some(MinterResponse {
+                minter: ADMIN.to_string(),
+                cap: None,
+            }),
+            marketing: None,
+        };
+
+        // instantiate contract
+        let halo_token_contract_addr = app
+            .instantiate_contract(
+                halo_lp_token_contract_code_id,
+                Addr::unchecked(ADMIN),
+                &halo_lp_token_instantiate_msg,
+                &[],
+                "test instantiate contract",
+                None,
+            )
+            .unwrap();
+
+        // add contract info to the vector
+        contract_info_vec.push(ContractInfo {
+            contract_addr: halo_token_contract_addr.to_string(),
+            contract_code_id: halo_lp_token_contract_code_id,
+        });
+
+        (app, contract_info_vec)
     }
 
 }
