@@ -38,6 +38,7 @@ thiserror         = { version = "1.0.37" }
 schemars          = "0.8.11"
 serde             = { version = "1.0.137", default-features = false, features = ["derive"] }
 halo-pool         = { path = "./contracts/halo-pool" }
+halo-pool-factory = { path = "./contracts/halo-pool-factory" }
 
 [workspace.dev-dependencies]
 cw-multi-test     = "0.16.1"

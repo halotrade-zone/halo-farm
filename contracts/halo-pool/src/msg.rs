@@ -1,7 +1,8 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint128;
+use cosmwasm_std::{Uint128, Timestamp, Addr};
+use cw_utils::Expiration;
 
-use crate::state::{RewardTokenInfo, PoolInfo};
+use crate::state::{RewardTokenInfo, PoolInfo, RewardTokenAsset};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -15,10 +16,17 @@ pub struct InstantiateMsg {
 	pub start_time: u64,
 	/// End time
 	pub end_time: u64,
+	/// Whitelisted addresses
+	pub whitelist: Vec<Addr>,
 }
 
 #[cw_serde]
 pub enum ExecuteMsg {
+	/// Adding reward balance to pool by whitelisted address
+    AddRewardBalance {
+        /// Reward amount
+        asset: RewardTokenAsset,
+    },
 	/// Deposit staked tokens and collect reward tokens (if any)
     Deposit{
 		amount: Uint128,

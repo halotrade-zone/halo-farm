@@ -4,20 +4,21 @@ use cosmwasm_std::{
     from_binary, to_binary, Addr, Binary, CanonicalAddr, CosmosMsg, Decimal, Deps, DepsMut, Env,
     MessageInfo, Reply, ReplyOn, Response, StdResult, SubMsg, Uint128, WasmMsg, BankMsg, coin,
 };
+
 use cw2::set_contract_version;
-use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse};
+use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse, Expiration};
 use cw_utils::parse_reply_instantiate_data;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:halo-pool";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-use crate::{msg::{InstantiateMsg, ExecuteMsg, QueryMsg}, state::{PoolInfo, POOL_INFO, RewardTokenInfo}, error::ContractError, formulas::calc_reward};
+use crate::{msg::{InstantiateMsg, ExecuteMsg, QueryMsg}, state::{PoolInfo, POOL_INFO, STAKERS_INFO, RewardTokenInfo, RewardTokenAsset, LAST_REWARD_TIME}, error::ContractError, formulas::calc_reward};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
@@ -29,34 +30,12 @@ pub fn instantiate(
         reward_per_second: msg.reward_per_second,
         start_time: msg.start_time,
         end_time: msg.end_time,
+        whitelist: msg.whitelist,
     };
 
     POOL_INFO.save(deps.storage, pool_info)?;
 
-    // When creating a new pool, sender must deposit amount of reward_token
-    // equivalent to “reward_per_second*(end time - start_time)” to the new pool address
-    // that created from CreatePool msg.
-    // Match reward token type
-    let transfer = match msg.reward_token {
-        RewardTokenInfo::Token { contract_addr } => SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: contract_addr.to_string(),
-            msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                recipient: env.contract.address.to_string(),
-                amount: msg.reward_per_second.multiply_ratio(msg.end_time - msg.start_time, 1u64),
-            })?,
-            funds: vec![],
-        })),
-        RewardTokenInfo::NativeToken { denom } => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: env.contract.address.to_string(),
-            amount: vec![coin(
-                msg.reward_per_second.multiply_ratio(msg.end_time - msg.start_time, 1u64).into(),
-                denom,
-            )],
-        })),
-    };
-
     let res = Response::new()
-        .add_submessage(transfer)
         .add_attribute("method", "instantiate");
 
     Ok(res)
@@ -70,10 +49,77 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
+        ExecuteMsg::AddRewardBalance {asset} => execute_add_reward_balance(deps, env, info, asset),
         ExecuteMsg::Deposit {amount} => execute_deposit(deps, env, info, amount),
         ExecuteMsg::Withdraw {amount} => execute_withdraw(deps, env, info, amount),
         ExecuteMsg::Harvest {} => execute_harvest(deps, env, info),
     }
+}
+
+pub fn execute_add_reward_balance(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    asset: RewardTokenAsset,
+) -> Result<Response, ContractError> {
+    // Get pool info
+    let pool_info: PoolInfo = POOL_INFO.load(deps.storage)?;
+
+    // check the message sender is the whitelisted address
+    if !pool_info.whitelist.contains(&info.sender) {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // check the balance of native token is sent with the message
+    asset.assert_sent_native_token_balance(&info)?;
+
+    let mut res = Response::new();
+
+    // Add reward balance to the pool
+    // When creating a new pool, sender must add balance amount of reward_token
+    // equivalent to “reward_per_second*(end_time - start_time)” to the new pool address
+    // that created from CreatePool msg.
+    // Match reward token type:
+    // 1. If reward token is native token, sender must add balance amount of native token
+    //    to the new pool address by sending via funds when calling this msg.
+    // 2. If reward token is cw20 token, sender must add balance amount of cw20 token
+    //    to the new pool address by calling cw20 contract transfer_from method.
+
+    if let RewardTokenInfo::Token { contract_addr } = pool_info.reward_token.clone() {
+        let transfer = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr: contract_addr.to_string(),
+            msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
+                owner: info.sender.to_string(),
+                recipient: env.contract.address.to_string(),
+                amount: asset.amount,
+            })?,
+            funds: vec![],
+        }));
+        res = res.add_submessage(transfer);
+    }
+
+    // Update reward_per_second base on new reward balance
+    let current_time = env.block.time;
+    let reward_amount = calc_reward(&pool_info, current_time.seconds());
+    let new_reward_per_second = reward_amount + asset.amount;
+    let new_pool_info = PoolInfo {
+        staked_token: pool_info.staked_token,
+        reward_token: pool_info.reward_token,
+        reward_per_second: new_reward_per_second,
+        start_time: pool_info.start_time,
+        end_time: pool_info.end_time,
+        whitelist: pool_info.whitelist,
+    };
+
+    // Update last reward time to start time
+    LAST_REWARD_TIME.save(deps.storage, &pool_info.start_time)?;
+
+    // Save pool info
+    POOL_INFO.save(deps.storage, &new_pool_info)?;
+
+    res = res.add_attribute("method", "add_reward_balance");
+
+    Ok(res)
 }
 
 pub fn execute_deposit(
@@ -83,9 +129,13 @@ pub fn execute_deposit(
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     let pool_info: PoolInfo = POOL_INFO.load(deps.storage)?;
-    let current_time = env.block.time.seconds();
-    let reward_amount = calc_reward(&pool_info, current_time);
+    // if staker already staked before, get the current staker amount
+    let mut current_staker_amount = STAKERS_INFO.may_load(deps.storage, info.sender.clone())?.unwrap_or_default();
+
+    let current_time = env.block.time;
+    let reward_amount = calc_reward(&pool_info, current_time.seconds());
     let mut res = Response::new();
+
     // Harvest reward tokens if any
     if reward_amount > Uint128::zero() {
         let harvest = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -95,6 +145,7 @@ pub fn execute_deposit(
         }));
         res = res.add_submessage(harvest);
     };
+
     // Deposit staked token to the pool
     let transfer = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: pool_info.staked_token,
@@ -105,6 +156,16 @@ pub fn execute_deposit(
         })?,
         funds: vec![],
     }));
+
+    // Update staker amount
+    current_staker_amount += amount;
+
+    // Update staker info
+    STAKERS_INFO.save(
+        deps.storage,
+        info.sender,
+        &current_staker_amount,
+    )?;
 
     res = res.add_submessage(transfer)
         .add_attribute("method", "deposit");
@@ -119,8 +180,10 @@ pub fn execute_withdraw(
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     let pool_info: PoolInfo = POOL_INFO.load(deps.storage)?;
-    let current_time = env.block.time.seconds();
-    let reward_amount = calc_reward(&pool_info, current_time);
+    // get staker info
+    let mut current_staker_amount = STAKERS_INFO.may_load(deps.storage, info.sender.clone())?.unwrap_or_default();
+    let current_time = env.block.time;
+    let reward_amount = calc_reward(&pool_info, current_time.seconds());
     let mut res = Response::new();
 
     // Harvest reward tokens if any
@@ -143,6 +206,16 @@ pub fn execute_withdraw(
         funds: vec![],
     }));
 
+    // Update staker amount
+    current_staker_amount -= amount;
+
+    // Update staker info
+    STAKERS_INFO.save(
+        deps.storage,
+        info.sender,
+        &current_staker_amount,
+    )?;
+
     res = res
         .add_submessage(withdraw)
         .add_attribute("method", "withdraw");
@@ -157,8 +230,14 @@ pub fn execute_harvest(
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
     let pool_info: PoolInfo = POOL_INFO.load(deps.storage)?;
-    let current_time = env.block.time.seconds();
-    let reward_amount = calc_reward(&pool_info, current_time);
+    let current_time = env.block.time;
+    let reward_amount = calc_reward(&pool_info, current_time.seconds());
+
+    // Only staker can harvest reward
+    let staker_amount = STAKERS_INFO.load(deps.storage, info.sender.clone())?;
+    if staker_amount == Uint128::zero() {
+        return Err(ContractError::Unauthorized {});
+    }
 
     // Check if there is any reward to harvest
     if reward_amount == Uint128::zero() {
@@ -204,6 +283,7 @@ fn query_pool_info(deps: Deps) -> Result<PoolInfo, ContractError> {
         start_time: pool_info.start_time,
         end_time: pool_info.end_time,
         reward_per_second: pool_info.reward_per_second,
+        whitelist: pool_info.whitelist,
     };
     Ok(res)
 }

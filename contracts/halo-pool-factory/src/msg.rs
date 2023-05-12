@@ -1,7 +1,8 @@
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::Uint128;
-use halo_pool::state::{RewardTokenInfo};
+use cosmwasm_std::{Uint128, Addr};
+use cw_utils::Expiration;
+use halo_pool::state::{RewardTokenInfo, PoolInfo};
 use crate::state::{ConfigResponse};
 
 #[cw_serde]
@@ -29,6 +30,8 @@ pub enum ExecuteMsg {
 		start_time: u64,
 		/// End time
 		end_time: u64,
+        /// Whitelisted addresses
+        whitelist: Vec<Addr>,
     },
 }
 
@@ -37,4 +40,9 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(ConfigResponse)]
     Config {},
+    #[returns(PoolInfo)]
+    Pool {
+        /// Pool ID
+        pool_id: String,
+    },
 }

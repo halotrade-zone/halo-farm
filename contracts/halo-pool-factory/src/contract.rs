@@ -5,11 +5,11 @@ use cosmwasm_std::{
     StdError, StdResult, SubMsg, WasmMsg, Uint128, QuerierWrapper, QueryRequest, WasmQuery,
 };
 use cw2::set_contract_version;
-use crate::{msg::{ExecuteMsg, InstantiateMsg, QueryMsg}, state::{TMP_POOL_INFO, POOLS}};
+use crate::{msg::{ExecuteMsg, InstantiateMsg, QueryMsg}, state::{TMP_POOL_INFO, POOLS, TmpPoolInfo, pool_key, PoolsInfo}};
 use halo_pool::state::{RewardTokenInfo, PoolInfo};
 use halo_pool::msg::InstantiateMsg as PoolInstantiateMsg;
 use crate::state::{Config, CONFIG, ConfigResponse,};
-use cw_utils::parse_reply_instantiate_data;
+use cw_utils::{parse_reply_instantiate_data, Expiration};
 use halo_pool::msg::QueryMsg as PoolQueryMsg;
 
 // version info for migration info
@@ -48,6 +48,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             reward_per_second,
             start_time,
             end_time,
+            whitelist,
         } => execute_create_pool(
             deps,
             env,
@@ -57,6 +58,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             reward_per_second,
             start_time,
             end_time,
+            Some(whitelist),
         ),
     }
 }
@@ -102,6 +104,7 @@ pub fn execute_create_pool(
     reward_per_second: Uint128,
     start_time: u64,
     end_time: u64,
+    whitelist: Option<Vec<Addr>>,
 ) -> StdResult<Response> {
     let config: Config = CONFIG.load(deps.storage)?;
 
@@ -113,6 +116,14 @@ pub fn execute_create_pool(
     // validate address format
     let _ = deps.api.addr_validate(&staked_token)?;
 
+    TMP_POOL_INFO.save(
+        deps.storage,
+        &TmpPoolInfo {
+            pool_key: pool_key(staked_token.clone()),
+            asset_infos: staked_token.clone(),
+        },
+    )?;
+
     Ok(Response::new()
         .add_attributes(vec![
             ("action", "create_pool"),
@@ -121,6 +132,7 @@ pub fn execute_create_pool(
             ("reward_per_second", reward_per_second.to_string().as_str()),
             ("start_time", start_time.to_string().as_str()),
             ("end_time", end_time.to_string().as_str()),
+            ("whitelist", &format!("{:?}", whitelist)),
         ])
         .add_submessage(SubMsg {
             id: 1,
@@ -136,6 +148,7 @@ pub fn execute_create_pool(
                     reward_per_second,
                     start_time,
                     end_time,
+                    whitelist: whitelist.unwrap(),
                 })?,
             }),
             reply_on: ReplyOn::Success,
@@ -155,10 +168,9 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
     POOLS.save(
         deps.storage,
         &tmp_pool_info.pool_key,
-        &PoolInfo {
+        &PoolsInfo {
             staked_token: pool_info.staked_token.clone(),
             reward_token: pool_info.reward_token,
-            reward_per_second: pool_info.reward_per_second,
             start_time: pool_info.start_time,
             end_time: pool_info.end_time,
         },
@@ -174,6 +186,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
+        QueryMsg::Pool { pool_id } => to_binary(&query_pool_info(deps, pool_id)?),
     }
 }
 
@@ -185,6 +198,19 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     };
 
     Ok(resp)
+}
+
+pub fn query_pool_info(deps: Deps, pool_id: String ) -> StdResult<PoolsInfo> {
+    let pool_info: PoolsInfo = POOLS.load(deps.storage, &pool_key(pool_id))?;
+
+    let res = PoolsInfo {
+        staked_token: pool_info.staked_token,
+        reward_token: pool_info.reward_token,
+        start_time: pool_info.start_time,
+        end_time: pool_info.end_time,
+    };
+
+    Ok(res)
 }
 
 pub fn query_pair_info_from_pair(
