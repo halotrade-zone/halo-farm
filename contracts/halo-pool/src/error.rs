@@ -23,4 +23,7 @@ pub enum ContractError {
 
     #[error("Asset mismatch")]
     AssetMismatch {},
+
+    #[error("Insufficient Funds")]
+    InsufficientFunds {}
 }

@@ -182,6 +182,17 @@ pub fn execute_withdraw(
     let pool_info: PoolInfo = POOL_INFO.load(deps.storage)?;
     // get staker info
     let mut current_staker_amount = STAKERS_INFO.may_load(deps.storage, info.sender.clone())?.unwrap_or_default();
+
+    // only staker can withdraw
+    if current_staker_amount == Uint128::zero() {
+        return Err(ContractError::Unauthorized {});
+    }
+
+    // check staker amount is greater than withdraw amount
+    if current_staker_amount < amount {
+        return Err(ContractError::InsufficientFunds {});
+    }
+
     let current_time = env.block.time;
     let reward_amount = calc_reward(&pool_info, current_time.seconds());
     let mut res = Response::new();
