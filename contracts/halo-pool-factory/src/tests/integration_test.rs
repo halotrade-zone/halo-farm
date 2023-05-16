@@ -1,19 +1,16 @@
 #![cfg(test)]
 mod tests {
-    use crate::contract::{instantiate, query};
-    use crate::msg::{InstantiateMsg, QueryMsg};
-    use crate::state::ConfigResponse;
-    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
-    use cosmwasm_std::{
-        attr, coin, from_binary, to_binary, Addr, Api, CosmosMsg, OwnedDeps, Reply, ReplyOn,
-        Response, StdError, SubMsg, SubMsgResponse, SubMsgResult, Uint128, WasmMsg,BalanceResponse as BankBalanceResponse,
-    };
-    use cw20_base::{msg::ExecuteMsg as Cw20ExecuteMsg, msg::QueryMsg as Cw20QueryMsg};
+    
+    
+    
+    
+    
+    
     const MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT: u128 = 1_000_000_000_000_000;
     // Mock information for native token
     const MOCK_1000_000_000_NATIVE_TOKEN_AMOUNT: u128 = 2_000_000_000_000_000_000_000_000_000;
     const MOCK_TRANSACTION_FEE: u128 = 5000;
-    use std::time::{Duration, SystemTime, UNIX_EPOCH};
+    
 
     // create a lp token contract
     // create pool contract by factory contract
@@ -22,13 +19,13 @@ mod tests {
     mod execute_deposit_and_withdraw {
         use std::time::{SystemTime, UNIX_EPOCH};
 
-        use cosmwasm_std::{testing::mock_dependencies, Uint128, Addr, Coin, BlockInfo, QueryRequest, BankQuery, BalanceResponse as BankBalanceResponse, Querier, to_binary, from_binary};
+        use cosmwasm_std::{Uint128, Addr, Coin, QueryRequest, BankQuery, BalanceResponse as BankBalanceResponse, Querier, to_binary, from_binary};
         use cw20::{Cw20ExecuteMsg, BalanceResponse};
         use cw_multi_test::Executor;
         use halo_pool::state::{RewardTokenInfo, PoolInfo, RewardTokenAsset};
 
         use crate::{tests::{env_setup::env::{instantiate_contracts, ADMIN, NATIVE_DENOM_2}, integration_test::tests::{MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT, MOCK_1000_000_000_NATIVE_TOKEN_AMOUNT, MOCK_TRANSACTION_FEE}}, state::PoolsInfo};
-        use halo_pool::msg::{ExecuteMsg as PoolExecuteMsg, InstantiateMsg as PoolInstantiateMsg, QueryMsg as PoolQueryMsg};
+        use halo_pool::msg::{ExecuteMsg as PoolExecuteMsg, QueryMsg as PoolQueryMsg};
 
         #[test]
         fn proper_operation() {

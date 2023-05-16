@@ -1,5 +1,8 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Api, CanonicalAddr, Order, StdResult, Storage, Uint128, MessageInfo, Addr, CosmosMsg, to_binary, WasmMsg, BankMsg, Coin, SubMsg, StdError};
+use cosmwasm_std::{
+    to_binary, Addr, Api, BankMsg, CanonicalAddr, Coin, CosmosMsg, MessageInfo, StdError,
+    StdResult, SubMsg, Uint128, WasmMsg,
+};
 use cw20::Cw20ExecuteMsg;
 use cw_storage_plus::{Item, Map};
 use std::fmt;
@@ -14,7 +17,7 @@ pub const STAKERS_INFO: Map<Addr, StakerRewardAssetInfo> = Map::new("stakers_inf
 
 #[cw_serde]
 pub struct StakerRewardAssetInfo {
-    pub amount: Uint128, // How many staked tokens the user has provided.
+    pub amount: Uint128,      // How many staked tokens the user has provided.
     pub reward_debt: Uint128, // Reward debt.
 }
 
@@ -116,17 +119,11 @@ pub enum RewardTokenInfoRaw {
 
 impl RewardTokenInfo {
     pub fn is_token(&self) -> bool {
-        match self {
-            RewardTokenInfo::Token { .. } => true,
-            _ => false,
-        }
+        matches!(self, RewardTokenInfo::Token { .. })
     }
 
     pub fn is_native_token(&self) -> bool {
-        match self {
-            RewardTokenInfo::NativeToken { .. } => true,
-            _ => false,
-        }
+        matches!(self, RewardTokenInfo::NativeToken { .. })
     }
 
     pub fn to_raw(&self, api: &dyn Api) -> StdResult<RewardTokenInfoRaw> {

@@ -1,6 +1,6 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Uint128, Timestamp, Addr};
-use cw_utils::Expiration;
+use cosmwasm_std::{Uint128, Addr};
+
 
 use crate::state::{RewardTokenInfo, PoolInfo, RewardTokenAsset};
 

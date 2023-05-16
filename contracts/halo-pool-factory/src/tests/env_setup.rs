@@ -1,7 +1,7 @@
 #[cfg(test)]
 pub mod env {
-    use cosmwasm_std::{Addr, Coin, Empty, StdError, Uint128};
-    use cw20::{Cw20Coin, MinterResponse};
+    use cosmwasm_std::{Addr, Coin, Empty, Uint128};
+    use cw20::MinterResponse;
     use cw_multi_test::{App, AppBuilder, Contract, ContractWrapper, Executor};
 
     use crate::contract::{
@@ -13,31 +13,16 @@ pub mod env {
         execute as Cw20Execute, instantiate as Cw20Instantiate, query as Cw20Query,
     };
 
-    use cw20_base::msg::{
-        ExecuteMsg as Cw20ExecuteMsg, InstantiateMsg as Cw20InstantiateMsg,
-        QueryMsg as Cw20QueryMsg,
-    };
+    use cw20_base::msg::InstantiateMsg as Cw20InstantiateMsg;
 
     use halo_pool::contract::{
-        instantiate as HaloPoolInstantiate,
-        execute as HaloPoolExecute,
-        query as HaloPoolQuery,
+        execute as HaloPoolExecute, instantiate as HaloPoolInstantiate, query as HaloPoolQuery,
     };
 
-    use halo_pool::msg::{
-        InstantiateMsg as HaloPoolInstantiateMsg,
-        ExecuteMsg as HaloPoolExecuteMsg,
-        QueryMsg as HaloPoolQueryMsg,
-    };
+    use crate::msg::InstantiateMsg as HaloPoolFactoryInstantiateMsg;
 
-    use crate::msg::{
-        ExecuteMsg as HaloPoolFactoryExecuteMsg,
-        InstantiateMsg as HaloPoolFactoryInstantiateMsg,
-        QueryMsg as HaloPoolFactoryQueryMsg,
-    };
-
-    pub const ADMIN: &str = "aura1uh24g2lc8hvvkaaf7awz25lrh5fptthu2dhq0n";
-    pub const USER_1: &str = "aura1fqj2redmssckrdeekhkcvd2kzp9f4nks4fctrt";
+    pub const ADMIN: &str = "aura1000000000000000000000000000000000admin";
+    pub const _USER_1: &str = "aura1000000000000000000000000000000000user1";
 
     pub const NATIVE_DENOM: &str = "uaura";
     pub const NATIVE_BALANCE: u128 = 1_000_000_000_000u128;
@@ -73,9 +58,12 @@ pub mod env {
     }
 
     fn halo_pool_factory_contract_template() -> Box<dyn Contract<Empty>> {
-        let contract =
-            ContractWrapper::new(HaloPoolFactoryExecute, HaloPoolFactoryInstantiate, HaloPoolFactoryQuery)
-                .with_reply(HaloPoolFactoryReply);
+        let contract = ContractWrapper::new(
+            HaloPoolFactoryExecute,
+            HaloPoolFactoryInstantiate,
+            HaloPoolFactoryQuery,
+        )
+        .with_reply(HaloPoolFactoryReply);
         Box::new(contract)
     }
 
@@ -159,5 +147,4 @@ pub mod env {
 
         (app, contract_info_vec)
     }
-
 }

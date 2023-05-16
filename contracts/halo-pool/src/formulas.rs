@@ -1,8 +1,8 @@
 use cosmwasm_std::Uint128;
-use crate::state::{PoolInfo, LAST_REWARD_TIME};
+use crate::state::{PoolInfo};
 
 pub fn calc_reward(pool_info: &PoolInfo, current_time: u64) -> Uint128 {
-    let reward_per_second = pool_info.reward_per_second;
+    let _reward_per_second = pool_info.reward_per_second;
     let start_time = pool_info.start_time;
     let end_time = pool_info.end_time;
 

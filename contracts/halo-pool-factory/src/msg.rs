@@ -1,7 +1,7 @@
 
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Uint128, Addr};
-use cw_utils::Expiration;
+
 use halo_pool::state::{RewardTokenInfo, PoolInfo};
 use crate::state::{ConfigResponse};
 

@@ -1,16 +1,20 @@
+use crate::state::{Config, ConfigResponse, CONFIG};
+use crate::{
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    state::{pool_key, PoolsInfo, TmpPoolInfo, POOLS, TMP_POOL_INFO},
+};
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Reply, ReplyOn, Response,
-    StdError, StdResult, SubMsg, WasmMsg, Uint128, QuerierWrapper, QueryRequest, WasmQuery,
+    to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper,
+    QueryRequest, Reply, ReplyOn, Response, StdError, StdResult, SubMsg, Uint128, WasmMsg,
+    WasmQuery,
 };
 use cw2::set_contract_version;
-use crate::{msg::{ExecuteMsg, InstantiateMsg, QueryMsg}, state::{TMP_POOL_INFO, POOLS, TmpPoolInfo, pool_key, PoolsInfo}};
-use halo_pool::state::{RewardTokenInfo, PoolInfo};
+use cw_utils::parse_reply_instantiate_data;
 use halo_pool::msg::InstantiateMsg as PoolInstantiateMsg;
-use crate::state::{Config, CONFIG, ConfigResponse,};
-use cw_utils::{parse_reply_instantiate_data, Expiration};
 use halo_pool::msg::QueryMsg as PoolQueryMsg;
+use halo_pool::state::{PoolInfo, RewardTokenInfo};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:halo-pool-factory";
@@ -58,7 +62,7 @@ pub fn execute(deps: DepsMut, env: Env, info: MessageInfo, msg: ExecuteMsg) -> S
             reward_per_second,
             start_time,
             end_time,
-            Some(whitelist),
+            whitelist,
         ),
     }
 }
@@ -95,16 +99,17 @@ pub fn execute_update_config(
 }
 
 // Anyone can execute it to create a new pool
+#[allow(clippy::too_many_arguments)]
 pub fn execute_create_pool(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    staked_token: String ,
+    staked_token: String,
     reward_token: RewardTokenInfo,
     reward_per_second: Uint128,
     start_time: u64,
     end_time: u64,
-    whitelist: Option<Vec<Addr>>,
+    whitelist: Vec<Addr>,
 ) -> StdResult<Response> {
     let config: Config = CONFIG.load(deps.storage)?;
 
@@ -148,7 +153,7 @@ pub fn execute_create_pool(
                     reward_per_second,
                     start_time,
                     end_time,
-                    whitelist: whitelist.unwrap(),
+                    whitelist,
                 })?,
             }),
             reply_on: ReplyOn::Success,
@@ -200,7 +205,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     Ok(resp)
 }
 
-pub fn query_pool_info(deps: Deps, pool_id: String ) -> StdResult<PoolsInfo> {
+pub fn query_pool_info(deps: Deps, pool_id: String) -> StdResult<PoolsInfo> {
     let pool_info: PoolsInfo = POOLS.load(deps.storage, &pool_key(pool_id))?;
 
     let res = PoolsInfo {

@@ -1,9 +1,9 @@
 use cosmwasm_schema::cw_serde;
-use cw_storage_plus::{Bound, Item, Map};
-use cosmwasm_std::{Api, CanonicalAddr, Order, StdResult, Storage, Uint128};
-use cw_utils::Expiration;
-use halo_pool::state::{PoolInfo, RewardTokenInfo};
-use std::fmt;
+use cw_storage_plus::{Item, Map};
+use cosmwasm_std::{CanonicalAddr};
+
+use halo_pool::state::{RewardTokenInfo};
+
 
 #[cw_serde]
 pub struct Config {

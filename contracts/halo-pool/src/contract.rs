@@ -1,19 +1,25 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    from_binary, to_binary, Addr, Binary, CanonicalAddr, CosmosMsg, Decimal, Deps, DepsMut, Env,
-    MessageInfo, Reply, ReplyOn, Response, StdResult, SubMsg, Uint128, WasmMsg, BankMsg, coin,
+    coin, to_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
+    StdResult, SubMsg, Uint128, WasmMsg,
 };
 
 use cw2::set_contract_version;
-use cw20::{Cw20ExecuteMsg, Cw20ReceiveMsg, MinterResponse, Expiration};
-use cw_utils::parse_reply_instantiate_data;
+use cw20::Cw20ExecuteMsg;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:halo-pool";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-use crate::{msg::{InstantiateMsg, ExecuteMsg, QueryMsg}, state::{PoolInfo, POOL_INFO, STAKERS_INFO, RewardTokenInfo, RewardTokenAsset, LAST_REWARD_TIME, StakerRewardAssetInfo}, error::ContractError, formulas::calc_reward};
+use crate::{
+    error::ContractError,
+    formulas::calc_reward,
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    state::{
+        PoolInfo, RewardTokenAsset, RewardTokenInfo, LAST_REWARD_TIME, POOL_INFO, STAKERS_INFO,
+    },
+};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -35,8 +41,7 @@ pub fn instantiate(
 
     POOL_INFO.save(deps.storage, pool_info)?;
 
-    let res = Response::new()
-        .add_attribute("method", "instantiate");
+    let res = Response::new().add_attribute("method", "instantiate");
 
     Ok(res)
 }
@@ -49,9 +54,11 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AddRewardBalance {asset} => execute_add_reward_balance(deps, env, info, asset),
-        ExecuteMsg::Deposit {amount} => execute_deposit(deps, env, info, amount),
-        ExecuteMsg::Withdraw {amount} => execute_withdraw(deps, env, info, amount),
+        ExecuteMsg::AddRewardBalance { asset } => {
+            execute_add_reward_balance(deps, env, info, asset)
+        }
+        ExecuteMsg::Deposit { amount } => execute_deposit(deps, env, info, amount),
+        ExecuteMsg::Withdraw { amount } => execute_withdraw(deps, env, info, amount),
         ExecuteMsg::Harvest {} => execute_harvest(deps, env, info),
     }
 }
@@ -87,7 +94,7 @@ pub fn execute_add_reward_balance(
 
     if let RewardTokenInfo::Token { contract_addr } = pool_info.reward_token.clone() {
         let transfer = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: contract_addr.to_string(),
+            contract_addr,
             msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
                 owner: info.sender.to_string(),
                 recipient: env.contract.address.to_string(),
@@ -130,9 +137,11 @@ pub fn execute_deposit(
 ) -> Result<Response, ContractError> {
     let pool_info: PoolInfo = POOL_INFO.load(deps.storage)?;
     // get staker info
-    let mut staker_info = STAKERS_INFO.may_load(deps.storage, info.sender.clone())?.unwrap();
+    let mut staker_info = STAKERS_INFO
+        .may_load(deps.storage, info.sender.clone())?
+        .unwrap();
     // if staker already staked before, get the current staker amount
-    let mut current_staker_amount = staker_info.amount;
+    let _current_staker_amount = staker_info.amount;
 
     let current_time = env.block.time;
     let reward_amount = calc_reward(&pool_info, current_time.seconds());
@@ -163,13 +172,10 @@ pub fn execute_deposit(
     staker_info.amount += amount;
 
     // Update staker info
-    STAKERS_INFO.save(
-        deps.storage,
-        info.sender,
-        &staker_info
-    )?;
+    STAKERS_INFO.save(deps.storage, info.sender, &staker_info)?;
 
-    res = res.add_submessage(transfer)
+    res = res
+        .add_submessage(transfer)
         .add_attribute("method", "deposit");
 
     Ok(res)
@@ -183,9 +189,11 @@ pub fn execute_withdraw(
 ) -> Result<Response, ContractError> {
     let pool_info: PoolInfo = POOL_INFO.load(deps.storage)?;
     // get staker info
-    let mut staker_info = STAKERS_INFO.may_load(deps.storage, info.sender.clone())?.unwrap();
+    let mut staker_info = STAKERS_INFO
+        .may_load(deps.storage, info.sender.clone())?
+        .unwrap();
 
-    let mut current_staker_amount = staker_info.amount;
+    let current_staker_amount = staker_info.amount;
 
     // only staker can withdraw
     if current_staker_amount == Uint128::zero() {
@@ -225,11 +233,7 @@ pub fn execute_withdraw(
     staker_info.amount -= amount;
 
     // Update staker info
-    STAKERS_INFO.save(
-        deps.storage,
-        info.sender,
-        &staker_info
-    )?;
+    STAKERS_INFO.save(deps.storage, info.sender, &staker_info)?;
 
     res = res
         .add_submessage(withdraw)
@@ -249,7 +253,9 @@ pub fn execute_harvest(
     let reward_amount = calc_reward(&pool_info, current_time.seconds());
 
     // Only staker can harvest reward
-    let staker_info = STAKERS_INFO.may_load(deps.storage, info.sender.clone())?.unwrap();
+    let staker_info = STAKERS_INFO
+        .may_load(deps.storage, info.sender.clone())?
+        .unwrap();
     if staker_info.amount == Uint128::zero() {
         return Err(ContractError::Unauthorized {});
     }
@@ -261,14 +267,16 @@ pub fn execute_harvest(
 
     // Transfer reward token to the sender
     let transfer = match pool_info.reward_token {
-        RewardTokenInfo::Token { contract_addr } => SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: contract_addr.to_string(),
-            msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                recipient: info.sender.to_string(),
-                amount: reward_amount,
-            })?,
-            funds: vec![],
-        })),
+        RewardTokenInfo::Token { contract_addr } => {
+            SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                    recipient: info.sender.to_string(),
+                    amount: reward_amount,
+                })?,
+                funds: vec![],
+            }))
+        }
         RewardTokenInfo::NativeToken { denom } => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: info.sender.to_string(),
             amount: vec![coin(reward_amount.into(), denom)],
@@ -280,7 +288,6 @@ pub fn execute_harvest(
         .add_attribute("method", "harvest");
 
     Ok(res)
-
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
