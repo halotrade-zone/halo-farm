@@ -13,7 +13,7 @@ use cw_utils::parse_reply_instantiate_data;
 const CONTRACT_NAME: &str = "crates.io:halo-pool";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-use crate::{msg::{InstantiateMsg, ExecuteMsg, QueryMsg}, state::{PoolInfo, POOL_INFO, STAKERS_INFO, RewardTokenInfo, RewardTokenAsset, LAST_REWARD_TIME}, error::ContractError, formulas::calc_reward};
+use crate::{msg::{InstantiateMsg, ExecuteMsg, QueryMsg}, state::{PoolInfo, POOL_INFO, STAKERS_INFO, RewardTokenInfo, RewardTokenAsset, LAST_REWARD_TIME, StakerRewardAssetInfo}, error::ContractError, formulas::calc_reward};
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
@@ -129,8 +129,10 @@ pub fn execute_deposit(
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     let pool_info: PoolInfo = POOL_INFO.load(deps.storage)?;
+    // get staker info
+    let mut staker_info = STAKERS_INFO.may_load(deps.storage, info.sender.clone())?.unwrap();
     // if staker already staked before, get the current staker amount
-    let mut current_staker_amount = STAKERS_INFO.may_load(deps.storage, info.sender.clone())?.unwrap_or_default();
+    let mut current_staker_amount = staker_info.amount;
 
     let current_time = env.block.time;
     let reward_amount = calc_reward(&pool_info, current_time.seconds());
@@ -158,13 +160,13 @@ pub fn execute_deposit(
     }));
 
     // Update staker amount
-    current_staker_amount += amount;
+    staker_info.amount += amount;
 
     // Update staker info
     STAKERS_INFO.save(
         deps.storage,
         info.sender,
-        &current_staker_amount,
+        &staker_info
     )?;
 
     res = res.add_submessage(transfer)
@@ -181,7 +183,9 @@ pub fn execute_withdraw(
 ) -> Result<Response, ContractError> {
     let pool_info: PoolInfo = POOL_INFO.load(deps.storage)?;
     // get staker info
-    let mut current_staker_amount = STAKERS_INFO.may_load(deps.storage, info.sender.clone())?.unwrap_or_default();
+    let mut staker_info = STAKERS_INFO.may_load(deps.storage, info.sender.clone())?.unwrap();
+
+    let mut current_staker_amount = staker_info.amount;
 
     // only staker can withdraw
     if current_staker_amount == Uint128::zero() {
@@ -218,13 +222,13 @@ pub fn execute_withdraw(
     }));
 
     // Update staker amount
-    current_staker_amount -= amount;
+    staker_info.amount -= amount;
 
     // Update staker info
     STAKERS_INFO.save(
         deps.storage,
         info.sender,
-        &current_staker_amount,
+        &staker_info
     )?;
 
     res = res
@@ -245,8 +249,8 @@ pub fn execute_harvest(
     let reward_amount = calc_reward(&pool_info, current_time.seconds());
 
     // Only staker can harvest reward
-    let staker_amount = STAKERS_INFO.load(deps.storage, info.sender.clone())?;
-    if staker_amount == Uint128::zero() {
+    let staker_info = STAKERS_INFO.may_load(deps.storage, info.sender.clone())?.unwrap();
+    if staker_info.amount == Uint128::zero() {
         return Err(ContractError::Unauthorized {});
     }
 

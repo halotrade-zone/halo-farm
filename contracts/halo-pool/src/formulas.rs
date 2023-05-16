@@ -32,7 +32,7 @@ pub fn update_pool(pool_info: &mut PoolInfo, staked_token_supply: Uint128, accru
 
     let multiplier = get_multiplier(last_reward_time, current_time, end_time);
     let reward = Uint128::new(multiplier.into()) * reward_per_second;
-    let new_accrued_token_per_share = accrued_token_per_share + reward * Uint128::new(1_000_000_000_000_000_000) / staked_token_supply;
+    let new_accrued_token_per_share = accrued_token_per_share + reward * Uint128::new(1_000_000) / staked_token_supply;
     (new_accrued_token_per_share, current_time)
 }
 

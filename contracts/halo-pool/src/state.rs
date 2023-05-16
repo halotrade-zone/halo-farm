@@ -10,7 +10,13 @@ pub const POOL_INFO: Item<PoolInfo> = Item::new("pool_info");
 pub const LAST_REWARD_TIME: Item<u64> = Item::new("last_reward_time");
 
 /// Mappping from staker address to staker balance.
-pub const STAKERS_INFO: Map<Addr, Uint128> = Map::new("stakers_info");
+pub const STAKERS_INFO: Map<Addr, StakerRewardAssetInfo> = Map::new("stakers_info");
+
+#[cw_serde]
+pub struct StakerRewardAssetInfo {
+    pub amount: Uint128, // How many staked tokens the user has provided.
+    pub reward_debt: Uint128, // Reward debt.
+}
 
 #[cw_serde]
 pub struct RewardTokenAsset {
