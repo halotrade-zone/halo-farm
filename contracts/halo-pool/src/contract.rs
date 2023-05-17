@@ -30,10 +30,10 @@ pub fn instantiate(
 ) -> StdResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
-    let pool_info: &PoolInfo = &PoolInfo {
+    let pool_info = &PoolInfo {
         staked_token: deps.api.addr_validate(&msg.staked_token)?.to_string(),
         reward_token: msg.reward_token.clone(),
-        reward_per_second: msg.reward_per_second,
+        reward_per_second: Uint128::zero(), // this will be updated when admin adding reward balance
         start_time: msg.start_time,
         end_time: msg.end_time,
         whitelist: msg.whitelist,
@@ -41,9 +41,13 @@ pub fn instantiate(
 
     POOL_INFO.save(deps.storage, pool_info)?;
 
-    let res = Response::new().add_attribute("method", "instantiate");
-
-    Ok(res)
+    Ok(Response::new().add_attributes([
+        ("action", "instantiate"),
+        ("staked_token", &msg.staked_token),
+        ("reward_token", &msg.reward_token.to_string()),
+        ("start_time", &msg.start_time.to_string()),
+        ("end_time", &msg.end_time.to_string()),
+    ]))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

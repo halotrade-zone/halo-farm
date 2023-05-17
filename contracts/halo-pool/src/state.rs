@@ -1,7 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    to_binary, Addr, Api, BankMsg, CanonicalAddr, Coin, CosmosMsg, MessageInfo, StdError,
-    StdResult, SubMsg, Uint128, WasmMsg,
+    to_binary, Addr, Api, BankMsg, Coin, CosmosMsg, MessageInfo, StdError, StdResult, SubMsg,
+    Uint128, WasmMsg,
 };
 use cw20::Cw20ExecuteMsg;
 use cw_storage_plus::{Item, Map};
@@ -113,7 +113,7 @@ impl fmt::Display for RewardTokenInfo {
 
 #[cw_serde]
 pub enum RewardTokenInfoRaw {
-    Token { contract_addr: CanonicalAddr },
+    Token { contract_addr: Addr },
     NativeToken { denom: String },
 }
 
@@ -132,7 +132,7 @@ impl RewardTokenInfo {
                 denom: denom.to_string(),
             }),
             RewardTokenInfo::Token { contract_addr } => Ok(RewardTokenInfoRaw::Token {
-                contract_addr: api.addr_canonicalize(contract_addr.as_str())?,
+                contract_addr: api.addr_validate(contract_addr)?,
             }),
         }
     }

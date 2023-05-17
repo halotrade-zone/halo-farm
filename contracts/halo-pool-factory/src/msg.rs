@@ -1,9 +1,8 @@
-
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Uint128, Addr};
+use cosmwasm_std::Addr;
 
-use halo_pool::state::{RewardTokenInfo, PoolInfo};
-use crate::state::{ConfigResponse};
+use crate::state::{ConfigResponse, FactoryPoolInfo};
+use halo_pool::state::RewardTokenInfo;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -22,14 +21,12 @@ pub enum ExecuteMsg {
     CreatePool {
         /// Staked LP Token address
         staked_token: String,
-		/// Reward Token address (CW20 or Native)
-		reward_token: RewardTokenInfo,
-        /// Reward per second
-		reward_per_second: Uint128,
-		/// Start time
-		start_time: u64,
-		/// End time
-		end_time: u64,
+        /// Reward Token address (CW20 or Native)
+        reward_token: RewardTokenInfo,
+        /// Start time
+        start_time: u64,
+        /// End time
+        end_time: u64,
         /// Whitelisted addresses
         whitelist: Vec<Addr>,
     },
@@ -40,9 +37,11 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(ConfigResponse)]
     Config {},
-    #[returns(PoolInfo)]
-    Pool {
-        /// Pool ID
-        pool_id: String,
+    #[returns(FactoryPoolInfo)]
+    Pool { pool_id: u64 },
+    #[returns(Vec<FactoryPoolInfo>)]
+    Pools {
+        start_after: Option<u64>,
+        limit: Option<u32>,
     },
 }

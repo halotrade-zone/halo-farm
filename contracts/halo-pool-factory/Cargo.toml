@@ -39,7 +39,6 @@ serde             = { workspace = true }
 thiserror         = { workspace = true }
 halo-pool         = { workspace = true }
 
-
 [dev-dependencies]
 cw-multi-test     = { workspace = true }
 cosmwasm-schema   = { workspace = true }

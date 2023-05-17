@@ -1,16 +1,9 @@
 #![cfg(test)]
 mod tests {
-    
-    
-    
-    
-    
-    
     const MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT: u128 = 1_000_000_000_000_000;
     // Mock information for native token
     const MOCK_1000_000_000_NATIVE_TOKEN_AMOUNT: u128 = 2_000_000_000_000_000_000_000_000_000;
     const MOCK_TRANSACTION_FEE: u128 = 5000;
-    
 
     // create a lp token contract
     // create pool contract by factory contract
@@ -19,12 +12,25 @@ mod tests {
     mod execute_deposit_and_withdraw {
         use std::time::{SystemTime, UNIX_EPOCH};
 
-        use cosmwasm_std::{Uint128, Addr, Coin, QueryRequest, BankQuery, BalanceResponse as BankBalanceResponse, Querier, to_binary, from_binary};
-        use cw20::{Cw20ExecuteMsg, BalanceResponse};
+        use cosmwasm_std::{
+            from_binary, to_binary, Addr, BalanceResponse as BankBalanceResponse, BankQuery, Coin,
+            Querier, QueryRequest, Uint128,
+        };
+        use cw20::{BalanceResponse, Cw20ExecuteMsg};
         use cw_multi_test::Executor;
-        use halo_pool::state::{RewardTokenInfo, PoolInfo, RewardTokenAsset};
+        use halo_pool::state::{PoolInfo, RewardTokenAsset, RewardTokenInfo};
 
-        use crate::{tests::{env_setup::env::{instantiate_contracts, ADMIN, NATIVE_DENOM_2}, integration_test::tests::{MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT, MOCK_1000_000_000_NATIVE_TOKEN_AMOUNT, MOCK_TRANSACTION_FEE}}, state::PoolsInfo};
+        use crate::{
+            msg::QueryMsg,
+            state::FactoryPoolInfo,
+            tests::{
+                env_setup::env::{instantiate_contracts, ADMIN, NATIVE_DENOM_2},
+                integration_test::tests::{
+                    MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT, MOCK_1000_000_000_NATIVE_TOKEN_AMOUNT,
+                    MOCK_TRANSACTION_FEE,
+                },
+            },
+        };
         use halo_pool::msg::{ExecuteMsg as PoolExecuteMsg, QueryMsg as PoolQueryMsg};
 
         #[test]
@@ -105,15 +111,14 @@ mod tests {
 
             // get current block time
             let current_block_time = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_secs();
 
             // create pool contract by factory contract
             let create_pool_msg = crate::msg::ExecuteMsg::CreatePool {
                 staked_token: lp_token_contract.clone(),
                 reward_token: native_token_info.clone(),
-                reward_per_second: Uint128::from(1u128),
                 start_time: current_block_time,
                 end_time: current_block_time + 10,
                 whitelist: vec![Addr::unchecked(ADMIN.to_string())],
@@ -124,32 +129,29 @@ mod tests {
                 Addr::unchecked(ADMIN.to_string()),
                 Addr::unchecked(factory_contract.clone()),
                 &create_pool_msg,
-                &[Coin {
-                    amount: Uint128::from(MOCK_TRANSACTION_FEE),
-                    denom: NATIVE_DENOM_2.to_string(),
-                }],
+                &[],
             );
-
             assert!(response_create_pool.is_ok());
 
             // query pool contract address
-            let pool_info: PoolsInfo = app
+            let pool_info: FactoryPoolInfo = app
                 .wrap()
                 .query_wasm_smart(
                     factory_contract.clone(),
-                    &crate::msg::QueryMsg::Pool {
-                        pool_id: lp_token_contract.to_string(),
-                    },
+                    &crate::msg::QueryMsg::Pool { pool_id: 1u64 },
                 )
                 .unwrap();
 
             // assert pool info
-            assert_eq!(pool_info, PoolsInfo {
-                staked_token: lp_token_contract.to_string(),
-                reward_token: native_token_info.clone(),
-                start_time: current_block_time,
-                end_time: current_block_time + 10,
-            });
+            assert_eq!(
+                pool_info,
+                FactoryPoolInfo {
+                    staked_token: lp_token_contract.to_string(),
+                    reward_token: native_token_info.clone(),
+                    start_time: current_block_time,
+                    end_time: current_block_time + 10,
+                }
+            );
 
             let reward_asset_info = RewardTokenInfo::NativeToken {
                 denom: NATIVE_DENOM_2.to_string(),
@@ -160,7 +162,7 @@ mod tests {
                 asset: RewardTokenAsset {
                     info: reward_asset_info,
                     amount: Uint128::from(1000u128),
-                }
+                },
             };
 
             // Execute add reward balance
@@ -172,30 +174,50 @@ mod tests {
                     amount: Uint128::from(1000u128),
                     denom: NATIVE_DENOM_2.to_string(),
                 }],
-
             );
-            println!("response: {:?}", response);
             assert!(response.is_ok());
 
             // query pool info after adding reward balance
             let pool_info: PoolInfo = app
                 .wrap()
+                .query_wasm_smart("contract2", &PoolQueryMsg::Pool {})
+                .unwrap();
+
+            // assert pool info
+            assert_eq!(
+                pool_info,
+                PoolInfo {
+                    staked_token: lp_token_contract.to_string(),
+                    reward_token: native_token_info.clone(),
+                    reward_per_second: Uint128::from(1000u128),
+                    start_time: current_block_time,
+                    end_time: current_block_time + 10,
+                    whitelist: vec![Addr::unchecked(ADMIN.to_string())],
+                }
+            );
+
+            // query all pools
+            let pools: Vec<FactoryPoolInfo> = app
+                .wrap()
                 .query_wasm_smart(
-                    "contract2",
-                    &PoolQueryMsg::Pool {},
+                    Addr::unchecked(factory_contract.clone()),
+                    &QueryMsg::Pools {
+                        start_after: None,
+                        limit: None,
+                    },
                 )
                 .unwrap();
 
             // assert pool info
-            assert_eq!(pool_info, PoolInfo {
-                staked_token: lp_token_contract.to_string(),
-                reward_token: native_token_info,
-                reward_per_second: Uint128::from(1000u128),
-                start_time: current_block_time,
-                end_time: current_block_time + 10,
-                whitelist: vec![Addr::unchecked(ADMIN.to_string())],
-            });
-
+            assert_eq!(
+                pools,
+                vec![FactoryPoolInfo {
+                    staked_token: lp_token_contract.to_string(),
+                    reward_token: native_token_info,
+                    start_time: current_block_time,
+                    end_time: current_block_time + 10,
+                }]
+            );
         }
     }
 }
