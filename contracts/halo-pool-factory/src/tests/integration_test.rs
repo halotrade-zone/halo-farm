@@ -218,6 +218,43 @@ mod tests {
                     end_time: current_block_time + 10,
                 }]
             );
+
+            // Approve cw20 token to pool contract
+            let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
+                spender: "contract2".to_string(), // Pool Contract
+                amount: Uint128::from(1000u128),
+                expires: None,
+            };
+
+            // Execute approve
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked(lp_token_contract.clone()),
+                &approve_msg,
+                &[Coin {
+                    amount: Uint128::from(MOCK_TRANSACTION_FEE),
+                    denom: NATIVE_DENOM_2.to_string(),
+                }],
+            );
+
+            assert!(response.is_ok());
+
+            // deposit some lp token to the pool contract
+            let deposit_msg = PoolExecuteMsg::Deposit {
+                amount: Uint128::from(1000u128),
+            };
+
+            // Execute deposit
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked("contract2"),
+                &deposit_msg,
+                &[],
+            );
+
+            println!("responseeeee: {:?}", response);
+
+            assert!(response.is_ok());
         }
     }
 }

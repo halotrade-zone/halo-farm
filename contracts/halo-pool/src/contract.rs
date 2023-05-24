@@ -18,7 +18,7 @@ use crate::{
     formulas::{calc_reward, get_multiplier},
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{
-        PoolInfo, RewardTokenAsset, RewardTokenInfo, LAST_REWARD_TIME, POOL_INFO, STAKERS_INFO, ACCRUED_TOKEN_PER_SHARE,
+        PoolInfo, RewardTokenAsset, RewardTokenInfo, LAST_REWARD_TIME, POOL_INFO, STAKERS_INFO, ACCRUED_TOKEN_PER_SHARE, StakerRewardAssetInfo,
     },
 };
 
@@ -157,10 +157,14 @@ pub fn execute_deposit(
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     let pool_info: PoolInfo = POOL_INFO.load(deps.storage)?;
+
     // get staker info
     let mut staker_info = STAKERS_INFO
         .may_load(deps.storage, info.sender.clone())?
-        .unwrap();
+        .unwrap_or(StakerRewardAssetInfo {
+            amount: Uint128::zero(),
+            reward_debt: Uint128::zero(),
+        });
     // if staker already staked before, get the current staker amount
     let _current_staker_amount = staker_info.amount;
 
