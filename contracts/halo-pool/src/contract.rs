@@ -2,11 +2,12 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     coin, to_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
-    StdResult, SubMsg, Uint128, WasmMsg,
+    StdResult, SubMsg, Uint128, WasmMsg, QuerierWrapper, Addr, QueryRequest, WasmQuery, BalanceResponse, BankQuery,
 };
 
 use cw2::set_contract_version;
-use cw20::Cw20ExecuteMsg;
+use cw20::{Cw20ExecuteMsg, BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg, TokenInfoResponse};
+
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:halo-pool";
@@ -14,10 +15,10 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 use crate::{
     error::ContractError,
-    formulas::calc_reward,
+    formulas::{calc_reward, get_multiplier},
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{
-        PoolInfo, RewardTokenAsset, RewardTokenInfo, LAST_REWARD_TIME, POOL_INFO, STAKERS_INFO,
+        PoolInfo, RewardTokenAsset, RewardTokenInfo, LAST_REWARD_TIME, POOL_INFO, STAKERS_INFO, ACCRUED_TOKEN_PER_SHARE,
     },
 };
 
@@ -39,7 +40,14 @@ pub fn instantiate(
         whitelist: msg.whitelist,
     };
 
+    // Save pool info
     POOL_INFO.save(deps.storage, pool_info)?;
+
+    // Init last reward time to start time
+    LAST_REWARD_TIME.save(deps.storage, &msg.start_time)?;
+
+    // Init accrued token per share to zero
+    ACCRUED_TOKEN_PER_SHARE.save(deps.storage, &Uint128::zero())?;
 
     Ok(Response::new().add_attributes([
         ("action", "instantiate"),
@@ -122,11 +130,20 @@ pub fn execute_add_reward_balance(
         whitelist: pool_info.whitelist,
     };
 
+    // Save pool info
+    POOL_INFO.save(deps.storage, &new_pool_info)?;
+
     // Update last reward time to start time
     LAST_REWARD_TIME.save(deps.storage, &pool_info.start_time)?;
 
-    // Save pool info
-    POOL_INFO.save(deps.storage, &new_pool_info)?;
+    // update pool
+    update_pool(deps, env)?;
+
+    // Save accrued token per share
+    // ACCRUED_TOKEN_PER_SHARE.save(deps.storage, &new_accrued_token_per_share)?;
+
+    // Save last reward time
+    // LAST_REWARD_TIME.save(deps.storage, &new_last_reward_time)?;
 
     res = res.add_attribute("method", "add_reward_balance");
 
@@ -177,6 +194,8 @@ pub fn execute_deposit(
 
     // Update staker info
     STAKERS_INFO.save(deps.storage, info.sender, &staker_info)?;
+
+    //
 
     res = res
         .add_submessage(transfer)
@@ -264,9 +283,12 @@ pub fn execute_harvest(
         return Err(ContractError::Unauthorized {});
     }
 
+    // update pool
+    update_pool(deps, env)?;
+
     // Check if there is any reward to harvest
     if reward_amount == Uint128::zero() {
-        return Err(ContractError::InvalidZeroAmount {});
+        return Err(ContractError::InsufficientFunds {});
     }
 
     // Transfer reward token to the sender
@@ -292,6 +314,81 @@ pub fn execute_harvest(
         .add_attribute("method", "harvest");
 
     Ok(res)
+}
+
+fn update_pool(
+    deps: DepsMut,
+    env: Env,
+) -> StdResult<Response> {
+    // Get current time
+    let current_time = env.block.time;
+
+    // If current time is before start time or after end time or before last reward time, return without update pool
+    if current_time.seconds() < POOL_INFO.load(deps.storage)?.start_time
+        || current_time.seconds() >= POOL_INFO.load(deps.storage)?.end_time
+        || current_time.seconds() <= LAST_REWARD_TIME.load(deps.storage)? {
+        return Ok(Response::new());
+    }
+
+    // Get reward token balance from pool contract if reward token is cw20 token type or get from bank if reward token is native token type
+    let reward_token_supply = match POOL_INFO.load(deps.storage)?.reward_token {
+        RewardTokenInfo::Token { contract_addr } => {
+            query_token_balance(&deps.querier, contract_addr, env.contract.address)?
+        }
+        RewardTokenInfo::NativeToken { denom } => {
+            query_balance(&deps.querier, env.contract.address, denom)?
+        }
+    };
+
+    // Check if there is any reward token in the pool
+    if reward_token_supply == Uint128::zero() {
+        // No reward token in the pool, save last reward time and return
+        LAST_REWARD_TIME.save(deps.storage, &current_time.seconds())?;
+    } else {
+        let multiplier = get_multiplier(
+            LAST_REWARD_TIME.load(deps.storage)?,
+            current_time.seconds(),
+            POOL_INFO.load(deps.storage)?.end_time,
+        );
+        let reward = Uint128::new(multiplier.into()) * POOL_INFO.load(deps.storage)?.reward_per_second;
+        let new_accrued_token_per_share = ACCRUED_TOKEN_PER_SHARE.load(deps.storage)? + reward * Uint128::new(1_000_000) / reward_token_supply;
+        ACCRUED_TOKEN_PER_SHARE.save(deps.storage, &new_accrued_token_per_share)?;
+        LAST_REWARD_TIME.save(deps.storage, &current_time.seconds())?;
+    }
+
+    let res = Response::new()
+        .add_attribute("method", "update_pool");
+
+    Ok(res)
+}
+
+pub fn query_token_balance(
+    querier: &QuerierWrapper,
+    contract_addr: String,
+    account_addr: Addr,
+) -> StdResult<Uint128> {
+    let res: Cw20BalanceResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: contract_addr.to_string(),
+        msg: to_binary(&Cw20QueryMsg::Balance {
+            address: account_addr.to_string(),
+        })?,
+    }))?;
+
+    // load balance form the token contract
+    Ok(res.balance)
+}
+
+pub fn query_balance(
+    querier: &QuerierWrapper,
+    account_addr: Addr,
+    denom: String,
+) -> StdResult<Uint128> {
+    // load price form the oracle
+    let balance: BalanceResponse = querier.query(&QueryRequest::Bank(BankQuery::Balance {
+        address: account_addr.to_string(),
+        denom,
+    }))?;
+    Ok(balance.amount.amount)
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]

@@ -12,6 +12,9 @@ pub const POOL_INFO: Item<PoolInfo> = Item::new("pool_info");
 /// Stores the last reward time which will be updated every time when the reward is withdrawn.
 pub const LAST_REWARD_TIME: Item<u64> = Item::new("last_reward_time");
 
+// Stores the accrued token per share.
+pub const ACCRUED_TOKEN_PER_SHARE: Item<Uint128> = Item::new("accrued_token_per_share");
+
 /// Mappping from staker address to staker balance.
 pub const STAKERS_INFO: Map<Addr, StakerRewardAssetInfo> = Map::new("stakers_info");
 
