@@ -2,11 +2,11 @@
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     coin, to_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
-    StdResult, SubMsg, Uint128, WasmMsg, QuerierWrapper, Addr, QueryRequest, WasmQuery, BalanceResponse, BankQuery,
+    StdResult, SubMsg, Uint128, WasmMsg, QuerierWrapper, Addr, QueryRequest, WasmQuery, BalanceResponse, BankQuery, Decimal, Uint256, StdError
 };
 
 use cw2::set_contract_version;
-use cw20::{Cw20ExecuteMsg, BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg, TokenInfoResponse};
+use cw20::{Cw20ExecuteMsg, BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 
 
 // version info for migration info
@@ -34,7 +34,7 @@ pub fn instantiate(
     let pool_info = &PoolInfo {
         staked_token: deps.api.addr_validate(&msg.staked_token)?.to_string(),
         reward_token: msg.reward_token.clone(),
-        reward_per_second: Uint128::zero(), // this will be updated when admin adding reward balance
+        reward_per_second: Decimal::zero(), // this will be updated when admin adding reward balance
         start_time: msg.start_time,
         end_time: msg.end_time,
         whitelist: msg.whitelist,
@@ -47,7 +47,7 @@ pub fn instantiate(
     LAST_REWARD_TIME.save(deps.storage, &msg.start_time)?;
 
     // Init accrued token per share to zero
-    ACCRUED_TOKEN_PER_SHARE.save(deps.storage, &Uint128::zero())?;
+    ACCRUED_TOKEN_PER_SHARE.save(deps.storage, &Decimal::zero())?;
 
     Ok(Response::new().add_attributes([
         ("action", "instantiate"),
@@ -118,9 +118,7 @@ pub fn execute_add_reward_balance(
     }
 
     // Update reward_per_second base on new reward balance
-    let current_time = env.block.time;
-    let reward_amount = calc_reward(&pool_info, current_time.seconds());
-    let new_reward_per_second = reward_amount + asset.amount;
+    let new_reward_per_second = Decimal::from_ratio(asset.amount, pool_info.end_time - pool_info.start_time);
     let new_pool_info = PoolInfo {
         staked_token: pool_info.staked_token,
         reward_token: pool_info.reward_token,
@@ -166,14 +164,12 @@ pub fn execute_deposit(
             reward_debt: Uint128::zero(),
         });
     // if staker already staked before, get the current staker amount
-    let _current_staker_amount = staker_info.amount;
+    let current_staker_amount = staker_info.amount;
 
-    let current_time = env.block.time;
-    let reward_amount = calc_reward(&pool_info, current_time.seconds());
     let mut res = Response::new();
 
     // Harvest reward tokens if any
-    if reward_amount > Uint128::zero() {
+    if current_staker_amount > Uint128::zero() {
         let harvest = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: env.contract.address.to_string(),
             msg: to_binary(&ExecuteMsg::Harvest {})?,
@@ -199,7 +195,8 @@ pub fn execute_deposit(
     // Update staker info
     STAKERS_INFO.save(deps.storage, info.sender, &staker_info)?;
 
-    //
+    // Update pool
+    update_pool(deps, env)?;
 
     res = res
         .add_submessage(transfer)
@@ -276,23 +273,29 @@ pub fn execute_harvest(
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
     let pool_info: PoolInfo = POOL_INFO.load(deps.storage)?;
-    let current_time = env.block.time;
-    let reward_amount = calc_reward(&pool_info, current_time.seconds());
+
+    // Get accrued token per share
+    let accrued_token_per_share = ACCRUED_TOKEN_PER_SHARE.load(deps.storage)?;
 
     // Only staker can harvest reward
     let staker_info = STAKERS_INFO
         .may_load(deps.storage, info.sender.clone())?
         .unwrap();
-    if staker_info.amount == Uint128::zero() {
-        return Err(ContractError::Unauthorized {});
-    }
 
-    // update pool
-    update_pool(deps, env)?;
+    if staker_info.amount == Uint128::zero() {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Unauthorized: Only staker can harvest reward",
+        )));
+    }
+    let reward_amount = (staker_info.amount * accrued_token_per_share)
+        .checked_sub(staker_info.reward_debt)
+        .unwrap_or(Uint128::zero());
 
     // Check if there is any reward to harvest
     if reward_amount == Uint128::zero() {
-        return Err(ContractError::InsufficientFunds {});
+        return Err(ContractError::Std(StdError::generic_err(
+            "InsufficientFunds: Reward amount is zero",
+        )));
     }
 
     // Transfer reward token to the sender
@@ -312,6 +315,8 @@ pub fn execute_harvest(
             amount: vec![coin(reward_amount.into(), denom)],
         })),
     };
+    // // staker_info.amount * accrued_token_per_share
+    // staker_info.reward_debt = staker_info.amount * accrued_token_per_share;
 
     let res = Response::new()
         .add_submessage(transfer)
@@ -328,9 +333,7 @@ fn update_pool(
     let current_time = env.block.time;
 
     // If current time is before start time or after end time or before last reward time, return without update pool
-    if current_time.seconds() < POOL_INFO.load(deps.storage)?.start_time
-        || current_time.seconds() >= POOL_INFO.load(deps.storage)?.end_time
-        || current_time.seconds() <= LAST_REWARD_TIME.load(deps.storage)? {
+    if current_time.seconds() < LAST_REWARD_TIME.load(deps.storage)? {
         return Ok(Response::new());
     }
 
@@ -354,8 +357,9 @@ fn update_pool(
             current_time.seconds(),
             POOL_INFO.load(deps.storage)?.end_time,
         );
-        let reward = Uint128::new(multiplier.into()) * POOL_INFO.load(deps.storage)?.reward_per_second;
-        let new_accrued_token_per_share = ACCRUED_TOKEN_PER_SHARE.load(deps.storage)? + reward * Uint128::new(1_000_000) / reward_token_supply;
+
+        let reward = Decimal::new(multiplier.into()) * POOL_INFO.load(deps.storage)?.reward_per_second;
+        let new_accrued_token_per_share = ACCRUED_TOKEN_PER_SHARE.load(deps.storage)? + (reward * Decimal::from_ratio(1_000_000u128, reward_token_supply));
         ACCRUED_TOKEN_PER_SHARE.save(deps.storage, &new_accrued_token_per_share)?;
         LAST_REWARD_TIME.save(deps.storage, &current_time.seconds())?;
     }

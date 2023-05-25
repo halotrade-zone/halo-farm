@@ -28,7 +28,7 @@ pub mod env {
     pub const NATIVE_BALANCE: u128 = 1_000_000_000_000u128;
 
     pub const NATIVE_DENOM_2: &str = "utaura";
-    pub const NATIVE_BALANCE_2: u128 = 500_000_000_000u128;
+    pub const NATIVE_BALANCE_2: u128 = 1_000_000_000_000u128;
 
     pub struct ContractInfo {
         pub contract_addr: String,

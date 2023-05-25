@@ -1,7 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     to_binary, Addr, Api, BankMsg, Coin, CosmosMsg, MessageInfo, StdError, StdResult, SubMsg,
-    Uint128, WasmMsg,
+    Uint128, WasmMsg, Decimal,
 };
 use cw20::Cw20ExecuteMsg;
 use cw_storage_plus::{Item, Map};
@@ -13,7 +13,7 @@ pub const POOL_INFO: Item<PoolInfo> = Item::new("pool_info");
 pub const LAST_REWARD_TIME: Item<u64> = Item::new("last_reward_time");
 
 // Stores the accrued token per share.
-pub const ACCRUED_TOKEN_PER_SHARE: Item<Uint128> = Item::new("accrued_token_per_share");
+pub const ACCRUED_TOKEN_PER_SHARE: Item<Decimal> = Item::new("accrued_token_per_share");
 
 /// Mappping from staker address to staker balance.
 pub const STAKERS_INFO: Map<Addr, StakerRewardAssetInfo> = Map::new("stakers_info");
@@ -146,7 +146,7 @@ impl RewardTokenInfo {
 pub struct PoolInfo {
     pub staked_token: String,
     pub reward_token: RewardTokenInfo,
-    pub reward_per_second: Uint128,
+    pub reward_per_second: Decimal,
     pub start_time: u64,
     pub end_time: u64,
     pub whitelist: Vec<Addr>,
