@@ -81,8 +81,12 @@ pub fn execute_add_reward_balance(
     info: MessageInfo,
     asset: RewardTokenAsset,
 ) -> Result<Response, ContractError> {
+    let current_time = env.block.time;
+    let last_reward_time = LAST_REWARD_TIME.load(deps.storage)?;
     // Get pool info
     let pool_info: PoolInfo = POOL_INFO.load(deps.storage)?;
+    // Get accrued token per share
+    let accrued_token_per_share = ACCRUED_TOKEN_PER_SHARE.load(deps.storage)?;
 
     // check the message sender is the whitelisted address
     if !pool_info.whitelist.contains(&info.sender) {
@@ -135,13 +139,13 @@ pub fn execute_add_reward_balance(
     LAST_REWARD_TIME.save(deps.storage, &pool_info.start_time)?;
 
     // update pool
-    update_pool(deps, env)?;
+    let (new_accrued_token_per_share, new_last_reward_time) = update_pool(pool_info.end_time, pool_info.reward_per_second, asset.amount, accrued_token_per_share, current_time.seconds(), last_reward_time);
 
     // Save accrued token per share
-    // ACCRUED_TOKEN_PER_SHARE.save(deps.storage, &new_accrued_token_per_share)?;
+    ACCRUED_TOKEN_PER_SHARE.save(deps.storage, &new_accrued_token_per_share)?;
 
     // Save last reward time
-    // LAST_REWARD_TIME.save(deps.storage, &new_last_reward_time)?;
+    LAST_REWARD_TIME.save(deps.storage, &new_last_reward_time)?;
 
     res = res.add_attribute("method", "add_reward_balance");
 
@@ -194,9 +198,6 @@ pub fn execute_deposit(
 
     // Update staker info
     STAKERS_INFO.save(deps.storage, info.sender, &staker_info)?;
-
-    // Update pool
-    update_pool(deps, env)?;
 
     res = res
         .add_submessage(transfer)
@@ -261,7 +262,7 @@ pub fn execute_withdraw(
 
     res = res
         .add_submessage(withdraw)
-        .add_attribute("method", "withdraw");
+        .add_attribute("method", "harvest and withdraw");
 
     Ok(res)
 }
@@ -272,22 +273,43 @@ pub fn execute_harvest(
     env: Env,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
+    println!("info.sendeefefe {}", info.sender);
+    // Get current time
+    let current_time = env.block.time;
+    // Get pool info
     let pool_info: PoolInfo = POOL_INFO.load(deps.storage)?;
-
+    // Get last reward time
+    let last_reward_time = LAST_REWARD_TIME.load(deps.storage)?;
     // Get accrued token per share
     let accrued_token_per_share = ACCRUED_TOKEN_PER_SHARE.load(deps.storage)?;
-
     // Only staker can harvest reward
     let staker_info = STAKERS_INFO
         .may_load(deps.storage, info.sender.clone())?
         .unwrap();
+
+    // Get reward token balance from pool contract if reward token is cw20 token type or get from bank if reward token is native token type
+    let reward_token_supply = match pool_info.reward_token {
+        RewardTokenInfo::Token { ref contract_addr } => {
+            query_token_balance(&deps.querier, contract_addr.to_string(), env.contract.address)?
+        }
+        RewardTokenInfo::NativeToken { ref denom } => {
+            query_balance(&deps.querier, env.contract.address, denom.to_string())?
+        }
+    };
+    // update pool
+    let (new_accrued_token_per_share, new_last_reward_time) = update_pool(pool_info.end_time, pool_info.reward_per_second, reward_token_supply, accrued_token_per_share, current_time.seconds(), last_reward_time);
+    // Save accrued token per share
+    ACCRUED_TOKEN_PER_SHARE.save(deps.storage, &new_accrued_token_per_share)?;
+    // Save last reward time
+    LAST_REWARD_TIME.save(deps.storage, &new_last_reward_time)?;
 
     if staker_info.amount == Uint128::zero() {
         return Err(ContractError::Std(StdError::generic_err(
             "Unauthorized: Only staker can harvest reward",
         )));
     }
-    let reward_amount = (staker_info.amount * accrued_token_per_share)
+
+    let reward_amount = (staker_info.amount * new_accrued_token_per_share)
         .checked_sub(staker_info.reward_debt)
         .unwrap_or(Uint128::zero());
 
@@ -326,48 +348,34 @@ pub fn execute_harvest(
 }
 
 fn update_pool(
-    deps: DepsMut,
-    env: Env,
-) -> StdResult<Response> {
-    // Get current time
-    let current_time = env.block.time;
+    end_time: u64,
+    reward_per_second: Decimal,
+    reward_token_supply: Uint128,
+    accrued_token_per_share: Decimal,
+    current_time: u64,
+    last_reward_time: u64,
+) -> (Decimal, u64) {
 
     // If current time is before start time or after end time or before last reward time, return without update pool
-    if current_time.seconds() < LAST_REWARD_TIME.load(deps.storage)? {
-        return Ok(Response::new());
+    if current_time < last_reward_time {
+        return (accrued_token_per_share, last_reward_time);
     }
-
-    // Get reward token balance from pool contract if reward token is cw20 token type or get from bank if reward token is native token type
-    let reward_token_supply = match POOL_INFO.load(deps.storage)?.reward_token {
-        RewardTokenInfo::Token { contract_addr } => {
-            query_token_balance(&deps.querier, contract_addr, env.contract.address)?
-        }
-        RewardTokenInfo::NativeToken { denom } => {
-            query_balance(&deps.querier, env.contract.address, denom)?
-        }
-    };
 
     // Check if there is any reward token in the pool
     if reward_token_supply == Uint128::zero() {
         // No reward token in the pool, save last reward time and return
-        LAST_REWARD_TIME.save(deps.storage, &current_time.seconds())?;
+        (Decimal::zero(), last_reward_time)
     } else {
         let multiplier = get_multiplier(
-            LAST_REWARD_TIME.load(deps.storage)?,
-            current_time.seconds(),
-            POOL_INFO.load(deps.storage)?.end_time,
+            last_reward_time,
+            current_time,
+            end_time,
         );
 
-        let reward = Decimal::new(multiplier.into()) * POOL_INFO.load(deps.storage)?.reward_per_second;
-        let new_accrued_token_per_share = ACCRUED_TOKEN_PER_SHARE.load(deps.storage)? + (reward * Decimal::from_ratio(1_000_000u128, reward_token_supply));
-        ACCRUED_TOKEN_PER_SHARE.save(deps.storage, &new_accrued_token_per_share)?;
-        LAST_REWARD_TIME.save(deps.storage, &current_time.seconds())?;
+        let reward = Decimal::new(multiplier.into()) * reward_per_second;
+        let new_accrued_token_per_share = accrued_token_per_share + (reward * Decimal::from_ratio(reward_token_supply, 1_000_000u128));
+        (new_accrued_token_per_share, current_time)
     }
-
-    let res = Response::new()
-        .add_attribute("method", "update_pool");
-
-    Ok(res)
 }
 
 pub fn query_token_balance(
@@ -400,9 +408,10 @@ pub fn query_balance(
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
+pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::Pool {} => Ok(to_binary(&query_pool_info(deps)?)?),
+        QueryMsg::PendingReward { address } => Ok(to_binary(&query_pending_reward(deps, env, address)?)?),
     }
 }
 
@@ -418,3 +427,29 @@ fn query_pool_info(deps: Deps) -> Result<PoolInfo, ContractError> {
     };
     Ok(res)
 }
+
+fn query_pending_reward(deps: Deps, env: Env, address: Addr) -> Result<RewardTokenAsset, ContractError> {
+    let pool_info: PoolInfo = POOL_INFO.load(deps.storage)?;
+    let staker_info = STAKERS_INFO
+        .may_load(deps.storage, address.clone())?
+        .unwrap_or(StakerRewardAssetInfo {
+            amount: Uint128::zero(),
+            reward_debt: Uint128::zero(),
+        });
+
+    let current_time = env.block.time;
+    let last_reward_time = LAST_REWARD_TIME.load(deps.storage)?;
+    let accrued_token_per_share = ACCRUED_TOKEN_PER_SHARE.load(deps.storage)?;
+
+    let reward_amount = (staker_info.amount * accrued_token_per_share)
+        .checked_sub(staker_info.reward_debt)
+        .unwrap_or(Uint128::zero());
+
+    let res = RewardTokenAsset {
+        info: pool_info.reward_token,
+        amount: reward_amount,
+    };
+
+    Ok(res)
+}
+

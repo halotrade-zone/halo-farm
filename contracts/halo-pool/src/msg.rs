@@ -41,6 +41,8 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(PoolInfo)]
     Pool {},
-    // TODO: add query for user's reward balance
-    // TODO: add query for user's staked balance
+    #[returns(RewardTokenAsset)]
+	PendingReward {
+		address: Addr,
+	},
 }

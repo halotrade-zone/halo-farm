@@ -5,6 +5,7 @@ mod tests {
     const MOCK_1000_000_000_NATIVE_TOKEN_AMOUNT: u128 = 2_000_000_000_000_000_000_000_000_000;
     const MOCK_TRANSACTION_FEE: u128 = 5000;
     const INIT_1000_000_NATIVE_BALANCE_2: u128 = 1_000_000_000_000u128;
+    const ADD_1000_NATIVE_BALANCE_2: u128 = 1_000_000_000u128;
 
     // create a lp token contract
     // create pool contract by factory contract
@@ -28,7 +29,7 @@ mod tests {
                 env_setup::env::{instantiate_contracts, ADMIN, NATIVE_DENOM_2},
                 integration_test::tests::{
                     MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT, MOCK_1000_000_000_NATIVE_TOKEN_AMOUNT,
-                    MOCK_TRANSACTION_FEE, INIT_1000_000_NATIVE_BALANCE_2,
+                    MOCK_TRANSACTION_FEE, INIT_1000_000_NATIVE_BALANCE_2, ADD_1000_NATIVE_BALANCE_2,
                 },
             },
         };
@@ -103,7 +104,7 @@ mod tests {
                 staked_token: lp_token_contract.clone(),
                 reward_token: native_token_info.clone(),
                 start_time: current_block_time,
-                end_time: current_block_time + 10,
+                end_time: current_block_time + 100,
                 whitelist: vec![Addr::unchecked(ADMIN.to_string())],
             };
 
@@ -115,13 +116,6 @@ mod tests {
                 &[],
             );
             assert!(response_create_pool.is_ok());
-
-            // change block time increase 400 seconds to make phase active
-            app.set_block(BlockInfo {
-                time: app.block_info().time.plus_seconds(400),
-                height: app.block_info().height + 1,
-                chain_id: app.block_info().chain_id,
-            });
 
             // query pool contract address
             let pool_info: FactoryPoolInfo = app
@@ -139,9 +133,16 @@ mod tests {
                     staked_token: lp_token_contract.to_string(),
                     reward_token: native_token_info.clone(),
                     start_time: current_block_time,
-                    end_time: current_block_time + 10,
+                    end_time: current_block_time + 100,
                 }
             );
+
+            // change block time increase 1 seconds to make phase active
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(2),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
 
             let reward_asset_info = RewardTokenInfo::NativeToken {
                 denom: NATIVE_DENOM_2.to_string(),
@@ -151,7 +152,7 @@ mod tests {
             let add_reward_balance_msg = PoolExecuteMsg::AddRewardBalance {
                 asset: RewardTokenAsset {
                     info: reward_asset_info,
-                    amount: Uint128::from(1000u128),
+                    amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
                 },
             };
 
@@ -161,7 +162,7 @@ mod tests {
                 Addr::unchecked("contract2"),
                 &add_reward_balance_msg,
                 &[Coin {
-                    amount: Uint128::from(1000u128),
+                    amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
                     denom: NATIVE_DENOM_2.to_string(),
                 }],
             );
@@ -179,9 +180,9 @@ mod tests {
                 PoolInfo {
                     staked_token: lp_token_contract.to_string(),
                     reward_token: native_token_info.clone(),
-                    reward_per_second: Decimal::from_str("100").unwrap(),
+                    reward_per_second: Decimal::from_str("10000000").unwrap(), // 10_000_000 (10 NATIVE_DENOM_2)
                     start_time: current_block_time,
-                    end_time: current_block_time + 10,
+                    end_time: current_block_time + 100,
                     whitelist: vec![Addr::unchecked(ADMIN.to_string())],
                 }
             );
@@ -205,7 +206,7 @@ mod tests {
                     staked_token: lp_token_contract.to_string(),
                     reward_token: native_token_info,
                     start_time: current_block_time,
-                    end_time: current_block_time + 10,
+                    end_time: current_block_time + 100,
                 }]
             );
 
@@ -271,9 +272,9 @@ mod tests {
             // It should be MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT lp token as deposit happened
             assert_eq!(balance.balance, Uint128::from(MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT));
 
-            // change block time increase 5 seconds to make phase active
+            // change block time increase 6 seconds to make phase active
             app.set_block(BlockInfo {
-                time: app.block_info().time.plus_seconds(1),
+                time: app.block_info().time.plus_seconds(100),
                 height: app.block_info().height + 1,
                 chain_id: app.block_info().chain_id,
             });
@@ -302,9 +303,8 @@ mod tests {
             // It should be 1_000_000 NATIVE_DENOM_2 as minting happened
             assert_eq!(
                 balance.amount.amount,
-                Uint128::from(INIT_1000_000_NATIVE_BALANCE_2)
+                Uint128::from(INIT_1000_000_NATIVE_BALANCE_2 - ADD_1000_NATIVE_BALANCE_2 + 980_000_000u128)
             );
-
 /*
             // withdraw some lp token from the pool contract
             let withdraw_msg = PoolExecuteMsg::Withdraw {
@@ -337,7 +337,7 @@ mod tests {
                 balance.balance,
                 Uint128::from(MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT)
             );
-            */
+*/
         }
     }
 }
