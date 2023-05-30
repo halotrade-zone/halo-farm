@@ -1,9 +1,6 @@
 #![cfg(test)]
 mod tests {
     const MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT: u128 = 1_000_000_000_000_000;
-    // Mock information for native token
-    const MOCK_1000_000_000_NATIVE_TOKEN_AMOUNT: u128 = 2_000_000_000_000_000_000_000_000_000;
-    const MOCK_TRANSACTION_FEE: u128 = 5000;
     const INIT_1000_000_NATIVE_BALANCE_2: u128 = 1_000_000_000_000u128;
     const ADD_1000_NATIVE_BALANCE_2: u128 = 1_000_000_000u128;
 
@@ -12,11 +9,11 @@ mod tests {
     // deposit some lp token to the pool contract
     // withdraw some lp token from the pool contract
     mod execute_deposit_and_withdraw {
-        use std::{time::{SystemTime, UNIX_EPOCH}, str::FromStr};
+        use std::str::FromStr;
 
         use cosmwasm_std::{
-            from_binary, to_binary, Addr, BalanceResponse as BankBalanceResponse, BankQuery, Coin,
-            Querier, QueryRequest, Uint128, BlockInfo, Decimal, Uint256, WasmQuery,
+            from_binary, to_binary, Addr, BalanceResponse as BankBalanceResponse, BankQuery,
+            BlockInfo, Coin, Decimal, Querier, QueryRequest, Uint128, WasmQuery,
         };
         use cw20::{BalanceResponse, Cw20ExecuteMsg};
         use cw_multi_test::Executor;
@@ -28,8 +25,8 @@ mod tests {
             tests::{
                 env_setup::env::{instantiate_contracts, ADMIN, NATIVE_DENOM_2},
                 integration_test::tests::{
-                    MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT, MOCK_1000_000_000_NATIVE_TOKEN_AMOUNT,
-                    MOCK_TRANSACTION_FEE, INIT_1000_000_NATIVE_BALANCE_2, ADD_1000_NATIVE_BALANCE_2,
+                    ADD_1000_NATIVE_BALANCE_2, INIT_1000_000_NATIVE_BALANCE_2,
+                    MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT,
                 },
             },
         };
@@ -253,10 +250,7 @@ mod tests {
                 .unwrap();
 
             // It should be 0 lp token as deposit happened
-            assert_eq!(
-                balance.balance,
-                Uint128::zero()
-            );
+            assert_eq!(balance.balance, Uint128::zero());
 
             // query balance of pool contract in cw20 base token contract
             let balance: BalanceResponse = app
@@ -270,7 +264,10 @@ mod tests {
                 .unwrap();
 
             // It should be MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT lp token as deposit happened
-            assert_eq!(balance.balance, Uint128::from(MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT));
+            assert_eq!(
+                balance.balance,
+                Uint128::from(MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT)
+            );
 
             // change block time increase 6 seconds to make phase active
             app.set_block(BlockInfo {
@@ -326,7 +323,10 @@ mod tests {
             // It should be 1_000_000 NATIVE_DENOM_2 as minting happened
             assert_eq!(
                 balance.amount.amount,
-                Uint128::from(INIT_1000_000_NATIVE_BALANCE_2 - ADD_1000_NATIVE_BALANCE_2 + pending_reward.amount.u128())
+                Uint128::from(
+                    INIT_1000_000_NATIVE_BALANCE_2 - ADD_1000_NATIVE_BALANCE_2
+                        + pending_reward.amount.u128()
+                )
             );
 
             // withdraw some lp token from the pool contract
@@ -402,9 +402,12 @@ mod tests {
             // It should be 1_000_000 NATIVE_DENOM_2 as minting happened
             assert_eq!(
                 balance.amount.amount,
-                Uint128::from(INIT_1000_000_NATIVE_BALANCE_2 - ADD_1000_NATIVE_BALANCE_2 + 60000000u128 + pending_reward.amount.u128())
+                Uint128::from(
+                    INIT_1000_000_NATIVE_BALANCE_2 - ADD_1000_NATIVE_BALANCE_2
+                        + 60000000u128
+                        + pending_reward.amount.u128()
+                )
             );
-
         }
     }
 }
