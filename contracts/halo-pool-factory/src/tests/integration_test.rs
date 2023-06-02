@@ -24,7 +24,7 @@ mod tests {
             msg::QueryMsg,
             state::FactoryPoolInfo,
             tests::{
-                env_setup::env::{instantiate_contracts, ADMIN, USER_1, NATIVE_DENOM_2},
+                env_setup::env::{instantiate_contracts, ADMIN, NATIVE_DENOM_2, USER_1},
                 integration_test::tests::{
                     ADD_1000_NATIVE_BALANCE_2, INIT_1000_000_NATIVE_BALANCE_2,
                     MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT, MOCK_150_000_000_HALO_LP_TOKEN_AMOUNT,
@@ -407,8 +407,6 @@ mod tests {
                         + pending_reward.amount.u128()
                 )
             );
-
-
         }
 
         // Create pool contract by factory contract
@@ -715,7 +713,8 @@ mod tests {
 
             assert_eq!(
                 balance.amount.amount,
-                Uint128::from(pending_reward_user1_2s.amount.u128()));
+                Uint128::from(pending_reward_user1_2s.amount.u128())
+            );
 
             // change block time increase 4 seconds to make 6 seconds passed
             app.set_block(BlockInfo {
@@ -871,8 +870,7 @@ mod tests {
             assert_eq!(
                 balance.amount.amount,
                 Uint128::from(
-                    pending_reward_user1_2s.amount.u128()
-                        + pending_reward_user1_8s.amount.u128()
+                    pending_reward_user1_2s.amount.u128() + pending_reward_user1_8s.amount.u128()
                 )
             );
 
@@ -979,8 +977,10 @@ mod tests {
                 &[],
             );
 
-            assert_eq!(response.unwrap_err().source().unwrap().to_string(),
-            "Generic error: Unauthorized: Only staker can harvest reward".to_string());
+            assert_eq!(
+                response.unwrap_err().source().unwrap().to_string(),
+                "Generic error: Unauthorized: Only staker can harvest reward".to_string()
+            );
 
             // Mint 500 HALO LP tokens to ADMIN
             let mint_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::Mint {

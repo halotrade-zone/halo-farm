@@ -188,16 +188,6 @@ pub fn execute_deposit(
 
     let mut res = Response::new();
 
-    // // Get reward token balance from pool contract if reward token is cw20 token type or get from bank if reward token is native token type
-    // let reward_token_supply = match pool_info.reward_token {
-    //     TokenInfo::Token { ref contract_addr } => {
-    //         query_token_balance(&deps.querier, contract_addr.to_string(), env.contract.address.clone())?
-    //     }
-    //     TokenInfo::NativeToken { ref denom } => {
-    //         query_balance(&deps.querier, env.contract.address.clone(), denom.to_string())?
-    //     }
-    // };
-
     // Get staked token balance from pool contract
     let staked_token_supply = query_token_balance(&deps.querier, pool_info.staked_token.clone(), env.contract.address.clone())?;
 
