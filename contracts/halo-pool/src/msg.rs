@@ -43,7 +43,7 @@ pub enum QueryMsg {
     Pool {},
     #[returns(RewardTokenAsset)]
 	PendingReward {
-		address: Addr,
+		address: String,
 	},
 	#[returns(Uint128)]
 	TotalStaked {},

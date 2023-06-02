@@ -508,7 +508,7 @@ fn query_pool_info(deps: Deps) -> Result<PoolInfo, ContractError> {
     Ok(res)
 }
 
-fn query_pending_reward(deps: Deps, env: Env, address: Addr) -> Result<RewardTokenAsset, ContractError> {
+fn query_pending_reward(deps: Deps, env: Env, address: String) -> Result<RewardTokenAsset, ContractError> {
     // Get current time
     let current_time = env.block.time;
     // Get last reward time
@@ -519,7 +519,7 @@ fn query_pending_reward(deps: Deps, env: Env, address: Addr) -> Result<RewardTok
     let pool_info: PoolInfo = POOL_INFO.load(deps.storage)?;
     // Get staker info
     let staker_info = STAKERS_INFO
-        .may_load(deps.storage, address.clone())?
+        .may_load(deps.storage, Addr::unchecked(address))?
         .unwrap_or(StakerRewardAssetInfo {
             amount: Uint128::zero(),
             reward_debt: Uint128::zero(),

@@ -281,7 +281,7 @@ mod tests {
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: "contract2".to_string(),
                 msg: to_binary(&PoolQueryMsg::PendingReward {
-                    address: Addr::unchecked(ADMIN.to_string()),
+                    address: ADMIN.to_string(),
                 })
                 .unwrap(),
             });
@@ -345,7 +345,7 @@ mod tests {
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: "contract2".to_string(),
                 msg: to_binary(&PoolQueryMsg::PendingReward {
-                    address: Addr::unchecked(ADMIN.to_string()),
+                    address: ADMIN.to_string(),
                 })
                 .unwrap(),
             });
@@ -618,7 +618,7 @@ mod tests {
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: "contract2".to_string(),
                 msg: to_binary(&PoolQueryMsg::PendingReward {
-                    address: Addr::unchecked(ADMIN.to_string()),
+                    address: ADMIN.to_string(),
                 })
                 .unwrap(),
             });
@@ -641,7 +641,7 @@ mod tests {
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: "contract2".to_string(),
                 msg: to_binary(&PoolQueryMsg::PendingReward {
-                    address: Addr::unchecked(USER_1.to_string()),
+                    address: USER_1.to_string(),
                 })
                 .unwrap(),
             });
@@ -727,7 +727,7 @@ mod tests {
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: "contract2".to_string(),
                 msg: to_binary(&PoolQueryMsg::PendingReward {
-                    address: Addr::unchecked(ADMIN.to_string()),
+                    address: ADMIN.to_string(),
                 })
                 .unwrap(),
             });
@@ -807,7 +807,7 @@ mod tests {
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: "contract2".to_string(),
                 msg: to_binary(&PoolQueryMsg::PendingReward {
-                    address: Addr::unchecked(USER_1.to_string()),
+                    address: USER_1.to_string(),
                 })
                 .unwrap(),
             });
@@ -885,7 +885,7 @@ mod tests {
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: "contract2".to_string(),
                 msg: to_binary(&PoolQueryMsg::PendingReward {
-                    address: Addr::unchecked(ADMIN.to_string()),
+                    address: ADMIN.to_string(),
                 })
                 .unwrap(),
             });
@@ -947,7 +947,7 @@ mod tests {
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: "contract2".to_string(),
                 msg: to_binary(&PoolQueryMsg::PendingReward {
-                    address: Addr::unchecked(USER_1.to_string()),
+                    address: USER_1.to_string(),
                 })
                 .unwrap(),
             });
@@ -1026,7 +1026,7 @@ mod tests {
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: "contract2".to_string(),
                 msg: to_binary(&PoolQueryMsg::PendingReward {
-                    address: Addr::unchecked(ADMIN.to_string()),
+                    address: ADMIN.to_string(),
                 })
                 .unwrap(),
             });
@@ -1106,7 +1106,7 @@ mod tests {
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: "contract2".to_string(),
                 msg: to_binary(&PoolQueryMsg::PendingReward {
-                    address: Addr::unchecked(ADMIN.to_string()),
+                    address: ADMIN.to_string(),
                 })
                 .unwrap(),
             });
@@ -1136,7 +1136,7 @@ mod tests {
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: "contract2".to_string(),
                 msg: to_binary(&PoolQueryMsg::PendingReward {
-                    address: Addr::unchecked(ADMIN.to_string()),
+                    address: ADMIN.to_string(),
                 })
                 .unwrap(),
             });
@@ -1194,7 +1194,7 @@ mod tests {
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: "contract2".to_string(),
                 msg: to_binary(&PoolQueryMsg::PendingReward {
-                    address: Addr::unchecked(USER_1.to_string()),
+                    address: USER_1.to_string(),
                 })
                 .unwrap(),
             });
