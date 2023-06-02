@@ -18,7 +18,7 @@ use crate::{
     formulas::{get_multiplier, calc_reward_amount, update_pool},
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{
-        PoolInfo, RewardTokenAsset, RewardTokenInfo, LAST_REWARD_TIME, POOL_INFO, STAKERS_INFO, ACCRUED_TOKEN_PER_SHARE, StakerRewardAssetInfo,
+        PoolInfo, RewardTokenAsset, TokenInfo, LAST_REWARD_TIME, POOL_INFO, STAKERS_INFO, ACCRUED_TOKEN_PER_SHARE, StakerRewardAssetInfo,
     },
 };
 
@@ -108,7 +108,7 @@ pub fn execute_add_reward_balance(
     // 2. If reward token is cw20 token, sender must add balance amount of cw20 token
     //    to the new pool address by calling cw20 contract transfer_from method.
 
-    if let RewardTokenInfo::Token { contract_addr } = pool_info.reward_token.clone() {
+    if let TokenInfo::Token { contract_addr } = pool_info.reward_token.clone() {
         let transfer = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr,
             msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
@@ -190,10 +190,10 @@ pub fn execute_deposit(
 
     // // Get reward token balance from pool contract if reward token is cw20 token type or get from bank if reward token is native token type
     // let reward_token_supply = match pool_info.reward_token {
-    //     RewardTokenInfo::Token { ref contract_addr } => {
+    //     TokenInfo::Token { ref contract_addr } => {
     //         query_token_balance(&deps.querier, contract_addr.to_string(), env.contract.address.clone())?
     //     }
-    //     RewardTokenInfo::NativeToken { ref denom } => {
+    //     TokenInfo::NativeToken { ref denom } => {
     //         query_balance(&deps.querier, env.contract.address.clone(), denom.to_string())?
     //     }
     // };
@@ -225,7 +225,7 @@ pub fn execute_deposit(
     // If there is any reward token in the pool, transfer reward token to the sender
     if reward_amount > Uint128::zero() {
         let transfer_reward = match pool_info.reward_token {
-            RewardTokenInfo::Token { contract_addr } => {
+            TokenInfo::Token { contract_addr } => {
                 SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                     contract_addr,
                     msg: to_binary(&Cw20ExecuteMsg::Transfer {
@@ -235,7 +235,7 @@ pub fn execute_deposit(
                     funds: vec![],
                 }))
             }
-            RewardTokenInfo::NativeToken { denom } => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+            TokenInfo::NativeToken { denom } => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
                 to_address: info.sender.to_string(),
                 amount: vec![coin(reward_amount.into(), denom)],
             })),
@@ -333,7 +333,7 @@ pub fn execute_withdraw(
 
     // Transfer reward token to the sender
     let transfer_reward = match pool_info.reward_token {
-        RewardTokenInfo::Token { contract_addr } => {
+        TokenInfo::Token { contract_addr } => {
             SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr,
                 msg: to_binary(&Cw20ExecuteMsg::Transfer {
@@ -343,7 +343,7 @@ pub fn execute_withdraw(
                 funds: vec![],
             }))
         }
-        RewardTokenInfo::NativeToken { denom } => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+        TokenInfo::NativeToken { denom } => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: info.sender.to_string(),
             amount: vec![coin(reward_amount.into(), denom)],
         })),
@@ -440,7 +440,7 @@ pub fn execute_harvest(
 
     // Transfer reward token to the sender
     let transfer = match pool_info.reward_token {
-        RewardTokenInfo::Token { contract_addr } => {
+        TokenInfo::Token { contract_addr } => {
             SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr,
                 msg: to_binary(&Cw20ExecuteMsg::Transfer {
@@ -450,7 +450,7 @@ pub fn execute_harvest(
                 funds: vec![],
             }))
         }
-        RewardTokenInfo::NativeToken { denom } => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+        TokenInfo::NativeToken { denom } => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: info.sender.to_string(),
             amount: vec![coin(reward_amount.into(), denom)],
         })),

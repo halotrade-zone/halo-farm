@@ -14,7 +14,7 @@ use cw2::set_contract_version;
 use cw_utils::parse_reply_instantiate_data;
 use halo_pool::msg::InstantiateMsg as PoolInstantiateMsg;
 use halo_pool::msg::QueryMsg as PoolQueryMsg;
-use halo_pool::state::{PoolInfo, RewardTokenInfo};
+use halo_pool::state::{PoolInfo, TokenInfo};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:halo-pool-factory";
@@ -110,7 +110,7 @@ pub fn execute_create_pool(
     env: Env,
     info: MessageInfo,
     staked_token: String,
-    reward_token: RewardTokenInfo,
+    reward_token: TokenInfo,
     start_time: u64,
     end_time: u64,
     whitelist: Vec<Addr>,

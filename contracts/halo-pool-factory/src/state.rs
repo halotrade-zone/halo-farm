@@ -2,7 +2,7 @@ use cosmwasm_schema::cw_serde;
 use cosmwasm_std::Addr;
 use cw_storage_plus::{Item, Map};
 
-use halo_pool::state::{PoolInfo, RewardTokenInfo};
+use halo_pool::state::{PoolInfo, TokenInfo};
 
 #[cw_serde]
 pub struct Config {
@@ -21,7 +21,7 @@ pub struct ConfigResponse {
 #[cw_serde]
 pub struct FactoryPoolInfo {
     pub staked_token: String,
-    pub reward_token: RewardTokenInfo,
+    pub reward_token: TokenInfo,
     pub start_time: u64,
     pub end_time: u64,
 }

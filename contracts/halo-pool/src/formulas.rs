@@ -19,8 +19,6 @@ pub fn calc_reward_amount(
     accrued_token_per_share: Decimal,
     reward_debt: Uint128,
 ) -> Uint128 {
-
-        println!("reward_debtttttt: {}", reward_debt);
         (staked_amount * accrued_token_per_share)
         .checked_sub(reward_debt)
         .unwrap_or(Uint128::zero())
