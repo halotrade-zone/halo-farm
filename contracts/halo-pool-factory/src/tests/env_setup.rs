@@ -22,7 +22,7 @@ pub mod env {
     use crate::msg::InstantiateMsg as HaloPoolFactoryInstantiateMsg;
 
     pub const ADMIN: &str = "aura1000000000000000000000000000000000admin";
-    pub const _USER_1: &str = "aura1000000000000000000000000000000000user1";
+    pub const USER_1: &str = "aura1000000000000000000000000000000000user1";
 
     pub const NATIVE_DENOM: &str = "uaura";
     pub const NATIVE_BALANCE: u128 = 1_000_000_000_000u128;

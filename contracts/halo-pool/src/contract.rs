@@ -15,7 +15,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 use crate::{
     error::ContractError,
-    formulas::get_multiplier,
+    formulas::{get_multiplier, calc_reward_amount, update_pool},
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{
         PoolInfo, RewardTokenAsset, RewardTokenInfo, LAST_REWARD_TIME, POOL_INFO, STAKERS_INFO, ACCRUED_TOKEN_PER_SHARE, StakerRewardAssetInfo,
@@ -124,13 +124,16 @@ pub fn execute_add_reward_balance(
     // Update reward_per_second base on new reward balance
     let new_reward_per_second = Decimal::from_ratio(asset.amount, pool_info.end_time - pool_info.start_time);
     let new_pool_info = PoolInfo {
-        staked_token: pool_info.staked_token,
+        staked_token: pool_info.staked_token.clone(),
         reward_token: pool_info.reward_token,
         reward_per_second: new_reward_per_second,
         start_time: pool_info.start_time,
         end_time: pool_info.end_time,
         whitelist: pool_info.whitelist,
     };
+
+    // Get staked token balance from pool contract
+    let staked_token_supply = query_token_balance(&deps.querier, pool_info.staked_token, env.contract.address.clone())?;
 
     // Save pool info
     POOL_INFO.save(deps.storage, &new_pool_info)?;
@@ -139,7 +142,15 @@ pub fn execute_add_reward_balance(
     LAST_REWARD_TIME.save(deps.storage, &pool_info.start_time)?;
 
     // update pool
-    let (new_accrued_token_per_share, new_last_reward_time) = update_pool(pool_info.end_time, pool_info.reward_per_second, asset.amount, accrued_token_per_share, current_time.seconds(), last_reward_time);
+    let (new_accrued_token_per_share, new_last_reward_time)
+    = update_pool(
+        pool_info.end_time,
+        pool_info.reward_per_second,
+        staked_token_supply,
+        accrued_token_per_share,
+        current_time.seconds(),
+        last_reward_time
+    );
 
     // Save accrued token per share
     ACCRUED_TOKEN_PER_SHARE.save(deps.storage, &new_accrued_token_per_share)?;
@@ -177,26 +188,39 @@ pub fn execute_deposit(
 
     let mut res = Response::new();
 
-    // Get reward token balance from pool contract if reward token is cw20 token type or get from bank if reward token is native token type
-    let reward_token_supply = match pool_info.reward_token {
-        RewardTokenInfo::Token { ref contract_addr } => {
-            query_token_balance(&deps.querier, contract_addr.to_string(), env.contract.address.clone())?
-        }
-        RewardTokenInfo::NativeToken { ref denom } => {
-            query_balance(&deps.querier, env.contract.address.clone(), denom.to_string())?
-        }
-    };
+    // // Get reward token balance from pool contract if reward token is cw20 token type or get from bank if reward token is native token type
+    // let reward_token_supply = match pool_info.reward_token {
+    //     RewardTokenInfo::Token { ref contract_addr } => {
+    //         query_token_balance(&deps.querier, contract_addr.to_string(), env.contract.address.clone())?
+    //     }
+    //     RewardTokenInfo::NativeToken { ref denom } => {
+    //         query_balance(&deps.querier, env.contract.address.clone(), denom.to_string())?
+    //     }
+    // };
+
+    // Get staked token balance from pool contract
+    let staked_token_supply = query_token_balance(&deps.querier, pool_info.staked_token.clone(), env.contract.address.clone())?;
 
     // update pool
-    let (new_accrued_token_per_share, new_last_reward_time) = update_pool(pool_info.end_time, pool_info.reward_per_second, reward_token_supply, accrued_token_per_share, current_time.seconds(), last_reward_time);
+    let (new_accrued_token_per_share, new_last_reward_time)
+    = update_pool(
+        pool_info.end_time,
+        pool_info.reward_per_second,
+        staked_token_supply,
+        accrued_token_per_share,
+        current_time.seconds(),
+        last_reward_time
+    );
     // Save accrued token per share
     ACCRUED_TOKEN_PER_SHARE.save(deps.storage, &new_accrued_token_per_share)?;
     // Save last reward time
     LAST_REWARD_TIME.save(deps.storage, &new_last_reward_time)?;
 
-    let reward_amount = (staker_info.amount * new_accrued_token_per_share)
-        .checked_sub(staker_info.reward_debt)
-        .unwrap_or(Uint128::zero());
+    let reward_amount = calc_reward_amount(
+        staker_info.amount,
+        new_accrued_token_per_share,
+        staker_info.reward_debt,
+    );
 
     // If there is any reward token in the pool, transfer reward token to the sender
     if reward_amount > Uint128::zero() {
@@ -232,7 +256,7 @@ pub fn execute_deposit(
 
     // Update staker amount
     staker_info.amount += amount;
-    staker_info.reward_debt += staker_info.amount * new_accrued_token_per_share;
+    staker_info.reward_debt = staker_info.amount * new_accrued_token_per_share;
 
     // Update staker info
     STAKERS_INFO.save(deps.storage, info.sender, &staker_info)?;
@@ -272,29 +296,41 @@ pub fn execute_withdraw(
         )));
     }
 
-    // Get reward token balance from pool contract if reward token is cw20 token type or get from bank if reward token is native token type
-    let reward_token_supply = match pool_info.reward_token {
-        RewardTokenInfo::Token { ref contract_addr } => {
-            query_token_balance(&deps.querier, contract_addr.to_string(), env.contract.address)?
-        }
-        RewardTokenInfo::NativeToken { ref denom } => {
-            query_balance(&deps.querier, env.contract.address, denom.to_string())?
-        }
-    };
+    // // Get reward token balance from pool contract if reward token is cw20 token type or get from bank if reward token is native token type
+    // let reward_token_supply = match pool_info.reward_token {
+    //     RewardTokenInfo::Token { ref contract_addr } => {
+    //         query_token_balance(&deps.querier, contract_addr.to_string(), env.contract.address.clone())?
+    //     }
+    //     RewardTokenInfo::NativeToken { ref denom } => {
+    //         query_balance(&deps.querier, env.contract.address.clone(), denom.to_string())?
+    //     }
+    // };
+
+    // Get staked token balance from pool contract
+    let staked_token_supply = query_token_balance(&deps.querier, pool_info.staked_token.clone(), env.contract.address.clone())?;
 
     let mut res = Response::new();
 
     // update pool
-    let (new_accrued_token_per_share, new_last_reward_time) = update_pool(pool_info.end_time, pool_info.reward_per_second, reward_token_supply, accrued_token_per_share, current_time.seconds(), last_reward_time);
+    let (new_accrued_token_per_share, new_last_reward_time)
+        = update_pool(
+            pool_info.end_time,
+            pool_info.reward_per_second,
+            staked_token_supply,
+            accrued_token_per_share,
+            current_time.seconds(),
+            last_reward_time
+        );
     // Save accrued token per share
     ACCRUED_TOKEN_PER_SHARE.save(deps.storage, &new_accrued_token_per_share)?;
     // Save last reward time
     LAST_REWARD_TIME.save(deps.storage, &new_last_reward_time)?;
 
-    let reward_amount = (staker_info.amount * new_accrued_token_per_share)
-        .checked_sub(staker_info.reward_debt)
-        .unwrap_or(Uint128::zero());
-
+    let reward_amount = calc_reward_amount(
+        staker_info.amount,
+        new_accrued_token_per_share,
+        staker_info.reward_debt,
+    );
 
     // Transfer reward token to the sender
     let transfer_reward = match pool_info.reward_token {
@@ -326,7 +362,7 @@ pub fn execute_withdraw(
 
     // Update staker amount
     staker_info.amount -= amount;
-    staker_info.reward_debt += staker_info.amount * new_accrued_token_per_share;
+    staker_info.reward_debt = staker_info.amount * new_accrued_token_per_share;
 
     // Update staker info
     STAKERS_INFO.save(deps.storage, info.sender, &staker_info)?;
@@ -358,18 +394,19 @@ pub fn execute_harvest(
         .may_load(deps.storage, info.sender.clone())?
         .unwrap();
 
-    // Get reward token balance from pool contract if reward token is cw20 token type or get from bank if reward token is native token type
-    let reward_token_supply = match pool_info.reward_token {
-        RewardTokenInfo::Token { ref contract_addr } => {
-            query_token_balance(&deps.querier, contract_addr.to_string(), env.contract.address)?
-        }
-        RewardTokenInfo::NativeToken { ref denom } => {
-            query_balance(&deps.querier, env.contract.address, denom.to_string())?
-        }
-    };
+    // Get staked token balance from pool contract
+    let staked_token_supply = query_token_balance(&deps.querier, pool_info.staked_token.clone(), env.contract.address)?;
 
     // update pool
-    let (new_accrued_token_per_share, new_last_reward_time) = update_pool(pool_info.end_time, pool_info.reward_per_second, reward_token_supply, accrued_token_per_share, current_time.seconds(), last_reward_time);
+    let (new_accrued_token_per_share, new_last_reward_time)
+    = update_pool(
+        pool_info.end_time,
+        pool_info.reward_per_second,
+        staked_token_supply,
+        accrued_token_per_share,
+        current_time.seconds(),
+        last_reward_time
+    );
     // Save accrued token per share
     ACCRUED_TOKEN_PER_SHARE.save(deps.storage, &new_accrued_token_per_share)?;
     // Save last reward time
@@ -381,9 +418,11 @@ pub fn execute_harvest(
         )));
     }
 
-    let reward_amount = (staker_info.amount * new_accrued_token_per_share)
-        .checked_sub(staker_info.reward_debt)
-        .unwrap_or(Uint128::zero());
+    let reward_amount = calc_reward_amount(
+        staker_info.amount,
+        new_accrued_token_per_share,
+        staker_info.reward_debt,
+    );
 
     // Check if there is any reward to harvest
     if reward_amount == Uint128::zero() {
@@ -410,7 +449,7 @@ pub fn execute_harvest(
         })),
     };
     // Update staker reward debt
-    staker_info.reward_debt += staker_info.amount * new_accrued_token_per_share;
+    staker_info.reward_debt = staker_info.amount * new_accrued_token_per_share;
     // Update staker info
     STAKERS_INFO.save(deps.storage, info.sender, &staker_info)?;
 
@@ -419,37 +458,6 @@ pub fn execute_harvest(
         .add_attribute("method", "harvest");
 
     Ok(res)
-}
-
-fn update_pool(
-    end_time: u64,
-    reward_per_second: Decimal,
-    reward_token_supply: Uint128,
-    accrued_token_per_share: Decimal,
-    current_time: u64,
-    last_reward_time: u64,
-) -> (Decimal, u64) {
-
-    // If current time is before start time or after end time or before last reward time, return without update pool
-    if current_time < last_reward_time {
-        return (accrued_token_per_share, last_reward_time);
-    }
-
-    // Check if there is any reward token in the pool
-    if reward_token_supply == Uint128::zero() {
-        // No reward token in the pool, save last reward time and return
-        (Decimal::zero(), last_reward_time)
-    } else {
-        let multiplier = get_multiplier(
-            last_reward_time,
-            current_time,
-            end_time,
-        );
-
-        let reward = Decimal::new(multiplier.into()) * reward_per_second;
-        let new_accrued_token_per_share = accrued_token_per_share + (reward * Decimal::from_ratio(reward_token_supply, 1_000_000u128));
-        (new_accrued_token_per_share, current_time)
-    }
 }
 
 pub fn query_token_balance(
@@ -519,18 +527,11 @@ fn query_pending_reward(deps: Deps, env: Env, address: Addr) -> Result<RewardTok
             reward_debt: Uint128::zero(),
         });
 
-    // Get reward token balance from pool contract if reward token is cw20 token type or get from bank if reward token is native token type
-    let reward_token_supply = match pool_info.reward_token {
-        RewardTokenInfo::Token { ref contract_addr } => {
-            query_token_balance(&deps.querier, contract_addr.to_string(), env.contract.address)?
-        }
-        RewardTokenInfo::NativeToken { ref denom } => {
-            query_balance(&deps.querier, env.contract.address, denom.to_string())?
-        }
-    };
+    // Get staked token balance from pool contract
+    let staked_token_supply = query_token_balance(&deps.querier, pool_info.staked_token.clone(), env.contract.address)?;
 
     // Check if there is any reward token in the pool
-    if reward_token_supply == Uint128::zero() {
+    if staked_token_supply == Uint128::zero() {
         // No reward token in the pool, save last reward time and return
         let res = RewardTokenAsset {
             info: pool_info.reward_token,
@@ -545,12 +546,14 @@ fn query_pending_reward(deps: Deps, env: Env, address: Addr) -> Result<RewardTok
         );
 
         let reward = Decimal::new(multiplier.into()) * pool_info.reward_per_second;
-        accrued_token_per_share = accrued_token_per_share + (reward * Decimal::from_ratio(reward_token_supply, 1_000_000u128));
+        accrued_token_per_share = accrued_token_per_share + (reward / Decimal::new(staked_token_supply.into()));
     }
 
-    let reward_amount = (staker_info.amount * accrued_token_per_share)
-        .checked_sub(staker_info.reward_debt)
-        .unwrap_or(Uint128::zero());
+    let reward_amount = calc_reward_amount(
+        staker_info.amount,
+        accrued_token_per_share,
+        staker_info.reward_debt,
+    );
 
     let res = RewardTokenAsset {
         info: pool_info.reward_token,
