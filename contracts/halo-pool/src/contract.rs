@@ -274,16 +274,25 @@ pub fn execute_withdraw(
     info: MessageInfo,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
+    // Get Staker info
+    let mut staker_info = STAKERS_INFO
+        .may_load(deps.storage, info.sender.clone())?
+        .unwrap_or(StakerRewardAssetInfo {
+            amount: Uint128::zero(),
+            reward_debt: Uint128::zero(),
+        });
+
+    if staker_info.amount == Uint128::zero() {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Unauthorized: Only staker can withdraw",
+        )));
+    }
     // Get current time
     let current_time = env.block.time;
     // Get pool info
     let pool_info: PoolInfo = POOL_INFO.load(deps.storage)?;
     // Get last reward time
     let last_reward_time = LAST_REWARD_TIME.load(deps.storage)?;
-    // Only staker can harvest reward
-    let mut staker_info = STAKERS_INFO
-        .may_load(deps.storage, info.sender.clone())?
-        .unwrap();
     // Get accrued token per share
     let accrued_token_per_share = ACCRUED_TOKEN_PER_SHARE.load(deps.storage)?;
 
@@ -295,16 +304,6 @@ pub fn execute_withdraw(
             "InsufficientFunds: Withdraw amount exceeds staked amount",
         )));
     }
-
-    // // Get reward token balance from pool contract if reward token is cw20 token type or get from bank if reward token is native token type
-    // let reward_token_supply = match pool_info.reward_token {
-    //     RewardTokenInfo::Token { ref contract_addr } => {
-    //         query_token_balance(&deps.querier, contract_addr.to_string(), env.contract.address.clone())?
-    //     }
-    //     RewardTokenInfo::NativeToken { ref denom } => {
-    //         query_balance(&deps.querier, env.contract.address.clone(), denom.to_string())?
-    //     }
-    // };
 
     // Get staked token balance from pool contract
     let staked_token_supply = query_token_balance(&deps.querier, pool_info.staked_token.clone(), env.contract.address.clone())?;
@@ -364,8 +363,13 @@ pub fn execute_withdraw(
     staker_info.amount -= amount;
     staker_info.reward_debt = staker_info.amount * new_accrued_token_per_share;
 
-    // Update staker info
-    STAKERS_INFO.save(deps.storage, info.sender, &staker_info)?;
+    // Check if staker amount is zero, remove staker info from storage
+    if staker_info.amount == Uint128::zero() {
+        STAKERS_INFO.remove(deps.storage, info.sender);
+    } else {
+        // Update staker info
+        STAKERS_INFO.save(deps.storage, info.sender, &staker_info)?;
+    }
 
     res = res
         .add_submessage(transfer_reward)
@@ -381,6 +385,19 @@ pub fn execute_harvest(
     env: Env,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
+    // Get Staker info
+    let mut staker_info = STAKERS_INFO
+        .may_load(deps.storage, info.sender.clone())?
+        .unwrap_or(StakerRewardAssetInfo {
+            amount: Uint128::zero(),
+            reward_debt: Uint128::zero(),
+        });
+
+    if staker_info.amount == Uint128::zero() {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Unauthorized: Only staker can harvest reward",
+        )));
+    }
     // Get current time
     let current_time = env.block.time;
     // Get pool info
@@ -389,10 +406,6 @@ pub fn execute_harvest(
     let last_reward_time = LAST_REWARD_TIME.load(deps.storage)?;
     // Get accrued token per share
     let accrued_token_per_share = ACCRUED_TOKEN_PER_SHARE.load(deps.storage)?;
-    // Only staker can harvest reward
-    let mut staker_info = STAKERS_INFO
-        .may_load(deps.storage, info.sender.clone())?
-        .unwrap();
 
     // Get staked token balance from pool contract
     let staked_token_supply = query_token_balance(&deps.querier, pool_info.staked_token.clone(), env.contract.address)?;
@@ -411,12 +424,6 @@ pub fn execute_harvest(
     ACCRUED_TOKEN_PER_SHARE.save(deps.storage, &new_accrued_token_per_share)?;
     // Save last reward time
     LAST_REWARD_TIME.save(deps.storage, &new_last_reward_time)?;
-
-    if staker_info.amount == Uint128::zero() {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Unauthorized: Only staker can harvest reward",
-        )));
-    }
 
     let reward_amount = calc_reward_amount(
         staker_info.amount,
@@ -494,6 +501,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
     match msg {
         QueryMsg::Pool {} => Ok(to_binary(&query_pool_info(deps)?)?),
         QueryMsg::PendingReward { address } => Ok(to_binary(&query_pending_reward(deps, env, address)?)?),
+        QueryMsg::TotalStaked {  } => Ok(to_binary(&query_total_lp_token_staked(deps, env)?)?),
     }
 }
 
@@ -561,5 +569,12 @@ fn query_pending_reward(deps: Deps, env: Env, address: Addr) -> Result<RewardTok
     };
 
     Ok(res)
+}
+
+fn query_total_lp_token_staked(deps: Deps, env: Env) -> Result<Uint128, ContractError> {
+    // Get pool info
+    let pool_info: PoolInfo = POOL_INFO.load(deps.storage)?;
+    let staked_token_supply = query_token_balance(&deps.querier, pool_info.staked_token, env.contract.address.clone())?;
+    Ok(staked_token_supply)
 }
 

@@ -45,4 +45,6 @@ pub enum QueryMsg {
 	PendingReward {
 		address: Addr,
 	},
+	#[returns(Uint128)]
+	TotalStaked {},
 }
