@@ -10,7 +10,7 @@ pub fn get_multiplier(from: u64, to: u64, end: u64) -> u64 {
     } else if to < from {
         return 0;
     } else if from >= end {
-        return 0;
+        return 1;
     }
     end - from
 }
