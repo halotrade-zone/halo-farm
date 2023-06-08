@@ -1,7 +1,10 @@
 #![cfg(test)]
 mod tests {
     const MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT: u128 = 1_000_000_000_000_000;
+    const MOCK_1000_HALO_LP_TOKEN_AMOUNT: u128 = 1_000_000_000;
+    const MOCK_1000_HALO_REWARD_TOKEN_AMOUNT: u128 = 1_000_000_000_000_000_000_000;
     const MOCK_150_000_000_HALO_LP_TOKEN_AMOUNT: u128 = 150_000_000_000_000;
+    const MOCK_150_HALO_LP_TOKEN_AMOUNT: u128 = 150_000_000;
     const INIT_1000_000_NATIVE_BALANCE_2: u128 = 1_000_000_000_000u128;
     const ADD_1000_NATIVE_BALANCE_2: u128 = 1_000_000_000u128;
 
@@ -27,7 +30,7 @@ mod tests {
                 env_setup::env::{instantiate_contracts, ADMIN, NATIVE_DENOM_2, USER_1},
                 integration_test::tests::{
                     ADD_1000_NATIVE_BALANCE_2, INIT_1000_000_NATIVE_BALANCE_2,
-                    MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT, MOCK_150_000_000_HALO_LP_TOKEN_AMOUNT,
+                    MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT, MOCK_150_000_000_HALO_LP_TOKEN_AMOUNT, MOCK_1000_HALO_REWARD_TOKEN_AMOUNT, MOCK_1000_HALO_LP_TOKEN_AMOUNT, MOCK_150_HALO_LP_TOKEN_AMOUNT,
                 },
             },
         };
@@ -46,7 +49,7 @@ mod tests {
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
             let balance: BankBalanceResponse = from_binary(&res).unwrap();
 
-            // It should be 1_000_000_000 NATIVE_DENOM_2 as minting happened
+            // It should be 1_000_000 NATIVE_DENOM_2 as minting happened
             assert_eq!(
                 balance.amount.amount,
                 Uint128::from(INIT_1000_000_NATIVE_BALANCE_2)
@@ -60,7 +63,7 @@ mod tests {
             // Mint 1000 HALO LP tokens to ADMIN
             let mint_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::Mint {
                 recipient: ADMIN.to_string(),
-                amount: Uint128::from(MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT),
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT),
             };
 
             // Execute minting
@@ -83,10 +86,10 @@ mod tests {
                     },
                 )
                 .unwrap();
-            // It should be 1000_000_000 lp token as minting happened
+            // It should be 1000 lp token as minting happened
             assert_eq!(
                 balance.balance,
-                Uint128::from(MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT)
+                Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT)
             );
 
             // native token info
@@ -135,13 +138,6 @@ mod tests {
                 }
             );
 
-            // change block time increase 1 seconds to make phase active
-            // app.set_block(BlockInfo {
-            //     time: app.block_info().time.plus_seconds(2),
-            //     height: app.block_info().height + 1,
-            //     chain_id: app.block_info().chain_id,
-            // });
-
             let reward_asset_info = TokenInfo::NativeToken {
                 denom: NATIVE_DENOM_2.to_string(),
             };
@@ -157,19 +153,20 @@ mod tests {
             // Execute add reward balance
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract2"),
+                Addr::unchecked("contract3"),
                 &add_reward_balance_msg,
                 &[Coin {
                     amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
                     denom: NATIVE_DENOM_2.to_string(),
                 }],
             );
+
             assert!(response.is_ok());
 
             // query pool info after adding reward balance
             let pool_info: PoolInfo = app
                 .wrap()
-                .query_wasm_smart("contract2", &PoolQueryMsg::Pool {})
+                .query_wasm_smart("contract3", &PoolQueryMsg::Pool {})
                 .unwrap();
 
             // assert pool info
@@ -210,8 +207,8 @@ mod tests {
 
             // Approve cw20 token to pool contract
             let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
-                spender: "contract2".to_string(), // Pool Contract
-                amount: Uint128::from(MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT),
+                spender: "contract3".to_string(), // Pool Contract
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT),
                 expires: None,
             };
 
@@ -227,16 +224,17 @@ mod tests {
 
             // deposit lp token to the pool contract
             let deposit_msg = PoolExecuteMsg::Deposit {
-                amount: Uint128::from(MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT),
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT),
             };
 
             // Execute deposit
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract2"),
+                Addr::unchecked("contract3"),
                 &deposit_msg,
                 &[],
             );
+
             assert!(response.is_ok());
 
             // query balance of ADMIN in cw20 base token contract
@@ -259,15 +257,15 @@ mod tests {
                 .query_wasm_smart(
                     lp_token_contract.clone(),
                     &cw20::Cw20QueryMsg::Balance {
-                        address: "contract2".to_string(),
+                        address: "contract3".to_string(),
                     },
                 )
                 .unwrap();
 
-            // It should be MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT lp token as deposit happened
+            // It should be MOCK_1000_HALO_LP_TOKEN_AMOUNT lp token as deposit happened
             assert_eq!(
                 balance.balance,
-                Uint128::from(MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT)
+                Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT)
             );
 
             // change block time increase 6 seconds to make phase active
@@ -279,7 +277,7 @@ mod tests {
 
             // Query pending reward
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract2".to_string(),
+                contract_addr: "contract3".to_string(),
                 msg: to_binary(&PoolQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -289,7 +287,7 @@ mod tests {
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
             let pending_reward: RewardTokenAsset = from_binary(&res).unwrap();
 
-            // It should be 60000000 as reward is accrued
+            // It should be 60_000_000 as reward is accrued
             assert_eq!(
                 pending_reward,
                 RewardTokenAsset {
@@ -306,7 +304,7 @@ mod tests {
             // Execute harvest
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract2"),
+                Addr::unchecked("contract3"),
                 &harvest_msg,
                 &[],
             );
@@ -331,7 +329,7 @@ mod tests {
 
             // withdraw some lp token from the pool contract
             let withdraw_msg = PoolExecuteMsg::Withdraw {
-                amount: Uint128::from(MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT),
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT),
             };
 
             // change block time increase 2 seconds to make phase active
@@ -343,7 +341,7 @@ mod tests {
 
             // Query pending reward
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract2".to_string(),
+                contract_addr: "contract3".to_string(),
                 msg: to_binary(&PoolQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -353,21 +351,21 @@ mod tests {
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
             let pending_reward: RewardTokenAsset = from_binary(&res).unwrap();
 
-            // It should be 20000000 as reward is accrued
+            // It should be 20_000_000 as reward is accrued
             assert_eq!(
                 pending_reward,
                 RewardTokenAsset {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::from(20000000u128)
+                    amount: Uint128::from(20_000_000u128)
                 }
             );
 
             // Execute withdraw
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract2"),
+                Addr::unchecked("contract3"),
                 &withdraw_msg,
                 &[],
             );
@@ -385,10 +383,10 @@ mod tests {
                 )
                 .unwrap();
 
-            // It should be 1000_000_000 lp token as deposit happened
+            // It should be 1000 lp token as deposit happened
             assert_eq!(
                 balance.balance,
-                Uint128::from(MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT)
+                Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT)
             );
 
             // query balance of ADMIN in native token
@@ -456,7 +454,7 @@ mod tests {
             // Mint 1000 HALO LP tokens to ADMIN
             let mint_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::Mint {
                 recipient: ADMIN.to_string(),
-                amount: Uint128::from(MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT),
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT),
             };
 
             // Execute minting
@@ -472,7 +470,7 @@ mod tests {
             // Mint 500 HALO LP tokens to USER_1
             let mint_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::Mint {
                 recipient: USER_1.to_string(),
-                amount: Uint128::from(MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT / 2),
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
             };
 
             // Execute minting
@@ -523,7 +521,7 @@ mod tests {
             // Execute add reward balance
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract2"),
+                Addr::unchecked("contract3"),
                 &add_reward_balance_msg,
                 &[Coin {
                     amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
@@ -535,7 +533,7 @@ mod tests {
             // query pool info after adding reward balance
             let pool_info: PoolInfo = app
                 .wrap()
-                .query_wasm_smart("contract2", &PoolQueryMsg::Pool {})
+                .query_wasm_smart("contract3", &PoolQueryMsg::Pool {})
                 .unwrap();
 
             // assert pool info
@@ -553,8 +551,8 @@ mod tests {
 
             // Approve cw20 token to pool contract msg
             let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
-                spender: "contract2".to_string(), // Pool Contract
-                amount: Uint128::from(MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT),
+                spender: "contract3".to_string(), // Pool Contract
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT),
                 expires: None,
             };
 
@@ -570,13 +568,13 @@ mod tests {
 
             // Deposit lp token to the pool contract to execute deposit msg
             let deposit_msg = PoolExecuteMsg::Deposit {
-                amount: Uint128::from(MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT),
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT),
             };
 
             // Execute deposit by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract2"),
+                Addr::unchecked("contract3"),
                 &deposit_msg,
                 &[],
             );
@@ -594,13 +592,13 @@ mod tests {
 
             // Deposit lp token to the pool contract to execute deposit msg
             let deposit_msg = PoolExecuteMsg::Deposit {
-                amount: Uint128::from(MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT / 2),
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
             };
 
             // Execute deposit by USER_1
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                Addr::unchecked("contract2"),
+                Addr::unchecked("contract3"),
                 &deposit_msg,
                 &[],
             );
@@ -616,7 +614,7 @@ mod tests {
 
             // Query pending reward by ADMIN
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract2".to_string(),
+                contract_addr: "contract3".to_string(),
                 msg: to_binary(&PoolQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -639,7 +637,7 @@ mod tests {
 
             // Query pending reward by USER_1
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract2".to_string(),
+                contract_addr: "contract3".to_string(),
                 msg: to_binary(&PoolQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -666,7 +664,7 @@ mod tests {
             // Execute harvest by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract2"),
+                Addr::unchecked("contract3"),
                 &harvest_msg,
                 &[],
             );
@@ -695,7 +693,7 @@ mod tests {
             // Execute harvest by USER_1
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                Addr::unchecked("contract2"),
+                Addr::unchecked("contract3"),
                 &harvest_msg,
                 &[],
             );
@@ -725,7 +723,7 @@ mod tests {
 
             // Query pending reward by ADMIN
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract2".to_string(),
+                contract_addr: "contract3".to_string(),
                 msg: to_binary(&PoolQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -748,13 +746,13 @@ mod tests {
 
             // Withdraw 50% lp token from the pool contract by ADMIN
             let withdraw_msg = PoolExecuteMsg::Withdraw {
-                amount: Uint128::from(MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT / 2),
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
             };
 
             // Execute withdraw by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract2"),
+                Addr::unchecked("contract3"),
                 &withdraw_msg,
                 &[],
             );
@@ -772,10 +770,10 @@ mod tests {
                 )
                 .unwrap();
 
-            // It should be 500_000_000 lp token
+            // It should be 500 lp token
             assert_eq!(
                 balance.balance,
-                Uint128::from(MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT / 2)
+                Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2)
             );
 
             // query balance of ADMIN in native token
@@ -805,7 +803,7 @@ mod tests {
 
             // Query pending reward by USER_1
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract2".to_string(),
+                contract_addr: "contract3".to_string(),
                 msg: to_binary(&PoolQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -828,13 +826,13 @@ mod tests {
 
             // Withdraw 100% lp token from the pool contract by USER_1
             let withdraw_msg = PoolExecuteMsg::Withdraw {
-                amount: Uint128::from(MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT / 2),
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
             };
 
             // Execute withdraw by USER_1
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                Addr::unchecked("contract2"),
+                Addr::unchecked("contract3"),
                 &withdraw_msg,
                 &[],
             );
@@ -852,10 +850,10 @@ mod tests {
                 )
                 .unwrap();
 
-            // It should be 500_000_000 lp token
+            // It should be 500 lp token
             assert_eq!(
                 balance.balance,
-                Uint128::from(MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT / 2)
+                Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2)
             );
 
             // query balance of USER_1 in native token
@@ -883,7 +881,7 @@ mod tests {
 
             // Query pending reward by ADMIN
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract2".to_string(),
+                contract_addr: "contract3".to_string(),
                 msg: to_binary(&PoolQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -910,7 +908,7 @@ mod tests {
             // Execute harvest by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract2"),
+                Addr::unchecked("contract3"),
                 &harvest_msg,
                 &[],
             );
@@ -945,7 +943,7 @@ mod tests {
 
             // Query pending reward by USER_1
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract2".to_string(),
+                contract_addr: "contract3".to_string(),
                 msg: to_binary(&PoolQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -972,7 +970,7 @@ mod tests {
             // Execute harvest by USER_1
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                Addr::unchecked("contract2"),
+                Addr::unchecked("contract3"),
                 &harvest_msg,
                 &[],
             );
@@ -985,7 +983,7 @@ mod tests {
             // Mint 500 HALO LP tokens to ADMIN
             let mint_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::Mint {
                 recipient: ADMIN.to_string(),
-                amount: Uint128::from(MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT / 2),
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
             };
 
             // Execute minting
@@ -1000,8 +998,8 @@ mod tests {
 
             // Approve cw20 token to pool contract
             let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
-                spender: "contract2".to_string(), // Pool Contract
-                amount: Uint128::from(MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT / 2),
+                spender: "contract3".to_string(), // Pool Contract
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
                 expires: None,
             };
 
@@ -1024,7 +1022,7 @@ mod tests {
 
             // Query pending reward by ADMIN after 14 seconds
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract2".to_string(),
+                contract_addr: "contract3".to_string(),
                 msg: to_binary(&PoolQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -1047,13 +1045,13 @@ mod tests {
 
             // Deposit lp token to the pool contract to execute deposit msg
             let deposit_msg = PoolExecuteMsg::Deposit {
-                amount: Uint128::from(MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT / 2),
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
             };
 
             // Execute deposit by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract2"),
+                Addr::unchecked("contract3"),
                 &deposit_msg,
                 &[],
             );
@@ -1089,13 +1087,13 @@ mod tests {
 
             // Deposit 150 lp token to the pool contract by USER_1
             let deposit_msg = PoolExecuteMsg::Deposit {
-                amount: Uint128::from(MOCK_150_000_000_HALO_LP_TOKEN_AMOUNT),
+                amount: Uint128::from(MOCK_150_HALO_LP_TOKEN_AMOUNT),
             };
 
             // Execute deposit by USER_1
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                Addr::unchecked("contract2"),
+                Addr::unchecked("contract3"),
                 &deposit_msg,
                 &[],
             );
@@ -1104,7 +1102,7 @@ mod tests {
 
             // Query pending reward by ADMIN after 16 seconds
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract2".to_string(),
+                contract_addr: "contract3".to_string(),
                 msg: to_binary(&PoolQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -1134,7 +1132,7 @@ mod tests {
 
             // Query pending reward by ADMIN after 18 seconds
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract2".to_string(),
+                contract_addr: "contract3".to_string(),
                 msg: to_binary(&PoolQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -1161,7 +1159,7 @@ mod tests {
             // Execute harvest by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract2"),
+                Addr::unchecked("contract3"),
                 &harvest_msg,
                 &[],
             );
@@ -1192,7 +1190,7 @@ mod tests {
 
             // Query pending reward by USER_1 after 18 seconds
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract2".to_string(),
+                contract_addr: "contract3".to_string(),
                 msg: to_binary(&PoolQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -1219,7 +1217,7 @@ mod tests {
             // Execute harvest by USER_1
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                Addr::unchecked("contract2"),
+                Addr::unchecked("contract3"),
                 &harvest_msg,
                 &[],
             );
@@ -1242,6 +1240,536 @@ mod tests {
                         + pending_reward_user1_8s.amount.u128()
                         + pending_reward_user_1_18s.amount.u128()
                 )
+            );
+        }
+
+        // Mint 1000 HALO LP token for ADMIN
+        // Mint 500 HALO LP token for USER_1
+        // Mint 1000 HALO REWARD token for ADMIN
+        // Create pool contract by factory contract
+        // Add 1000 HALO REWARD token reward balance to pool contract by ADMIN
+        // with end time 100 seconds
+        // -> 10 HALO REWARD token per second
+        // Deposit 1000 HALO LP token to the pool contract by ADMIN
+        //
+        // Harvest reward by ADMIN after 2 seconds
+        // -> 2s: 20 HALO REWARD token for ADMIN
+        //
+        // USER_1 deposit 500 HALO LP token to the pool contract
+        // Harvest reward by USER_1 after 4 seconds (1)
+        // -> 2s: 6,6666 HALO REWARD token for USER_1
+        //
+        // Withdraw 500 HALO LP token from the pool contract by ADMIN after 6 seconds
+        // -> 2s(1) + 2s: 13,33 + 13,33 = 26,66 HALO REWARD token for ADMIN
+        //
+        // Increase 1 second to make 7 seconds passed
+        // -> 1s: 5 HALO REWARD token for ADMIN (2)
+        // Harvest reward by ADMIN after 8 seconds
+        // -> 1s(2) + 1s = 5 + 6,666 = 11,666 HALO REWARD token for ADMIN
+        #[test]
+        fn proper_operation_with_reward_token_decimal_18() {
+            // get integration test app and contracts
+            let (mut app, contracts) = instantiate_contracts();
+            // ADMIN already has 1_000_000 NATIVE_DENOM_2 as initial balance in instantiate_contracts()
+            // get pool factory contract
+            let factory_contract = &contracts[0].contract_addr;
+            // get halo lp token contract
+            let lp_token_contract = &contracts[1].contract_addr;
+            // get halo reward token contract
+            let reward_token_contract = &contracts[2].contract_addr;
+
+            // get current block time
+            let current_block_time = app.block_info().time.seconds();
+
+            // Mint 1000 HALO LP tokens to ADMIN
+            let mint_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::Mint {
+                recipient: ADMIN.to_string(),
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT),
+            };
+
+            // Execute minting
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked(lp_token_contract.clone()),
+                &mint_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // Mint 500 HALO LP tokens to USER_1
+            let mint_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::Mint {
+                recipient: USER_1.to_string(),
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
+            };
+
+            // Execute minting
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked(lp_token_contract.clone()),
+                &mint_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+
+            // Mint 1000 HALO reward tokens to ADMIN
+            let mint_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::Mint {
+                recipient: ADMIN.to_string(),
+                amount: Uint128::from(MOCK_1000_HALO_REWARD_TOKEN_AMOUNT),
+            };
+
+            // Execute minting
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked(reward_token_contract.clone()),
+                &mint_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // reward token info
+            let reward_token_info = TokenInfo::Token {
+                contract_addr: reward_token_contract.clone(),
+            };
+
+            // create pool contract by factory contract
+            let create_pool_msg = crate::msg::ExecuteMsg::CreatePool {
+                staked_token: lp_token_contract.clone(),
+                reward_token: reward_token_info.clone(),
+                start_time: current_block_time,
+                end_time: current_block_time + 100,
+                whitelist: vec![Addr::unchecked(ADMIN.to_string())],
+            };
+
+            // Execute create pool by ADMIN
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked(factory_contract.clone()),
+                &create_pool_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // Increase allowance of reward token to pool contract
+            let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
+                spender: "contract3".to_string(), // Pool Contract
+                amount: Uint128::from(MOCK_1000_HALO_REWARD_TOKEN_AMOUNT),
+                expires: None,
+            };
+
+            // Execute approve by ADMIN
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked(reward_token_contract.clone()),
+                &approve_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // add 1000 reward balance to pool contract
+            let add_reward_balance_msg = PoolExecuteMsg::AddRewardBalance {
+                asset: RewardTokenAsset {
+                    info: reward_token_info,
+                    amount: Uint128::from(MOCK_1000_HALO_REWARD_TOKEN_AMOUNT),
+                },
+            };
+
+            // Execute add reward by ADMIN
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked("contract3"),
+                &add_reward_balance_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // Increase allowance of lp token to pool contract
+            let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
+                spender: "contract3".to_string(), // Pool Contract
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT),
+                expires: None,
+            };
+
+            // Execute approve by ADMIN
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked(lp_token_contract.clone()),
+                &approve_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // Deposit lp token to the pool contract to execute deposit msg
+            let deposit_msg = PoolExecuteMsg::Deposit {
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT),
+            };
+
+            // Execute deposit by ADMIN
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked("contract3"),
+                &deposit_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // change block time increase 2 seconds to make 2 seconds passed
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(2),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // Query pending reward by ADMIN after 2 seconds
+            let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(
+                    &PoolQueryMsg::PendingReward {
+                        address: ADMIN.to_string(),
+                    }
+                )
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_admin_2s: RewardTokenAsset = from_binary(&res).unwrap();
+
+            // It should be 20x10^18 as reward is accrued
+            assert_eq!(
+                pending_reward_admin_2s,
+                RewardTokenAsset {
+                    info: TokenInfo::Token {
+                        contract_addr: reward_token_contract.clone()
+                    },
+                    amount: Uint128::from(20_000_000_000_000_000_000u128)
+                }
+            );
+
+            // Harvest reward by ADMIN
+            let harvest_msg = PoolExecuteMsg::Harvest {};
+
+            // Execute harvest by ADMIN
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked("contract3"),
+                &harvest_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // query balance of ADMIN in reward token
+            let balance: BalanceResponse = app
+                .wrap()
+                .query_wasm_smart(
+                    reward_token_contract.clone(),
+                    &cw20::Cw20QueryMsg::Balance {
+                        address: ADMIN.to_string(),
+                    },
+                )
+                .unwrap();
+
+            // It should be 20x10^18 reward token
+            assert_eq!(
+                balance.balance,
+                Uint128::from(20_000_000_000_000_000_000u128)
+            );
+
+            // Increase allowance of lp token to pool contract
+            let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
+                spender: "contract3".to_string(), // Pool Contract
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
+                expires: None,
+            };
+
+            // Execute approve by USER_1
+            let response = app.execute_contract(
+                Addr::unchecked(USER_1.to_string()),
+                Addr::unchecked(lp_token_contract.clone()),
+                &approve_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // USER_1 deposit 500 HALO LP token to the pool contract
+            let deposit_msg = PoolExecuteMsg::Deposit {
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
+            };
+
+            // Execute deposit by USER_1
+            let response = app.execute_contract(
+                Addr::unchecked(USER_1.to_string()),
+                Addr::unchecked("contract3"),
+                &deposit_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // change block time increase 2 seconds to make 4 seconds passed
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(2),
+                height: app.block_info().height + 2,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // Query pending reward by USER_1 after 4 seconds
+            let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(
+                    &PoolQueryMsg::PendingReward {
+                        address: USER_1.to_string(),
+                    }
+                )
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_user1_4s: RewardTokenAsset = from_binary(&res).unwrap();
+
+            // It should be 6,6666x10^18 as reward is accrued
+            assert_eq!(
+                pending_reward_user1_4s,
+                RewardTokenAsset {
+                    info: TokenInfo::Token {
+                        contract_addr: reward_token_contract.clone()
+                    },
+                    amount: Uint128::from(6_666_666_666_666_666_666u128)
+                }
+            );
+
+            // Harvest reward by USER_1
+            let harvest_msg = PoolExecuteMsg::Harvest {};
+
+            // Execute harvest by USER_1
+            let response = app.execute_contract(
+                Addr::unchecked(USER_1.to_string()),
+                Addr::unchecked("contract3"),
+                &harvest_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // query balance of USER_1 in reward token
+            let balance: BalanceResponse = app
+                .wrap()
+                .query_wasm_smart(
+                    reward_token_contract.clone(),
+                    &cw20::Cw20QueryMsg::Balance {
+                        address: USER_1.to_string(),
+                    },
+                )
+                .unwrap();
+
+            // It should be 6,6666x10^18 reward token
+            assert_eq!(
+                balance.balance,
+                pending_reward_user1_4s.amount
+            );
+
+            // change block time increase 2 seconds to make 6 seconds passed
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(2),
+                height: app.block_info().height + 2,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // query pending reward by ADMIN after 6 seconds
+            let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(
+                    &PoolQueryMsg::PendingReward {
+                        address: ADMIN.to_string(),
+                    }
+                )
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_admin_6s: RewardTokenAsset = from_binary(&res).unwrap();
+
+            // It should be 26,666x10^18 as reward is accrued
+            assert_eq!(
+                pending_reward_admin_6s,
+                RewardTokenAsset {
+                    info: TokenInfo::Token {
+                        contract_addr: reward_token_contract.clone()
+                    },
+                    amount: Uint128::from(26_666_666_666_666_666_666u128)
+                }
+            );
+
+            // Withdraw 500 HALO LP token from the pool contract by ADMIN
+            let withdraw_msg = PoolExecuteMsg::Withdraw {
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
+            };
+
+            // Execute withdraw by ADMIN
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked("contract3"),
+                &withdraw_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // query balance of ADMIN in reward token
+
+            let balance: BalanceResponse = app
+                .wrap()
+                .query_wasm_smart(
+                    reward_token_contract.clone(),
+                    &cw20::Cw20QueryMsg::Balance {
+                        address: ADMIN.to_string(),
+                    },
+                )
+                .unwrap();
+
+            // It should be 46,6666x10^18 reward token
+            assert_eq!(
+                balance.balance,
+                pending_reward_admin_2s.amount
+                    + pending_reward_admin_6s.amount
+            );
+
+            // change block time increase 1 seconds to make 7 seconds passed
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // query pending reward by ADMIN after 7 seconds
+            let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(
+                    &PoolQueryMsg::PendingReward {
+                        address: ADMIN.to_string(),
+                    }
+                )
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_admin_7s: RewardTokenAsset = from_binary(&res).unwrap();
+
+            // It should be 5x10^18 as reward is accrued
+            assert_eq!(
+                pending_reward_admin_7s,
+                RewardTokenAsset {
+                    info: TokenInfo::Token {
+                        contract_addr: reward_token_contract.clone()
+                    },
+                    amount: Uint128::from(5_000_000_000_000_000_000u128)
+                }
+            );
+
+            // Increase allowance of lp token to pool contract
+            let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
+                spender: "contract3".to_string(), // Pool Contract
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
+                expires: None,
+            };
+
+            // Execute approve by ADMIN
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked(lp_token_contract.clone()),
+                &approve_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // deposit 500 HALO LP token to the pool contract by ADMIN
+            let deposit_msg = PoolExecuteMsg::Deposit {
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
+            };
+
+            // Execute deposit by ADMIN
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked("contract3"),
+                &deposit_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // change block time increase 1 seconds to make 8 seconds passed
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // query pending reward by ADMIN after 8 seconds
+            let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(
+                    &PoolQueryMsg::PendingReward {
+                        address: ADMIN.to_string(),
+                    }
+                )
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_admin_8s: RewardTokenAsset = from_binary(&res).unwrap();
+
+            // It should be 6,66x10^18 as reward is accrued
+            assert_eq!(
+                pending_reward_admin_8s,
+                RewardTokenAsset {
+                    info: TokenInfo::Token {
+                        contract_addr: reward_token_contract.clone()
+                    },
+                    amount: Uint128::from(6_666_666_666_666_666_667u128)
+                }
+            );
+
+            // Harvest reward by ADMIN
+            let harvest_msg = PoolExecuteMsg::Harvest {};
+
+            // Execute harvest by ADMIN
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked("contract3"),
+                &harvest_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // query balance of ADMIN in reward token
+            let balance: BalanceResponse = app
+                .wrap()
+                .query_wasm_smart(
+                    reward_token_contract.clone(),
+                    &cw20::Cw20QueryMsg::Balance {
+                        address: ADMIN.to_string(),
+                    },
+                )
+                .unwrap();
+
+            // It should be 53,3333x10^18 reward token
+            assert_eq!(
+                balance.balance,
+                pending_reward_admin_2s.amount
+                    + pending_reward_admin_6s.amount
+                    + pending_reward_admin_7s.amount
+                    + pending_reward_admin_8s.amount
             );
         }
     }
