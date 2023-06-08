@@ -18,7 +18,7 @@ use crate::{
     formulas::{get_multiplier, calc_reward_amount, update_pool},
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{
-        PoolInfo, RewardTokenAsset, TokenInfo, LAST_REWARD_TIME, POOL_INFO, STAKERS_INFO, ACCRUED_TOKEN_PER_SHARE, StakerRewardAssetInfo,
+        PoolInfo, RewardTokenAsset, TokenInfo, LAST_REWARD_TIME, POOL_INFO, STAKERS_INFO, ACCRUED_TOKEN_PER_SHARE, StakerRewardAssetInfo, CONFIG, Config,
     },
 };
 
@@ -26,19 +26,27 @@ use crate::{
 pub fn instantiate(
     deps: DepsMut,
     _env: Env,
-    _info: MessageInfo,
+    info: MessageInfo,
     msg: InstantiateMsg,
 ) -> StdResult<Response> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
+    let config = Config {
+        halo_factory_owner: info.sender,
+    };
+
     let pool_info = &PoolInfo {
         staked_token: deps.api.addr_validate(&msg.staked_token)?.to_string(),
         reward_token: msg.reward_token.clone(),
-        reward_per_second: Decimal::zero(), // this will be updated when admin adding reward balance
+        reward_per_second: Decimal::zero(), // will be updated when admin adding reward balance
         start_time: msg.start_time,
         end_time: msg.end_time,
+        pool_limit_per_user: msg.pool_limit_per_user,
         whitelist: msg.whitelist,
     };
+
+    // Save config
+    CONFIG.save(deps.storage, &config)?;
 
     // Save pool info
     POOL_INFO.save(deps.storage, pool_info)?;
@@ -55,6 +63,7 @@ pub fn instantiate(
         ("reward_token", &msg.reward_token.to_string()),
         ("start_time", &msg.start_time.to_string()),
         ("end_time", &msg.end_time.to_string()),
+        ("pool_limit_per_user", &msg.pool_limit_per_user.unwrap_or(Uint128::zero()).to_string()),
     ]))
 }
 
@@ -72,6 +81,7 @@ pub fn execute(
         ExecuteMsg::Deposit { amount } => execute_deposit(deps, env, info, amount),
         ExecuteMsg::Withdraw { amount } => execute_withdraw(deps, env, info, amount),
         ExecuteMsg::Harvest {} => execute_harvest(deps, env, info),
+        ExecuteMsg::UpdatePoolLimitPerUser { new_pool_limit_per_user } => execute_update_pool_limit_per_user(deps, info, new_pool_limit_per_user)
     }
 }
 
@@ -129,6 +139,7 @@ pub fn execute_add_reward_balance(
         reward_per_second: new_reward_per_second,
         start_time: pool_info.start_time,
         end_time: pool_info.end_time,
+        pool_limit_per_user: pool_info.pool_limit_per_user,
         whitelist: pool_info.whitelist,
     };
 
@@ -173,8 +184,6 @@ pub fn execute_deposit(
     let current_time = env.block.time;
     // Get pool info
     let pool_info: PoolInfo = POOL_INFO.load(deps.storage)?;
-    // Get last reward time
-    let last_reward_time = LAST_REWARD_TIME.load(deps.storage)?;
     // get staker info
     let mut staker_info = STAKERS_INFO
         .may_load(deps.storage, info.sender.clone())?
@@ -182,6 +191,17 @@ pub fn execute_deposit(
             amount: Uint128::zero(),
             reward_debt: Uint128::zero(),
         });
+    // Check pool limit per user
+    if let Some(pool_limit_per_user) = pool_info.pool_limit_per_user {
+        if staker_info.amount + amount > pool_limit_per_user {
+            return Err(ContractError::Std(StdError::generic_err(
+                "Unauthorized: Deposit amount exceeds pool limit per user",
+            )));
+        }
+    }
+
+    // Get last reward time
+    let last_reward_time = LAST_REWARD_TIME.load(deps.storage)?;
 
     // Get accrued token per share
     let accrued_token_per_share = ACCRUED_TOKEN_PER_SHARE.load(deps.storage)?;
@@ -457,6 +477,33 @@ pub fn execute_harvest(
     Ok(res)
 }
 
+fn execute_update_pool_limit_per_user(
+    deps: DepsMut,
+    info: MessageInfo,
+    new_pool_limit_per_user: Uint128,
+) -> Result<Response, ContractError> {
+    // Get config
+    let config: Config = CONFIG.load(deps.storage)?;
+    // Check if the message sender is the owner of the contract
+    if config.halo_factory_owner != info.sender {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Unauthorized: Only owner can update pool limit per user",
+        )));
+    }
+    // Get pool info
+    let mut pool_info: PoolInfo = POOL_INFO.load(deps.storage)?;
+    // Update pool limit per user
+    pool_info.pool_limit_per_user = Some(new_pool_limit_per_user);
+    // Save pool info
+    POOL_INFO.save(deps.storage, &pool_info)?;
+
+    let res = Response::new()
+        .add_attribute("method", "update_pool_limit_per_user")
+        .add_attribute("new_pool_limit_per_user", new_pool_limit_per_user.to_string());
+
+    Ok(res)
+}
+
 pub fn query_token_balance(
     querier: &QuerierWrapper,
     contract_addr: String,
@@ -498,12 +545,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractErro
 fn query_pool_info(deps: Deps) -> Result<PoolInfo, ContractError> {
     let pool_info: PoolInfo = POOL_INFO.load(deps.storage)?;
     let res = PoolInfo {
-        staked_token: pool_info.staked_token,
-        reward_token: pool_info.reward_token,
-        start_time: pool_info.start_time,
-        end_time: pool_info.end_time,
-        reward_per_second: pool_info.reward_per_second,
-        whitelist: pool_info.whitelist,
+        ..pool_info
     };
     Ok(res)
 }

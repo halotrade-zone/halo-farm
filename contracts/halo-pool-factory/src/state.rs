@@ -1,5 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::Addr;
+use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
 
 use halo_pool::state::{PoolInfo, TokenInfo};
@@ -24,6 +24,7 @@ pub struct FactoryPoolInfo {
     pub reward_token: TokenInfo,
     pub start_time: u64,
     pub end_time: u64,
+    pub pool_limit_per_user: Option<Uint128>,
 }
 
 impl From<PoolInfo> for FactoryPoolInfo {
@@ -33,6 +34,7 @@ impl From<PoolInfo> for FactoryPoolInfo {
             reward_token: value.reward_token,
             start_time: value.start_time,
             end_time: value.end_time,
+            pool_limit_per_user: value.pool_limit_per_user,
         }
     }
 }

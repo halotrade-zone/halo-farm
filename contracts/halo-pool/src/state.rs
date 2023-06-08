@@ -7,6 +7,13 @@ use cw20::Cw20ExecuteMsg;
 use cw_storage_plus::{Item, Map};
 use std::fmt;
 
+#[cw_serde]
+pub struct Config {
+    pub halo_factory_owner: Addr,
+}
+
+pub const CONFIG: Item<Config> = Item::new("config");
+
 pub const POOL_INFO: Item<PoolInfo> = Item::new("pool_info");
 
 /// Stores the last reward time which will be updated every time when the reward is withdrawn.
@@ -149,6 +156,7 @@ pub struct PoolInfo {
     pub reward_per_second: Decimal,
     pub start_time: u64,
     pub end_time: u64,
+    pub pool_limit_per_user: Option<Uint128>,
     pub whitelist: Vec<Addr>,
 }
 

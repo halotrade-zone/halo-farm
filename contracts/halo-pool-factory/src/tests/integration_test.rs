@@ -106,6 +106,7 @@ mod tests {
                 reward_token: native_token_info.clone(),
                 start_time: current_block_time,
                 end_time: current_block_time + 100,
+                pool_limit_per_user: None,
                 whitelist: vec![Addr::unchecked(ADMIN.to_string())],
             };
 
@@ -135,6 +136,7 @@ mod tests {
                     reward_token: native_token_info.clone(),
                     start_time: current_block_time,
                     end_time: current_block_time + 100,
+                    pool_limit_per_user: None,
                 }
             );
 
@@ -178,6 +180,7 @@ mod tests {
                     reward_per_second: Decimal::from_str("10000000").unwrap(), // 10_000_000 (10 NATIVE_DENOM_2)
                     start_time: current_block_time,
                     end_time: current_block_time + 100,
+                    pool_limit_per_user: None,
                     whitelist: vec![Addr::unchecked(ADMIN.to_string())],
                 }
             );
@@ -202,6 +205,7 @@ mod tests {
                     reward_token: native_token_info,
                     start_time: current_block_time,
                     end_time: current_block_time + 100,
+                    pool_limit_per_user: None,
                 }]
             );
 
@@ -494,6 +498,7 @@ mod tests {
                 reward_token: native_token_info.clone(),
                 start_time: current_block_time,
                 end_time: current_block_time + 100,
+                pool_limit_per_user: None,
                 whitelist: vec![Addr::unchecked(ADMIN.to_string())],
             };
 
@@ -545,6 +550,7 @@ mod tests {
                     reward_per_second: Decimal::from_str("10000000").unwrap(), // 10_000_000 (10 NATIVE_DENOM_2)
                     start_time: current_block_time,
                     end_time: current_block_time + 100,
+                    pool_limit_per_user: None,
                     whitelist: vec![Addr::unchecked(ADMIN.to_string())],
                 }
             );
@@ -1341,6 +1347,7 @@ mod tests {
                 reward_token: reward_token_info.clone(),
                 start_time: current_block_time,
                 end_time: current_block_time + 100,
+                pool_limit_per_user: None,
                 whitelist: vec![Addr::unchecked(ADMIN.to_string())],
             };
 
