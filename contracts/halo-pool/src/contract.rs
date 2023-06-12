@@ -132,7 +132,7 @@ pub fn execute_add_reward_balance(
     }
 
     // Update reward_per_second base on new reward balance
-    let new_reward_per_second = Decimal::from_ratio(asset.amount, pool_info.end_time - pool_info.start_time);
+    let new_reward_per_second = Decimal::from_ratio(asset.amount, pool_info.end_time - pool_info.start_time).floor();
     let new_pool_info = PoolInfo {
         staked_token: pool_info.staked_token.clone(),
         reward_token: pool_info.reward_token,
