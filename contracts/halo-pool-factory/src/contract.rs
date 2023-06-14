@@ -214,13 +214,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
 }
 
 pub fn query_pool_info(deps: Deps, pool_id: u64) -> StdResult<FactoryPoolInfo> {
-    let pool_info: FactoryPoolInfo = POOLS.load(deps.storage, pool_id)?;
-
-    let res = FactoryPoolInfo {
-        ..pool_info
-    };
-
-    Ok(res)
+    Ok(POOLS.load(deps.storage, pool_id)?)
 }
 
 pub fn query_pools(

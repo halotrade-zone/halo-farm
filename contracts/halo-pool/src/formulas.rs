@@ -35,14 +35,14 @@ pub fn update_pool(
     last_reward_time: u64,
 ) -> (Decimal, u64) {
 
-    // If current time is before start time or after end time or before last reward time, return without update pool
+    // If current time is before last reward time, return without update pool
     if current_time < last_reward_time {
         return (accrued_token_per_share, last_reward_time);
     }
 
-    // Check if there is any reward token in the pool
+    // Check if there is any staked token in the pool
     if staked_token_supply == Uint128::zero() {
-        // No reward token in the pool, save last reward time and return
+        // No staked token in the pool, save last reward time and return
         (Decimal::zero(), last_reward_time)
     } else {
         let multiplier = get_multiplier(

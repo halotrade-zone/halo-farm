@@ -570,9 +570,9 @@ fn query_pending_reward(deps: Deps, env: Env, address: String) -> Result<RewardT
     // Get staked token balance from pool contract
     let staked_token_supply = query_token_balance(&deps.querier, pool_info.staked_token.clone(), env.contract.address)?;
 
-    // Check if there is any reward token in the pool
+    // Check if there is any staked token in the pool
     if staked_token_supply == Uint128::zero() {
-        // No reward token in the pool, save last reward time and return
+        // No staked token in the pool, save last reward time and return
         let res = RewardTokenAsset {
             info: pool_info.reward_token,
             amount: Uint128::zero(),
