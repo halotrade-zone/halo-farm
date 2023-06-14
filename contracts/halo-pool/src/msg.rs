@@ -40,6 +40,11 @@ pub enum ExecuteMsg {
 	UpdatePoolLimitPerUser {
 		new_pool_limit_per_user: Uint128,
 	},
+    // Extend the end time of the pool
+    ExtendEndTime {
+        /// New end time
+        new_end_time: u64,
+    },
 }
 
 #[cw_serde]

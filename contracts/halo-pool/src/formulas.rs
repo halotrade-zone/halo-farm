@@ -40,9 +40,9 @@ pub fn update_pool(
         return (accrued_token_per_share, last_reward_time);
     }
 
-    // Check if there is any reward token in the pool
+    // Check if there is any staked token in the pool
     if staked_token_supply == Uint128::zero() {
-        // No reward token in the pool, save last reward time and return
+        // No staked token in the pool, save last reward time and return
         (Decimal::zero(), last_reward_time)
     } else {
         let multiplier = get_multiplier(

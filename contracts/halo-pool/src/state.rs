@@ -16,6 +16,9 @@ pub const CONFIG: Item<Config> = Item::new("config");
 
 pub const POOL_INFO: Item<PoolInfo> = Item::new("pool_info");
 
+/// Stores pool info of multiple phases of the same pool.
+pub const POOL_INFOS: Item<PoolInfos> = Item::new("pool_infos");
+
 /// Stores the last reward time which will be updated every time when the reward is withdrawn.
 pub const LAST_REWARD_TIME: Item<u64> = Item::new("last_reward_time");
 
@@ -29,6 +32,10 @@ pub const STAKERS_INFO: Map<Addr, StakerRewardAssetInfo> = Map::new("stakers_inf
 pub struct StakerRewardAssetInfo {
     pub amount: Uint128,      // How many staked tokens the user has provided.
     pub reward_debt: Uint128, // Reward debt.
+    // Phases of the pool that the user has joined.
+    // If the user deposit, withdraw or harvest reward, it will be updated to the latest phase
+    // to calculate the reward amount correctly if the pool has multiple phases.
+    pub joined_phases: u64,
 }
 
 #[cw_serde]
@@ -158,6 +165,12 @@ pub struct PoolInfo {
     pub end_time: u64,
     pub pool_limit_per_user: Option<Uint128>,
     pub whitelist: Vec<Addr>,
+}
+
+#[cw_serde]
+pub struct PoolInfos{
+    pub current_pool_index: u64,
+    pub pool_infos: Vec<PoolInfo>,
 }
 
 // We define a custom struct for each query response
