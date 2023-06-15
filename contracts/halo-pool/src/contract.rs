@@ -207,6 +207,10 @@ pub fn execute_deposit(
     let pool_info = POOL_INFOS.load(deps.storage)?.pool_infos[current_pool_index as usize].clone();
     // Init reward amount
     let mut reward_amount = Uint128::zero();
+    // Init new accrued token per share
+    let mut new_accrued_token_per_share = Decimal::zero();
+    // Init new last reward time
+    let mut new_last_reward_time = current_time.seconds();
     // get staker info
     let mut staker_info = STAKERS_INFO
         .may_load(deps.storage, info.sender.clone())?
@@ -242,7 +246,7 @@ pub fn execute_deposit(
             let staked_token_supply = query_token_balance(&deps.querier, pool_info.staked_token.clone(), env.contract.address.clone())?;
 
             // update pool
-            let (new_accrued_token_per_share, new_last_reward_time)
+            (new_accrued_token_per_share, new_last_reward_time)
             = update_pool(
                 pool_info.end_time,
                 pool_info.reward_per_second,
@@ -276,7 +280,7 @@ pub fn execute_deposit(
         let staked_token_supply = query_token_balance(&deps.querier, pool_info.staked_token.clone(), env.contract.address.clone())?;
 
         // update pool
-        let (new_accrued_token_per_share, new_last_reward_time)
+        (new_accrued_token_per_share, new_last_reward_time)
         = update_pool(
             pool_info.end_time,
             pool_info.reward_per_second,
@@ -296,9 +300,6 @@ pub fn execute_deposit(
             new_accrued_token_per_share,
             staker_info.reward_debt,
         );
-
-        // Update staker info
-        staker_info.reward_debt = staker_info.amount * new_accrued_token_per_share;
     }
 
 
@@ -336,7 +337,7 @@ pub fn execute_deposit(
 
     // Update staker info
     staker_info.amount += amount;
-    // staker_info.reward_debt = staker_info.amount * new_accrued_token_per_share;
+    staker_info.reward_debt = staker_info.amount * new_accrued_token_per_share;
     staker_info.joined_phases = current_pool_index;
 
     STAKERS_INFO.save(deps.storage, info.sender, &staker_info)?;
@@ -378,6 +379,10 @@ pub fn execute_withdraw(
     let current_time = env.block.time;
     // Get current pool info in pool infos
     let pool_info = POOL_INFOS.load(deps.storage)?.pool_infos[current_pool_index as usize].clone();
+    // Init new accrued token per share
+    let mut new_accrued_token_per_share = Decimal::zero();
+    // Init new last reward time
+    let mut new_last_reward_time = current_time.seconds();
 
     let current_staker_amount = staker_info.amount;
 
@@ -406,7 +411,7 @@ pub fn execute_withdraw(
             let staked_token_supply = query_token_balance(&deps.querier, pool_info.staked_token.clone(), env.contract.address.clone())?;
 
             // update pool
-            let (new_accrued_token_per_share, new_last_reward_time)
+            (new_accrued_token_per_share, new_last_reward_time)
             = update_pool(
                 pool_info.end_time,
                 pool_info.reward_per_second,
@@ -439,7 +444,7 @@ pub fn execute_withdraw(
         let staked_token_supply = query_token_balance(&deps.querier, pool_info.staked_token.clone(), env.contract.address.clone())?;
 
         // update pool
-        let (new_accrued_token_per_share, new_last_reward_time)
+        (new_accrued_token_per_share, new_last_reward_time)
             = update_pool(
                 pool_info.end_time,
                 pool_info.reward_per_second,
@@ -458,8 +463,6 @@ pub fn execute_withdraw(
             new_accrued_token_per_share,
             staker_info.reward_debt,
         );
-        // Update staker info
-        staker_info.reward_debt = staker_info.amount * new_accrued_token_per_share;
     }
 
     // Transfer reward token to the sender
@@ -492,7 +495,7 @@ pub fn execute_withdraw(
 
     // Update staker amount
     staker_info.amount -= amount;
-    // staker_info.reward_debt = staker_info.amount * new_accrued_token_per_share;
+    staker_info.reward_debt = staker_info.amount * new_accrued_token_per_share;
 
     // Check if staker amount is zero, remove staker info from storage
     if staker_info.amount == Uint128::zero() {
@@ -540,6 +543,10 @@ pub fn execute_harvest(
     let mut reward_amount = Uint128::zero();
     // get staker joined phases
     let staker_joined_phases = staker_info.joined_phases;
+    // Init new accrued token per share
+    let mut new_accrued_token_per_share = Decimal::zero();
+    // Init new last reward time
+    let mut new_last_reward_time = current_time.seconds();
 
     // If staker has joined previous phases, loop down all pool infos to get reward per second from current pool index to staker joined phases
     if staker_joined_phases < current_pool_index {
@@ -554,7 +561,7 @@ pub fn execute_harvest(
             let staked_token_supply = query_token_balance(&deps.querier, pool_info.staked_token.clone(), env.contract.address.clone())?;
 
             // update pool
-            let (new_accrued_token_per_share, new_last_reward_time)
+            (new_accrued_token_per_share, new_last_reward_time)
             = update_pool(
                 pool_info.end_time,
                 pool_info.reward_per_second,
@@ -575,8 +582,6 @@ pub fn execute_harvest(
                 new_accrued_token_per_share,
                 staker_info.reward_debt,
             );
-            // Update staker info
-            staker_info.reward_debt = staker_info.amount * new_accrued_token_per_share;
         }
     } else {
         // Get last reward time
@@ -588,7 +593,7 @@ pub fn execute_harvest(
         let staked_token_supply = query_token_balance(&deps.querier, pool_info.staked_token.clone(), env.contract.address)?;
 
         // update pool
-        let (new_accrued_token_per_share, new_last_reward_time)
+        (new_accrued_token_per_share, new_last_reward_time)
         = update_pool(
             pool_info.end_time,
             pool_info.reward_per_second,
@@ -607,8 +612,6 @@ pub fn execute_harvest(
             new_accrued_token_per_share,
             staker_info.reward_debt,
         );
-        // Update staker reward debt
-        staker_info.reward_debt = staker_info.amount * new_accrued_token_per_share;
     }
 
     // Check if there is any reward to harvest
@@ -635,8 +638,8 @@ pub fn execute_harvest(
             amount: vec![coin(reward_amount.into(), denom)],
         })),
     };
-    // // Update staker reward debt
-    // staker_info.reward_debt = staker_info.amount * new_accrued_token_per_share;
+    // Update staker reward debt
+    staker_info.reward_debt = staker_info.amount * new_accrued_token_per_share;
     // Update staker info
     STAKERS_INFO.save(deps.storage, info.sender, &staker_info)?;
 
