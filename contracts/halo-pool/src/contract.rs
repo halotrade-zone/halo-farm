@@ -1,13 +1,13 @@
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    coin, to_binary, BankMsg, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, Response,
-    StdResult, SubMsg, Uint128, WasmMsg, QuerierWrapper, Addr, QueryRequest, WasmQuery, BalanceResponse, BankQuery, Decimal, StdError
+    coin, to_binary, Addr, BalanceResponse, BankMsg, BankQuery, Binary, CosmosMsg, Decimal, Deps,
+    DepsMut, Env, MessageInfo, QuerierWrapper, QueryRequest, Response, StdError, StdResult, SubMsg,
+    Uint128, WasmMsg, WasmQuery,
 };
 
 use cw2::set_contract_version;
-use cw20::{Cw20ExecuteMsg, BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
-
+use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:halo-pool";
@@ -15,10 +15,11 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 use crate::{
     error::ContractError,
-    formulas::{get_multiplier, calc_reward_amount, update_pool},
+    formulas::{calc_reward_amount, get_multiplier, update_pool},
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{
-        PoolInfo, RewardTokenAsset, TokenInfo, LAST_REWARD_TIME, POOL_INFO, STAKERS_INFO, ACCRUED_TOKEN_PER_SHARE, StakerRewardAssetInfo, CONFIG, Config,
+        Config, PoolInfo, RewardTokenAsset, StakerRewardAssetInfo, TokenInfo,
+        ACCRUED_TOKEN_PER_SHARE, CONFIG, LAST_REWARD_TIME, POOL_INFO, STAKERS_INFO,
     },
 };
 
@@ -63,7 +64,12 @@ pub fn instantiate(
         ("reward_token", &msg.reward_token.to_string()),
         ("start_time", &msg.start_time.to_string()),
         ("end_time", &msg.end_time.to_string()),
-        ("pool_limit_per_user", &msg.pool_limit_per_user.unwrap_or(Uint128::zero()).to_string()),
+        (
+            "pool_limit_per_user",
+            &msg.pool_limit_per_user
+                .unwrap_or(Uint128::zero())
+                .to_string(),
+        ),
     ]))
 }
 
@@ -81,7 +87,9 @@ pub fn execute(
         ExecuteMsg::Deposit { amount } => execute_deposit(deps, env, info, amount),
         ExecuteMsg::Withdraw { amount } => execute_withdraw(deps, env, info, amount),
         ExecuteMsg::Harvest {} => execute_harvest(deps, env, info),
-        ExecuteMsg::UpdatePoolLimitPerUser { new_pool_limit_per_user } => execute_update_pool_limit_per_user(deps, info, new_pool_limit_per_user)
+        ExecuteMsg::UpdatePoolLimitPerUser {
+            new_pool_limit_per_user,
+        } => execute_update_pool_limit_per_user(deps, info, new_pool_limit_per_user),
     }
 }
 
@@ -132,7 +140,8 @@ pub fn execute_add_reward_balance(
     }
 
     // Update reward_per_second base on new reward balance
-    let new_reward_per_second = Decimal::from_ratio(asset.amount, pool_info.end_time - pool_info.start_time).floor();
+    let new_reward_per_second =
+        Decimal::from_ratio(asset.amount, pool_info.end_time - pool_info.start_time).floor();
     let new_pool_info = PoolInfo {
         staked_token: pool_info.staked_token.clone(),
         reward_token: pool_info.reward_token,
@@ -144,7 +153,8 @@ pub fn execute_add_reward_balance(
     };
 
     // Get staked token balance from pool contract
-    let staked_token_supply = query_token_balance(&deps.querier, pool_info.staked_token, env.contract.address.clone())?;
+    let staked_token_supply =
+        query_token_balance(&deps.querier, pool_info.staked_token, env.contract.address)?;
 
     // Save pool info
     POOL_INFO.save(deps.storage, &new_pool_info)?;
@@ -153,14 +163,13 @@ pub fn execute_add_reward_balance(
     LAST_REWARD_TIME.save(deps.storage, &pool_info.start_time)?;
 
     // update pool
-    let (new_accrued_token_per_share, new_last_reward_time)
-    = update_pool(
+    let (new_accrued_token_per_share, new_last_reward_time) = update_pool(
         pool_info.end_time,
         pool_info.reward_per_second,
         staked_token_supply,
         accrued_token_per_share,
         current_time.seconds(),
-        last_reward_time
+        last_reward_time,
     );
 
     // Save accrued token per share
@@ -209,17 +218,20 @@ pub fn execute_deposit(
     let mut res = Response::new();
 
     // Get staked token balance from pool contract
-    let staked_token_supply = query_token_balance(&deps.querier, pool_info.staked_token.clone(), env.contract.address.clone())?;
+    let staked_token_supply = query_token_balance(
+        &deps.querier,
+        pool_info.staked_token.clone(),
+        env.contract.address.clone(),
+    )?;
 
     // update pool
-    let (new_accrued_token_per_share, new_last_reward_time)
-    = update_pool(
+    let (new_accrued_token_per_share, new_last_reward_time) = update_pool(
         pool_info.end_time,
         pool_info.reward_per_second,
         staked_token_supply,
         accrued_token_per_share,
         current_time.seconds(),
-        last_reward_time
+        last_reward_time,
     );
     // Save accrued token per share
     ACCRUED_TOKEN_PER_SHARE.save(deps.storage, &new_accrued_token_per_share)?;
@@ -235,16 +247,14 @@ pub fn execute_deposit(
     // If there is any reward token in the pool, transfer reward token to the sender
     if reward_amount > Uint128::zero() {
         let transfer_reward = match pool_info.reward_token {
-            TokenInfo::Token { contract_addr } => {
-                SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                    contract_addr,
-                    msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                        recipient: info.sender.to_string(),
-                        amount: reward_amount,
-                    })?,
-                    funds: vec![],
-                }))
-            }
+            TokenInfo::Token { contract_addr } => SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr,
+                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                    recipient: info.sender.to_string(),
+                    amount: reward_amount,
+                })?,
+                funds: vec![],
+            })),
             TokenInfo::NativeToken { denom } => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
                 to_address: info.sender.to_string(),
                 amount: vec![coin(reward_amount.into(), denom)],
@@ -316,20 +326,23 @@ pub fn execute_withdraw(
     }
 
     // Get staked token balance from pool contract
-    let staked_token_supply = query_token_balance(&deps.querier, pool_info.staked_token.clone(), env.contract.address.clone())?;
+    let staked_token_supply = query_token_balance(
+        &deps.querier,
+        pool_info.staked_token.clone(),
+        env.contract.address,
+    )?;
 
     let mut res = Response::new();
 
     // update pool
-    let (new_accrued_token_per_share, new_last_reward_time)
-        = update_pool(
-            pool_info.end_time,
-            pool_info.reward_per_second,
-            staked_token_supply,
-            accrued_token_per_share,
-            current_time.seconds(),
-            last_reward_time
-        );
+    let (new_accrued_token_per_share, new_last_reward_time) = update_pool(
+        pool_info.end_time,
+        pool_info.reward_per_second,
+        staked_token_supply,
+        accrued_token_per_share,
+        current_time.seconds(),
+        last_reward_time,
+    );
     // Save accrued token per share
     ACCRUED_TOKEN_PER_SHARE.save(deps.storage, &new_accrued_token_per_share)?;
     // Save last reward time
@@ -343,16 +356,14 @@ pub fn execute_withdraw(
 
     // Transfer reward token to the sender
     let transfer_reward = match pool_info.reward_token {
-        TokenInfo::Token { contract_addr } => {
-            SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr,
-                msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: info.sender.to_string(),
-                    amount: reward_amount,
-                })?,
-                funds: vec![],
-            }))
-        }
+        TokenInfo::Token { contract_addr } => SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr,
+            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: info.sender.to_string(),
+                amount: reward_amount,
+            })?,
+            funds: vec![],
+        })),
         TokenInfo::NativeToken { denom } => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: info.sender.to_string(),
             amount: vec![coin(reward_amount.into(), denom)],
@@ -418,17 +429,20 @@ pub fn execute_harvest(
     let accrued_token_per_share = ACCRUED_TOKEN_PER_SHARE.load(deps.storage)?;
 
     // Get staked token balance from pool contract
-    let staked_token_supply = query_token_balance(&deps.querier, pool_info.staked_token.clone(), env.contract.address)?;
+    let staked_token_supply = query_token_balance(
+        &deps.querier,
+        pool_info.staked_token.clone(),
+        env.contract.address,
+    )?;
 
     // update pool
-    let (new_accrued_token_per_share, new_last_reward_time)
-    = update_pool(
+    let (new_accrued_token_per_share, new_last_reward_time) = update_pool(
         pool_info.end_time,
         pool_info.reward_per_second,
         staked_token_supply,
         accrued_token_per_share,
         current_time.seconds(),
-        last_reward_time
+        last_reward_time,
     );
     // Save accrued token per share
     ACCRUED_TOKEN_PER_SHARE.save(deps.storage, &new_accrued_token_per_share)?;
@@ -450,16 +464,14 @@ pub fn execute_harvest(
 
     // Transfer reward token to the sender
     let transfer = match pool_info.reward_token {
-        TokenInfo::Token { contract_addr } => {
-            SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr,
-                msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: info.sender.to_string(),
-                    amount: reward_amount,
-                })?,
-                funds: vec![],
-            }))
-        }
+        TokenInfo::Token { contract_addr } => SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+            contract_addr,
+            msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                recipient: info.sender.to_string(),
+                amount: reward_amount,
+            })?,
+            funds: vec![],
+        })),
         TokenInfo::NativeToken { denom } => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: info.sender.to_string(),
             amount: vec![coin(reward_amount.into(), denom)],
@@ -499,7 +511,10 @@ fn execute_update_pool_limit_per_user(
 
     let res = Response::new()
         .add_attribute("method", "update_pool_limit_per_user")
-        .add_attribute("new_pool_limit_per_user", new_pool_limit_per_user.to_string());
+        .add_attribute(
+            "new_pool_limit_per_user",
+            new_pool_limit_per_user.to_string(),
+        );
 
     Ok(res)
 }
@@ -510,7 +525,7 @@ pub fn query_token_balance(
     account_addr: Addr,
 ) -> StdResult<Uint128> {
     let res: Cw20BalanceResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: contract_addr.to_string(),
+        contract_addr,
         msg: to_binary(&Cw20QueryMsg::Balance {
             address: account_addr.to_string(),
         })?,
@@ -537,20 +552,24 @@ pub fn query_balance(
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> Result<Binary, ContractError> {
     match msg {
         QueryMsg::Pool {} => Ok(to_binary(&query_pool_info(deps)?)?),
-        QueryMsg::PendingReward { address } => Ok(to_binary(&query_pending_reward(deps, env, address)?)?),
-        QueryMsg::TotalStaked {  } => Ok(to_binary(&query_total_lp_token_staked(deps, env)?)?),
+        QueryMsg::PendingReward { address } => {
+            Ok(to_binary(&query_pending_reward(deps, env, address)?)?)
+        }
+        QueryMsg::TotalStaked {} => Ok(to_binary(&query_total_lp_token_staked(deps, env)?)?),
     }
 }
 
 fn query_pool_info(deps: Deps) -> Result<PoolInfo, ContractError> {
     let pool_info: PoolInfo = POOL_INFO.load(deps.storage)?;
-    let res = PoolInfo {
-        ..pool_info
-    };
+    let res = PoolInfo { ..pool_info };
     Ok(res)
 }
 
-fn query_pending_reward(deps: Deps, env: Env, address: String) -> Result<RewardTokenAsset, ContractError> {
+fn query_pending_reward(
+    deps: Deps,
+    env: Env,
+    address: String,
+) -> Result<RewardTokenAsset, ContractError> {
     // Get current time
     let current_time = env.block.time;
     // Get last reward time
@@ -568,7 +587,11 @@ fn query_pending_reward(deps: Deps, env: Env, address: String) -> Result<RewardT
         });
 
     // Get staked token balance from pool contract
-    let staked_token_supply = query_token_balance(&deps.querier, pool_info.staked_token.clone(), env.contract.address)?;
+    let staked_token_supply = query_token_balance(
+        &deps.querier,
+        pool_info.staked_token.clone(),
+        env.contract.address,
+    )?;
 
     // Check if there is any staked token in the pool
     if staked_token_supply == Uint128::zero() {
@@ -579,14 +602,11 @@ fn query_pending_reward(deps: Deps, env: Env, address: String) -> Result<RewardT
         };
         return Ok(res);
     } else {
-        let multiplier = get_multiplier(
-            last_reward_time,
-            current_time.seconds(),
-            pool_info.end_time,
-        );
+        let multiplier =
+            get_multiplier(last_reward_time, current_time.seconds(), pool_info.end_time);
 
         let reward = Decimal::new(multiplier.into()) * pool_info.reward_per_second;
-        accrued_token_per_share = accrued_token_per_share + (reward / Decimal::new(staked_token_supply.into()));
+        accrued_token_per_share += reward / Decimal::new(staked_token_supply);
     }
 
     let reward_amount = calc_reward_amount(
@@ -606,7 +626,7 @@ fn query_pending_reward(deps: Deps, env: Env, address: String) -> Result<RewardT
 fn query_total_lp_token_staked(deps: Deps, env: Env) -> Result<Uint128, ContractError> {
     // Get pool info
     let pool_info: PoolInfo = POOL_INFO.load(deps.storage)?;
-    let staked_token_supply = query_token_balance(&deps.querier, pool_info.staked_token, env.contract.address.clone())?;
+    let staked_token_supply =
+        query_token_balance(&deps.querier, pool_info.staked_token, env.contract.address)?;
     Ok(staked_token_supply)
 }
-

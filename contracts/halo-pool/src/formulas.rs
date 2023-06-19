@@ -54,7 +54,7 @@ pub fn update_pool(
         let reward = Decimal::new(multiplier.into()) * reward_per_second;
         let new_accrued_token_per_share
             = accrued_token_per_share
-            + (reward / Decimal::new(staked_token_supply.into()));
+            + (reward / Decimal::new(staked_token_supply));
 
         (new_accrued_token_per_share, current_time)
     }

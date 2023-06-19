@@ -214,7 +214,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
 }
 
 pub fn query_pool_info(deps: Deps, pool_id: u64) -> StdResult<FactoryPoolInfo> {
-    Ok(POOLS.load(deps.storage, pool_id)?)
+    POOLS.load(deps.storage, pool_id)
 }
 
 pub fn query_pools(

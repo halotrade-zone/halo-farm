@@ -1,9 +1,9 @@
 #![cfg(test)]
 mod tests {
-    const MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT: u128 = 1_000_000_000_000_000;
+    const _MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT: u128 = 1_000_000_000_000_000;
     const MOCK_1000_HALO_LP_TOKEN_AMOUNT: u128 = 1_000_000_000;
     const MOCK_1000_HALO_REWARD_TOKEN_AMOUNT: u128 = 1_000_000_000_000_000_000_000;
-    const MOCK_150_000_000_HALO_LP_TOKEN_AMOUNT: u128 = 150_000_000_000_000;
+    const _MOCK_150_000_000_HALO_LP_TOKEN_AMOUNT: u128 = 150_000_000_000_000;
     const MOCK_150_HALO_LP_TOKEN_AMOUNT: u128 = 150_000_000;
     const INIT_1000_000_NATIVE_BALANCE_2: u128 = 1_000_000_000_000u128;
     const ADD_1000_NATIVE_BALANCE_2: u128 = 1_000_000_000u128;
@@ -30,7 +30,8 @@ mod tests {
                 env_setup::env::{instantiate_contracts, ADMIN, NATIVE_DENOM_2, USER_1},
                 integration_test::tests::{
                     ADD_1000_NATIVE_BALANCE_2, INIT_1000_000_NATIVE_BALANCE_2,
-                    MOCK_1000_000_000_HALO_LP_TOKEN_AMOUNT, MOCK_150_000_000_HALO_LP_TOKEN_AMOUNT, MOCK_1000_HALO_REWARD_TOKEN_AMOUNT, MOCK_1000_HALO_LP_TOKEN_AMOUNT, MOCK_150_HALO_LP_TOKEN_AMOUNT,
+                    MOCK_1000_HALO_LP_TOKEN_AMOUNT, MOCK_1000_HALO_REWARD_TOKEN_AMOUNT,
+                    MOCK_150_HALO_LP_TOKEN_AMOUNT,
                 },
             },
         };
@@ -546,7 +547,7 @@ mod tests {
                 pool_info,
                 PoolInfo {
                     staked_token: lp_token_contract.to_string(),
-                    reward_token: native_token_info.clone(),
+                    reward_token: native_token_info,
                     reward_per_second: Decimal::from_str("10000000").unwrap(), // 10_000_000 (10 NATIVE_DENOM_2)
                     start_time: current_block_time,
                     end_time: current_block_time + 100,
@@ -1319,7 +1320,6 @@ mod tests {
 
             assert!(response.is_ok());
 
-
             // Mint 1000 HALO reward tokens to ADMIN
             let mint_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::Mint {
                 recipient: ADMIN.to_string(),
@@ -1438,11 +1438,9 @@ mod tests {
             // Query pending reward by ADMIN after 2 seconds
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: "contract3".to_string(),
-                msg: to_binary(
-                    &PoolQueryMsg::PendingReward {
-                        address: ADMIN.to_string(),
-                    }
-                )
+                msg: to_binary(&PoolQueryMsg::PendingReward {
+                    address: ADMIN.to_string(),
+                })
                 .unwrap(),
             });
 
@@ -1532,11 +1530,9 @@ mod tests {
             // Query pending reward by USER_1 after 4 seconds
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: "contract3".to_string(),
-                msg: to_binary(
-                    &PoolQueryMsg::PendingReward {
-                        address: USER_1.to_string(),
-                    }
-                )
+                msg: to_binary(&PoolQueryMsg::PendingReward {
+                    address: USER_1.to_string(),
+                })
                 .unwrap(),
             });
 
@@ -1579,10 +1575,7 @@ mod tests {
                 .unwrap();
 
             // It should be 6,6666x10^18 reward token
-            assert_eq!(
-                balance.balance,
-                pending_reward_user1_4s.amount
-            );
+            assert_eq!(balance.balance, pending_reward_user1_4s.amount);
 
             // change block time increase 2 seconds to make 6 seconds passed
             app.set_block(BlockInfo {
@@ -1594,11 +1587,9 @@ mod tests {
             // query pending reward by ADMIN after 6 seconds
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: "contract3".to_string(),
-                msg: to_binary(
-                    &PoolQueryMsg::PendingReward {
-                        address: ADMIN.to_string(),
-                    }
-                )
+                msg: to_binary(&PoolQueryMsg::PendingReward {
+                    address: ADMIN.to_string(),
+                })
                 .unwrap(),
             });
 
@@ -1646,8 +1637,7 @@ mod tests {
             // It should be 46,6666x10^18 reward token
             assert_eq!(
                 balance.balance,
-                pending_reward_admin_2s.amount
-                    + pending_reward_admin_6s.amount
+                pending_reward_admin_2s.amount + pending_reward_admin_6s.amount
             );
 
             // change block time increase 1 seconds to make 7 seconds passed
@@ -1660,11 +1650,9 @@ mod tests {
             // query pending reward by ADMIN after 7 seconds
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: "contract3".to_string(),
-                msg: to_binary(
-                    &PoolQueryMsg::PendingReward {
-                        address: ADMIN.to_string(),
-                    }
-                )
+                msg: to_binary(&PoolQueryMsg::PendingReward {
+                    address: ADMIN.to_string(),
+                })
                 .unwrap(),
             });
 
@@ -1724,11 +1712,9 @@ mod tests {
             // query pending reward by ADMIN after 8 seconds
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: "contract3".to_string(),
-                msg: to_binary(
-                    &PoolQueryMsg::PendingReward {
-                        address: ADMIN.to_string(),
-                    }
-                )
+                msg: to_binary(&PoolQueryMsg::PendingReward {
+                    address: ADMIN.to_string(),
+                })
                 .unwrap(),
             });
 
