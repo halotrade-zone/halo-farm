@@ -13,8 +13,8 @@ pub struct InstantiateMsg {
     pub start_time: u64,
     /// End time
     pub end_time: u64,
-	// The pool limit of staked tokens per user (0 for unlimited)
-	pub pool_limit_per_user: Option<Uint128>,
+    // The pool limit of staked tokens per user (0 for unlimited)
+    pub pool_limit_per_user: Option<Uint128>,
     /// Whitelisted addresses
     pub whitelist: Vec<Addr>,
 }
@@ -36,10 +36,10 @@ pub enum ExecuteMsg {
     },
     // Harvest reward tokens
     Harvest {},
-	// Update Pool Limit Per User
-	UpdatePoolLimitPerUser {
-		new_pool_limit_per_user: Uint128,
-	},
+    // Update Pool Limit Per User
+    UpdatePoolLimitPerUser {
+        new_pool_limit_per_user: Uint128,
+    },
 }
 
 #[cw_serde]
@@ -48,9 +48,7 @@ pub enum QueryMsg {
     #[returns(PoolInfo)]
     Pool {},
     #[returns(RewardTokenAsset)]
-	PendingReward {
-		address: String,
-	},
-	#[returns(Uint128)]
-	TotalStaked {},
+    PendingReward { address: String },
+    #[returns(Uint128)]
+    TotalStaked {},
 }

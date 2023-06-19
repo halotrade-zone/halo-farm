@@ -88,7 +88,8 @@ pub mod env {
         // store code of all contracts to the app and get the code ids
         let halo_contract_code_id = app.store_code(halo_pool_factory_contract_template());
         let halo_lp_token_contract_code_id = app.store_code(halo_lp_token_contract_template());
-        let halo_reward_decimal_18_token_contract_code_id = app.store_code(halo_lp_token_contract_template());
+        let halo_reward_decimal_18_token_contract_code_id =
+            app.store_code(halo_lp_token_contract_template());
 
         // halo pool factory contract
         // create instantiate message for contract
@@ -177,7 +178,6 @@ pub mod env {
             contract_addr: halo_reward_token_contract_addr.to_string(),
             contract_code_id: halo_reward_decimal_18_token_contract_code_id,
         });
-
 
         (app, contract_info_vec)
     }
