@@ -1,16 +1,26 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
     to_binary, Addr, Api, BankMsg, Coin, CosmosMsg, MessageInfo, StdError, StdResult, SubMsg,
-    Uint128, WasmMsg,
+    Uint128, WasmMsg, Decimal,
 };
 use cw20::Cw20ExecuteMsg;
 use cw_storage_plus::{Item, Map};
 use std::fmt;
 
+#[cw_serde]
+pub struct Config {
+    pub halo_factory_owner: Addr,
+}
+
+pub const CONFIG: Item<Config> = Item::new("config");
+
 pub const POOL_INFO: Item<PoolInfo> = Item::new("pool_info");
 
 /// Stores the last reward time which will be updated every time when the reward is withdrawn.
 pub const LAST_REWARD_TIME: Item<u64> = Item::new("last_reward_time");
+
+// Stores the accrued token per share.
+pub const ACCRUED_TOKEN_PER_SHARE: Item<Decimal> = Item::new("accrued_token_per_share");
 
 /// Mappping from staker address to staker balance.
 pub const STAKERS_INFO: Map<Addr, StakerRewardAssetInfo> = Map::new("stakers_info");
@@ -23,7 +33,7 @@ pub struct StakerRewardAssetInfo {
 
 #[cw_serde]
 pub struct RewardTokenAsset {
-    pub info: RewardTokenInfo,
+    pub info: TokenInfo,
     pub amount: Uint128,
 }
 
@@ -34,7 +44,7 @@ impl fmt::Display for RewardTokenAsset {
 }
 
 impl RewardTokenAsset {
-    pub fn new(info: RewardTokenInfo, amount: Uint128) -> Self {
+    pub fn new(info: TokenInfo, amount: Uint128) -> Self {
         Self { info, amount }
     }
 
@@ -50,7 +60,7 @@ impl RewardTokenAsset {
         let amount = self.amount;
 
         match &self.info {
-            RewardTokenInfo::Token { contract_addr } => Ok(CosmosMsg::Wasm(WasmMsg::Execute {
+            TokenInfo::Token { contract_addr } => Ok(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: contract_addr.to_string(),
                 msg: to_binary(&Cw20ExecuteMsg::Transfer {
                     recipient: recipient.to_string(),
@@ -58,7 +68,7 @@ impl RewardTokenAsset {
                 })?,
                 funds: vec![],
             })),
-            RewardTokenInfo::NativeToken { denom } => Ok(CosmosMsg::Bank(BankMsg::Send {
+            TokenInfo::NativeToken { denom } => Ok(CosmosMsg::Bank(BankMsg::Send {
                 to_address: recipient.to_string(),
                 amount: vec![Coin {
                     amount: self.amount,
@@ -73,7 +83,7 @@ impl RewardTokenAsset {
     }
 
     pub fn assert_sent_native_token_balance(&self, message_info: &MessageInfo) -> StdResult<()> {
-        if let RewardTokenInfo::NativeToken { denom } = &self.info {
+        if let TokenInfo::NativeToken { denom } = &self.info {
             match message_info.funds.iter().find(|x| x.denom == *denom) {
                 Some(coin) => {
                     if self.amount == coin.amount {
@@ -95,43 +105,43 @@ impl RewardTokenAsset {
         }
     }
 }
-// RewardTokenInfo is an enum that can be either a Token or a NativeToken
+// TokenInfo is an enum that can be either a Token or a NativeToken
 #[cw_serde]
-pub enum RewardTokenInfo {
+pub enum TokenInfo {
     Token { contract_addr: String },
     NativeToken { denom: String },
 }
 
-impl fmt::Display for RewardTokenInfo {
+impl fmt::Display for TokenInfo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            RewardTokenInfo::NativeToken { denom } => write!(f, "{}", denom),
-            RewardTokenInfo::Token { contract_addr } => write!(f, "{}", contract_addr),
+            TokenInfo::NativeToken { denom } => write!(f, "{}", denom),
+            TokenInfo::Token { contract_addr } => write!(f, "{}", contract_addr),
         }
     }
 }
 
 #[cw_serde]
-pub enum RewardTokenInfoRaw {
+pub enum TokenInfoRaw {
     Token { contract_addr: Addr },
     NativeToken { denom: String },
 }
 
-impl RewardTokenInfo {
+impl TokenInfo {
     pub fn is_token(&self) -> bool {
-        matches!(self, RewardTokenInfo::Token { .. })
+        matches!(self, TokenInfo::Token { .. })
     }
 
     pub fn is_native_token(&self) -> bool {
-        matches!(self, RewardTokenInfo::NativeToken { .. })
+        matches!(self, TokenInfo::NativeToken { .. })
     }
 
-    pub fn to_raw(&self, api: &dyn Api) -> StdResult<RewardTokenInfoRaw> {
+    pub fn to_raw(&self, api: &dyn Api) -> StdResult<TokenInfoRaw> {
         match self {
-            RewardTokenInfo::NativeToken { denom } => Ok(RewardTokenInfoRaw::NativeToken {
+            TokenInfo::NativeToken { denom } => Ok(TokenInfoRaw::NativeToken {
                 denom: denom.to_string(),
             }),
-            RewardTokenInfo::Token { contract_addr } => Ok(RewardTokenInfoRaw::Token {
+            TokenInfo::Token { contract_addr } => Ok(TokenInfoRaw::Token {
                 contract_addr: api.addr_validate(contract_addr)?,
             }),
         }
@@ -142,10 +152,11 @@ impl RewardTokenInfo {
 #[cw_serde]
 pub struct PoolInfo {
     pub staked_token: String,
-    pub reward_token: RewardTokenInfo,
-    pub reward_per_second: Uint128,
+    pub reward_token: TokenInfo,
+    pub reward_per_second: Decimal,
     pub start_time: u64,
     pub end_time: u64,
+    pub pool_limit_per_user: Option<Uint128>,
     pub whitelist: Vec<Addr>,
 }
 

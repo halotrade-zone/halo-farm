@@ -22,13 +22,13 @@ pub mod env {
     use crate::msg::InstantiateMsg as HaloPoolFactoryInstantiateMsg;
 
     pub const ADMIN: &str = "aura1000000000000000000000000000000000admin";
-    pub const _USER_1: &str = "aura1000000000000000000000000000000000user1";
+    pub const USER_1: &str = "aura1000000000000000000000000000000000user1";
 
     pub const NATIVE_DENOM: &str = "uaura";
     pub const NATIVE_BALANCE: u128 = 1_000_000_000_000u128;
 
     pub const NATIVE_DENOM_2: &str = "utaura";
-    pub const NATIVE_BALANCE_2: u128 = 500_000_000_000u128;
+    pub const NATIVE_BALANCE_2: u128 = 1_000_000_000_000u128;
 
     pub struct ContractInfo {
         pub contract_addr: String,
@@ -88,6 +88,7 @@ pub mod env {
         // store code of all contracts to the app and get the code ids
         let halo_contract_code_id = app.store_code(halo_pool_factory_contract_template());
         let halo_lp_token_contract_code_id = app.store_code(halo_lp_token_contract_template());
+        let halo_reward_decimal_18_token_contract_code_id = app.store_code(halo_lp_token_contract_template());
 
         // halo pool factory contract
         // create instantiate message for contract
@@ -144,6 +145,39 @@ pub mod env {
             contract_addr: halo_token_contract_addr.to_string(),
             contract_code_id: halo_lp_token_contract_code_id,
         });
+
+        // halo reward token contract
+        // create instantiate message for contract
+        let halo_reward_token_instantiate_msg = Cw20InstantiateMsg {
+            name: "Halo REWARD Token".to_string(),
+            symbol: "HALO-RWD".to_string(),
+            decimals: 18,
+            initial_balances: vec![],
+            mint: Some(MinterResponse {
+                minter: ADMIN.to_string(),
+                cap: None,
+            }),
+            marketing: None,
+        };
+
+        // instantiate contract
+        let halo_reward_token_contract_addr = app
+            .instantiate_contract(
+                halo_reward_decimal_18_token_contract_code_id,
+                Addr::unchecked(ADMIN),
+                &halo_reward_token_instantiate_msg,
+                &[],
+                "test instantiate contract",
+                None,
+            )
+            .unwrap();
+
+        // add contract info to the vector
+        contract_info_vec.push(ContractInfo {
+            contract_addr: halo_reward_token_contract_addr.to_string(),
+            contract_code_id: halo_reward_decimal_18_token_contract_code_id,
+        });
+
 
         (app, contract_info_vec)
     }

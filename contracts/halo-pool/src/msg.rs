@@ -1,18 +1,20 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint128};
 
-use crate::state::{PoolInfo, RewardTokenAsset, RewardTokenInfo};
+use crate::state::{PoolInfo, RewardTokenAsset, TokenInfo};
 
 #[cw_serde]
 pub struct InstantiateMsg {
     /// Staked Token address
     pub staked_token: String,
     /// Reward Token address (CW20 or Native)
-    pub reward_token: RewardTokenInfo,
+    pub reward_token: TokenInfo,
     /// Start time
     pub start_time: u64,
     /// End time
     pub end_time: u64,
+	// The pool limit of staked tokens per user (0 for unlimited)
+	pub pool_limit_per_user: Option<Uint128>,
     /// Whitelisted addresses
     pub whitelist: Vec<Addr>,
 }
@@ -34,6 +36,10 @@ pub enum ExecuteMsg {
     },
     // Harvest reward tokens
     Harvest {},
+	// Update Pool Limit Per User
+	UpdatePoolLimitPerUser {
+		new_pool_limit_per_user: Uint128,
+	},
 }
 
 #[cw_serde]
@@ -41,6 +47,10 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(PoolInfo)]
     Pool {},
-    // TODO: add query for user's reward balance
-    // TODO: add query for user's staked balance
+    #[returns(RewardTokenAsset)]
+	PendingReward {
+		address: String,
+	},
+	#[returns(Uint128)]
+	TotalStaked {},
 }
