@@ -23,6 +23,8 @@ pub struct InstantiateMsg {
 pub enum ExecuteMsg {
     /// Adding reward balance to pool by whitelisted address
     AddRewardBalance {
+        /// Reward phase index
+        phase_index: u64,
         /// Reward amount
         asset: RewardTokenAsset,
     },

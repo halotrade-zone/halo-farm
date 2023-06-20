@@ -5,12 +5,10 @@ use cosmwasm_std::{Uint128, Decimal};
 /// The multiplier is the _end_ minus _from_ if the _from_ range is after the _end_.
 /// Otherwise, the multiplier is the _to_ minus _from_.
 pub fn get_multiplier(from: u64, to: u64, end: u64) -> u64 {
-    if to < end {
+    if to <= end {
         return to - from;
-    } else if to < from {
-        return 0;
     } else if from >= end {
-        return 1;
+        return 0;
     }
     end - from
 }
