@@ -8,7 +8,7 @@ use crate::{
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper,
-    QueryRequest, Reply, ReplyOn, Response, StdResult, SubMsg, WasmMsg, WasmQuery, Uint128,
+    QueryRequest, Reply, ReplyOn, Response, StdResult, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::set_contract_version;
 use cw_utils::parse_reply_instantiate_data;
@@ -131,7 +131,7 @@ pub fn execute_create_pool(
     Ok(Response::new()
         .add_attributes(vec![
             ("action", "create_pool"),
-            ("halo_factory_owner", info.sender.as_str(),),
+            ("halo_factory_owner", info.sender.as_str()),
             ("staked_token", staked_token.as_str()),
             ("reward_token", &format!("{}", reward_token)),
             ("start_time", start_time.to_string().as_str()),
@@ -214,13 +214,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
 }
 
 pub fn query_pool_info(deps: Deps, pool_id: u64) -> StdResult<FactoryPoolInfo> {
-    let pool_info: FactoryPoolInfo = POOLS.load(deps.storage, pool_id)?;
-
-    let res = FactoryPoolInfo {
-        ..pool_info
-    };
-
-    Ok(res)
+    POOLS.load(deps.storage, pool_id)
 }
 
 pub fn query_pools(

@@ -1,39 +1,17 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FactoryPoolInfo",
+  "title": "RewardTokenAsset",
   "type": "object",
   "required": [
-    "end_time",
-    "reward_token",
-    "staked_token",
-    "start_time"
+    "amount",
+    "info"
   ],
   "properties": {
-    "end_time": {
-      "type": "integer",
-      "format": "uint64",
-      "minimum": 0.0
+    "amount": {
+      "$ref": "#/definitions/Uint128"
     },
-    "pool_limit_per_user": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Uint128"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "reward_token": {
+    "info": {
       "$ref": "#/definitions/TokenInfo"
-    },
-    "staked_token": {
-      "type": "string"
-    },
-    "start_time": {
-      "type": "integer",
-      "format": "uint64",
-      "minimum": 0.0
     }
   },
   "additionalProperties": false,

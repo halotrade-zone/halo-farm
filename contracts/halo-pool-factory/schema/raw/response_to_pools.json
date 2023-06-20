@@ -1,43 +1,49 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FactoryPoolInfo",
-  "type": "object",
-  "required": [
-    "end_time",
-    "reward_token",
-    "staked_token",
-    "start_time"
-  ],
-  "properties": {
-    "end_time": {
-      "type": "integer",
-      "format": "uint64",
-      "minimum": 0.0
-    },
-    "pool_limit_per_user": {
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Uint128"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "reward_token": {
-      "$ref": "#/definitions/TokenInfo"
-    },
-    "staked_token": {
-      "type": "string"
-    },
-    "start_time": {
-      "type": "integer",
-      "format": "uint64",
-      "minimum": 0.0
-    }
+  "title": "Array_of_FactoryPoolInfo",
+  "type": "array",
+  "items": {
+    "$ref": "#/definitions/FactoryPoolInfo"
   },
-  "additionalProperties": false,
   "definitions": {
+    "FactoryPoolInfo": {
+      "type": "object",
+      "required": [
+        "end_time",
+        "reward_token",
+        "staked_token",
+        "start_time"
+      ],
+      "properties": {
+        "end_time": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "pool_limit_per_user": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Uint128"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reward_token": {
+          "$ref": "#/definitions/TokenInfo"
+        },
+        "staked_token": {
+          "type": "string"
+        },
+        "start_time": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        }
+      },
+      "additionalProperties": false
+    },
     "TokenInfo": {
       "oneOf": [
         {
