@@ -15,6 +15,8 @@ pub struct InstantiateMsg {
     pub end_time: u64,
     // The pool limit of staked tokens per user (0 for unlimited)
     pub pool_limit_per_user: Option<Uint128>,
+    // Pool Owner
+    pub pool_owner: Addr,
     /// Whitelisted addresses
     pub whitelist: Vec<Addr>,
 }
@@ -42,11 +44,15 @@ pub enum ExecuteMsg {
 	UpdatePoolLimitPerUser {
 		new_pool_limit_per_user: Uint128,
 	},
-    // Extend the end time of the pool
-    ExtendEndTime {
+    // Add a new farming phase
+    AddPhase {
+        /// New start time
+        new_start_time: u64,
         /// New end time
         new_end_time: u64,
     },
+    // Activate latest farming phase
+    ActivatePhase {},
 }
 
 #[cw_serde]

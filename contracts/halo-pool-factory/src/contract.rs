@@ -105,7 +105,7 @@ pub fn execute_update_config(
     Ok(Response::new().add_attribute("action", "update_config"))
 }
 
-// Anyone can execute it to create a new pool
+// Only owner can execute it
 #[allow(clippy::too_many_arguments)]
 pub fn execute_create_pool(
     deps: DepsMut,
@@ -152,6 +152,7 @@ pub fn execute_create_pool(
                     start_time,
                     end_time,
                     pool_limit_per_user,
+                    pool_owner: info.sender,
                     whitelist,
                 })?,
             }),

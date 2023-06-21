@@ -172,7 +172,7 @@ pub struct PoolInfo {
 
 #[cw_serde]
 pub struct PoolInfos{
-    pub current_pool_index: u64,
+    pub current_phase_index: u64,
     pub pool_infos: Vec<PoolInfo>,
 }
 
