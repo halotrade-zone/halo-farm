@@ -19,22 +19,22 @@ pub const POOL_INFO: Item<PoolInfo> = Item::new("pool_info");
 /// Stores pool info of multiple phases of the same pool.
 pub const POOL_INFOS: Item<PoolInfos> = Item::new("pool_infos");
 
-/// Stores the last reward time which will be updated every time when the reward is withdrawn.
-pub const LAST_REWARD_TIME: Item<u64> = Item::new("last_reward_time");
-
-// Stores the accrued token per share.
-pub const ACCRUED_TOKEN_PER_SHARE: Item<Decimal> = Item::new("accrued_token_per_share");
-
 /// Mappping from staker address to staker balance.
 pub const STAKERS_INFO: Map<Addr, StakerRewardAssetInfo> = Map::new("stakers_info");
 
 /// Stores the reward token balance of the pool in multiple phases.
 pub const PHASES_REWARD_BALANCE: Item<PhasesRewardBalance> = Item::new("phases_reward_balance");
 
+/// Stores the last reward time of the pool in multiple phases.
+pub const PHASES_LAST_REWARD_TIME: Item<PhaseLastRewardTime> = Item::new("phases_last_reward_time");
+
+/// Stores the accrued token per share of the pool in multiple phases.
+pub const PHASES_ACCRUED_TOKEN_PER_SHARE: Item<PhaseAccruedTokenPerShare> = Item::new("phases_accrued_token_per_share");
+
 #[cw_serde]
 pub struct StakerRewardAssetInfo {
     pub amount: Uint128,      // How many staked tokens the user has provided.
-    pub reward_debt: Uint128, // Reward debt.
+    pub reward_debt: Vec<Uint128>, // Reward debt in multiple phases.
     // Phases of the pool that the user has joined.
     // If the user deposit, withdraw or harvest reward, it will be updated to the latest phase
     // to calculate the reward amount correctly if the pool has multiple phases.
@@ -180,6 +180,18 @@ pub struct PoolInfos{
 pub struct PhasesRewardBalance {
     pub current_phase_index: u64,
     pub reward_balance: Vec<RewardTokenAsset>,
+}
+
+#[cw_serde]
+pub struct PhaseLastRewardTime {
+    pub current_phase_index: u64,
+    pub last_reward_time: Vec<u64>,
+}
+
+#[cw_serde]
+pub struct PhaseAccruedTokenPerShare {
+    pub current_phase_index: u64,
+    pub accrued_token_per_share: Vec<Decimal>,
 }
 
 // We define a custom struct for each query response
