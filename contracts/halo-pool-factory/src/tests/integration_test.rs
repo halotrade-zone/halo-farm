@@ -21,7 +21,7 @@ mod tests {
         };
         use cw20::{BalanceResponse, Cw20ExecuteMsg};
         use cw_multi_test::Executor;
-        use halo_pool::state::{PoolInfo, RewardTokenAsset, TokenInfo};
+        use halo_pool::state::{PoolInfo, RewardTokenAsset, TokenInfo, StakerRewardAssetInfo};
 
         use crate::{
             msg::QueryMsg,
@@ -467,7 +467,8 @@ mod tests {
         //                              USER_1: 106_956_522 NATIVE_2 (Not claim yet)
         //                                      32_608_695 NATIVE_2 (Already claim)
         //
-        // ----- Phase 1 in next 5 seconds -----
+        // ----- Phase 1 -----
+        // Increase simulation time more 5 seconds
         // Add 1000 NATIVE_2 reward balance amount to pool contract by ADMIN in phase 1
         // -> NATIVE_2 ADMIN Balance: 998_860_434_782 NATIVE_2
         // with end time 80 seconds -> 12.5 NATIVE_2 per second
@@ -1318,6 +1319,27 @@ mod tests {
                 chain_id: app.block_info().chain_id,
             });
 
+            // Query staked info of ADMIN
+            let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&PoolQueryMsg::StakedInfo {
+                    address: ADMIN.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let staked_info_admin: StakerRewardAssetInfo = from_binary(&res).unwrap();
+
+            assert_eq!(
+                staked_info_admin,
+                StakerRewardAssetInfo {
+                    amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
+                    reward_debt: Uint128::from(217_391_304u128),
+                    joined_phases: 0u64,
+                }
+            );
+
             // Query pending reward by ADMIN after 100 seconds (end time)
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: "contract3".to_string(),
@@ -1503,16 +1525,16 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_125s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_admin_135s: RewardTokenAsset = from_binary(&res).unwrap();
 
-            // It should be 271_739_131 as reward is accrued
+            // It should be 217_391_304 as reward is accrued
             assert_eq!(
-                pending_reward_admin_125s,
+                pending_reward_admin_135s,
                 RewardTokenAsset {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::from(271_739_131u128)
+                    amount: Uint128::from(217_391_304u128)
                 }
             );
 
@@ -1529,6 +1551,27 @@ mod tests {
 
             assert!(response.is_ok());
 
+            // Query staked info of ADMIN after join new phase
+            let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&PoolQueryMsg::StakedInfo {
+                    address: ADMIN.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let staked_info_admin: StakerRewardAssetInfo = from_binary(&res).unwrap();
+
+            assert_eq!(
+                staked_info_admin,
+                StakerRewardAssetInfo {
+                    amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
+                    reward_debt: Uint128::from(217_391_304u128),
+                    joined_phases: 1u64, // Joined new phases
+                }
+            );
+
             // query balance of ADMIN in native token
             let req: QueryRequest<BankQuery> = QueryRequest::Bank(BankQuery::Balance {
                 address: ADMIN.to_string(),
@@ -1538,7 +1581,7 @@ mod tests {
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
             let balance: BankBalanceResponse = from_binary(&res).unwrap();
 
-            // It should be 999_132_173_913 as reward is accrued
+            // It should be 999_077_826_086 as reward is accrued
             assert_eq!(
                 balance.amount.amount,
                 Uint128::from(
@@ -1550,13 +1593,13 @@ mod tests {
                         // + pending_reward_admin_16s.amount.u128() // not execute harvest yet
                         + pending_reward_admin_18s.amount.u128() // Included pending_reward_admin_16s
                         + pending_reward_admin_100s.amount.u128()
-                        + pending_reward_admin_125s.amount.u128()
+                        + pending_reward_admin_135s.amount.u128()
                 )
             );
 
             assert_eq!(
                 balance.amount.amount,
-                Uint128::from(999_132_173_913u128),
+                Uint128::from(999_077_826_086u128),
             );
 
             // Query pending reward by USER_1 after 135 seconds
@@ -1611,7 +1654,8 @@ mod tests {
                     pending_reward_user1_2s.amount.u128()
                         + pending_reward_user1_8s.amount.u128()
                         + pending_reward_user_1_18s.amount.u128()
-                        + pending_reward_user_1_100s.amount.u128()
+                        // + pending_reward_user_1_100s.amount.u128()
+                        + pending_reward_user_1_135s.amount.u128() // Included pending_reward_user_1_100s
                 )
             );
 
@@ -2135,6 +2179,6 @@ mod tests {
                     + pending_reward_admin_8s.amount
             );
         }
-*/
+         */
     }
 }

@@ -34,7 +34,7 @@ pub const PHASES_ACCRUED_TOKEN_PER_SHARE: Item<PhaseAccruedTokenPerShare> = Item
 #[cw_serde]
 pub struct StakerRewardAssetInfo {
     pub amount: Uint128,      // How many staked tokens the user has provided.
-    pub reward_debt: Vec<Uint128>, // Reward debt in multiple phases.
+    pub reward_debt: Uint128, // Reward debt.
     // Phases of the pool that the user has joined.
     // If the user deposit, withdraw or harvest reward, it will be updated to the latest phase
     // to calculate the reward amount correctly if the pool has multiple phases.
