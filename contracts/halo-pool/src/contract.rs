@@ -1085,7 +1085,7 @@ pub fn query_token_balance(
     account_addr: Addr,
 ) -> StdResult<Uint128> {
     let res: Cw20BalanceResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: contract_addr.to_string(),
+        contract_addr: contract_addr,
         msg: to_binary(&Cw20QueryMsg::Balance {
             address: account_addr.to_string(),
         })?,
@@ -1192,7 +1192,7 @@ fn query_pending_reward(
             accrued_token_per_share[i as usize] += reward / Decimal::new(staked_token_supply);
             reward_amount += calc_reward_amount(
                 staker_info.amount,
-                accrued_token_per_share[i as usize].clone(),
+                accrued_token_per_share[i as usize],
                 staker_info.reward_debt,
             );
         }
