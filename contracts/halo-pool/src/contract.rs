@@ -226,11 +226,7 @@ pub fn execute_add_reward_balance(
     };
 
     // Get staked token balance from pool contract
-    let staked_token_supply = query_token_balance(
-        &deps.querier,
-        pool_info.staked_token,
-        env.contract.address,
-    )?;
+    let staked_token_supply = query_token_balance(&deps.querier, pool_info.staked_token, env.contract.address)?;
 
     // Save phases reward balance
     PHASES_REWARD_BALANCE.save(deps.storage, &phases_reward_balance)?;
@@ -1208,7 +1204,8 @@ fn query_pending_reward(
     );
 
     let reward: Decimal = Decimal::new(multiplier.into()) * pool_info.reward_per_second;
-    accrued_token_per_share[current_phase_index as usize] += reward / Decimal::new(staked_token_supply);
+    accrued_token_per_share[current_phase_index as usize] +=
+        reward / Decimal::new(staked_token_supply);
 
     reward_amount += calc_reward_amount(
         staker_info.amount,
