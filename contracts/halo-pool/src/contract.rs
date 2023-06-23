@@ -226,7 +226,8 @@ pub fn execute_add_reward_balance(
     };
 
     // Get staked token balance from pool contract
-    let staked_token_supply = query_token_balance(&deps.querier, pool_info.staked_token, env.contract.address)?;
+    let staked_token_supply =
+        query_token_balance(&deps.querier, pool_info.staked_token, env.contract.address)?;
 
     // Save phases reward balance
     PHASES_REWARD_BALANCE.save(deps.storage, &phases_reward_balance)?;
