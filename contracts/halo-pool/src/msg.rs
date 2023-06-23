@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint128};
 
-use crate::state::{PoolInfo, RewardTokenAsset, TokenInfo, StakerRewardAssetInfo};
+use crate::state::{PoolInfo, RewardTokenAsset, StakerRewardAssetInfo, TokenInfo};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -40,10 +40,10 @@ pub enum ExecuteMsg {
     },
     // Harvest reward tokens
     Harvest {},
-	// Update Pool Limit Per User
-	UpdatePoolLimitPerUser {
-		new_pool_limit_per_user: Uint128,
-	},
+    // Update Pool Limit Per User
+    UpdatePoolLimitPerUser {
+        new_pool_limit_per_user: Uint128,
+    },
     // Add a new farming phase
     AddPhase {
         /// New start time
@@ -53,6 +53,12 @@ pub enum ExecuteMsg {
     },
     // Activate latest farming phase
     ActivatePhase {},
+    // /// Removing reward balance from pool by whitelisted address
+    // /// Only can be called when the pool is inactive
+    // RemoveRewardBalance {
+    //     /// Reward phase index
+    //     phase_index: u64,
+    // },
 }
 
 #[cw_serde]

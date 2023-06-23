@@ -29,7 +29,8 @@ pub const PHASES_REWARD_BALANCE: Item<PhasesRewardBalance> = Item::new("phases_r
 pub const PHASES_LAST_REWARD_TIME: Item<PhaseLastRewardTime> = Item::new("phases_last_reward_time");
 
 /// Stores the accrued token per share of the pool in multiple phases.
-pub const PHASES_ACCRUED_TOKEN_PER_SHARE: Item<PhaseAccruedTokenPerShare> = Item::new("phases_accrued_token_per_share");
+pub const PHASES_ACCRUED_TOKEN_PER_SHARE: Item<PhaseAccruedTokenPerShare> =
+    Item::new("phases_accrued_token_per_share");
 
 #[cw_serde]
 pub struct StakerRewardAssetInfo {
@@ -171,7 +172,7 @@ pub struct PoolInfo {
 }
 
 #[cw_serde]
-pub struct PoolInfos{
+pub struct PoolInfos {
     pub current_phase_index: u64,
     pub pool_infos: Vec<PoolInfo>,
 }

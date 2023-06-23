@@ -12,7 +12,8 @@
         "add_reward_balance": {
           "type": "object",
           "required": [
-            "asset"
+            "asset",
+            "phase_index"
           ],
           "properties": {
             "asset": {
@@ -22,6 +23,12 @@
                   "$ref": "#/definitions/RewardTokenAsset"
                 }
               ]
+            },
+            "phase_index": {
+              "description": "Reward phase index",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
             }
           },
           "additionalProperties": false
@@ -102,6 +109,50 @@
               "$ref": "#/definitions/Uint128"
             }
           },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "add_phase"
+      ],
+      "properties": {
+        "add_phase": {
+          "type": "object",
+          "required": [
+            "new_end_time",
+            "new_start_time"
+          ],
+          "properties": {
+            "new_end_time": {
+              "description": "New end time",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "new_start_time": {
+              "description": "New start time",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "activate_phase"
+      ],
+      "properties": {
+        "activate_phase": {
+          "type": "object",
           "additionalProperties": false
         }
       },
