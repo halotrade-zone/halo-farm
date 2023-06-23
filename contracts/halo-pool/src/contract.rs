@@ -1085,7 +1085,7 @@ pub fn query_token_balance(
     account_addr: Addr,
 ) -> StdResult<Uint128> {
     let res: Cw20BalanceResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: contract_addr,
+        contract_addr,
         msg: to_binary(&Cw20QueryMsg::Balance {
             address: account_addr.to_string(),
         })?,
