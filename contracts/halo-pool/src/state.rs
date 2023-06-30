@@ -171,12 +171,13 @@ pub struct PoolInfos {
     pub whitelist: Vec<Addr>,
     pub reward_balance: Vec<Uint128>,
     pub last_reward_time: Vec<u64>,
+    pub accrued_token_per_share: Vec<Decimal>,
 }
 
 #[cw_serde]
 pub struct PhaseAccruedTokenPerShare {
     pub current_phase_index: u64,
-    pub accrued_token_per_share: Vec<Decimal>,
+
 }
 
 // We define a custom struct for each query response

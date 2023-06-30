@@ -190,6 +190,7 @@ mod tests {
                     whitelist: vec![Addr::unchecked(ADMIN.to_string())],
                     reward_balance: vec![Uint128::from(ADD_1000_NATIVE_BALANCE_2)],
                     last_reward_time: vec![current_block_time],
+                    accrued_token_per_share: vec![Decimal::zero()],
                 }
             );
 
@@ -621,6 +622,7 @@ mod tests {
                     whitelist: vec![Addr::unchecked(ADMIN.to_string())],
                     reward_balance: vec![Uint128::from(ADD_1000_NATIVE_BALANCE_2)],
                     last_reward_time: vec![current_block_time],
+                    accrued_token_per_share: vec![Decimal::zero()],
                 }
             );
 
@@ -1543,7 +1545,8 @@ mod tests {
                     whitelist: vec![Addr::unchecked(ADMIN.to_string())],
                     reward_balance: vec![Uint128::from(ADD_1000_NATIVE_BALANCE_2), Uint128::from(ADD_1000_NATIVE_BALANCE_2)],
                     last_reward_time: vec![pool_info.pool_infos[pool_info.current_phase_index as usize].end_time,
-                        pool_info.pool_infos[pool_info.current_phase_index as usize].end_time + 10]
+                        pool_info.pool_infos[pool_info.current_phase_index as usize].end_time + 10],
+                    accrued_token_per_share: vec![Decimal::from_str("0.93043478260869565").unwrap(), Decimal::zero()],
                 }
             );
 
