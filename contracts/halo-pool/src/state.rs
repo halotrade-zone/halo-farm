@@ -22,12 +22,6 @@ pub const POOL_INFOS: Item<PoolInfos> = Item::new("pool_infos");
 /// Mappping from staker address to staker balance.
 pub const STAKERS_INFO: Map<Addr, StakerRewardAssetInfo> = Map::new("stakers_info");
 
-/// Stores the reward token balance of the pool in multiple phases.
-pub const PHASES_REWARD_BALANCE: Item<PhasesRewardBalance> = Item::new("phases_reward_balance");
-
-/// Stores the last reward time of the pool in multiple phases.
-pub const PHASES_LAST_REWARD_TIME: Item<PhaseLastRewardTime> = Item::new("phases_last_reward_time");
-
 /// Stores the accrued token per share of the pool in multiple phases.
 pub const PHASES_ACCRUED_TOKEN_PER_SHARE: Item<PhaseAccruedTokenPerShare> =
     Item::new("phases_accrued_token_per_share");
@@ -166,7 +160,6 @@ pub struct PoolInfo {
     pub start_time: u64,
     pub end_time: u64,
     pub pool_limit_per_user: Option<Uint128>,
-    pub whitelist: Vec<Addr>,
 }
 
 #[cw_serde]
@@ -175,17 +168,8 @@ pub struct PoolInfos {
     pub reward_token: TokenInfo,
     pub current_phase_index: u64,
     pub pool_infos: Vec<PoolInfo>,
-}
-
-#[cw_serde]
-pub struct PhasesRewardBalance {
-    pub current_phase_index: u64,
-    pub reward_balance: Vec<RewardTokenAsset>,
-}
-
-#[cw_serde]
-pub struct PhaseLastRewardTime {
-    pub current_phase_index: u64,
+    pub whitelist: Vec<Addr>,
+    pub reward_balance: Vec<Uint128>,
     pub last_reward_time: Vec<u64>,
 }
 

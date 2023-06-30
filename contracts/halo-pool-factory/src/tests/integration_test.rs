@@ -186,8 +186,10 @@ mod tests {
                         start_time: current_block_time,
                         end_time: current_block_time + 100,
                         pool_limit_per_user: None,
-                        whitelist: vec![Addr::unchecked(ADMIN.to_string())],
                     }],
+                    whitelist: vec![Addr::unchecked(ADMIN.to_string())],
+                    reward_balance: vec![Uint128::from(ADD_1000_NATIVE_BALANCE_2)],
+                    last_reward_time: vec![current_block_time],
                 }
             );
 
@@ -615,8 +617,10 @@ mod tests {
                         start_time: current_block_time,
                         end_time: current_block_time + 100,
                         pool_limit_per_user: None,
-                        whitelist: vec![Addr::unchecked(ADMIN.to_string())],
                     }],
+                    whitelist: vec![Addr::unchecked(ADMIN.to_string())],
+                    reward_balance: vec![Uint128::from(ADD_1000_NATIVE_BALANCE_2)],
+                    last_reward_time: vec![current_block_time],
                 }
             );
 
@@ -1528,16 +1532,18 @@ mod tests {
                             end_time: pool_info.pool_infos[pool_info.current_phase_index as usize]
                                 .end_time,
                             pool_limit_per_user: None,
-                            whitelist: vec![Addr::unchecked(ADMIN.to_string())],
                         },
                         PoolInfo {
                             reward_per_second: Decimal::from_str("12500000").unwrap(), // 12_500_000 (12.5 NATIVE_DENOM_2)
                             start_time: pool_info.pool_infos[pool_info.current_phase_index as usize].end_time + 10,
                             end_time: pool_info.pool_infos[pool_info.current_phase_index as usize].end_time + 90,
                             pool_limit_per_user: None,
-                            whitelist: vec![Addr::unchecked(ADMIN.to_string())],
                         }
-                    ]
+                    ],
+                    whitelist: vec![Addr::unchecked(ADMIN.to_string())],
+                    reward_balance: vec![Uint128::from(ADD_1000_NATIVE_BALANCE_2), Uint128::from(ADD_1000_NATIVE_BALANCE_2)],
+                    last_reward_time: vec![pool_info.pool_infos[pool_info.current_phase_index as usize].end_time,
+                        pool_info.pool_infos[pool_info.current_phase_index as usize].end_time + 10]
                 }
             );
 
