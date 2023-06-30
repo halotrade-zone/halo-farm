@@ -14,7 +14,7 @@ use cw2::set_contract_version;
 use cw_utils::parse_reply_instantiate_data;
 use halo_pool::msg::InstantiateMsg as PoolInstantiateMsg;
 use halo_pool::msg::QueryMsg as PoolQueryMsg;
-use halo_pool::state::{PoolInfo, TokenInfo};
+use halo_pool::state::{TokenInfo, PoolInfos};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:halo-pool-factory";
@@ -166,7 +166,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
     let reply = parse_reply_instantiate_data(msg).unwrap();
 
     let pool_contract = &reply.contract_address;
-    let pool_info = query_pair_info_from_pair(&deps.querier, Addr::unchecked(pool_contract))?;
+    let pool_info = query_pool_info_from_pool(&deps.querier, Addr::unchecked(pool_contract))?;
 
     let pool_key = NUMBER_OF_POOLS.load(deps.storage)? + 1;
 
@@ -176,9 +176,9 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
         &FactoryPoolInfo {
             staked_token: pool_info.staked_token.clone(),
             reward_token: pool_info.reward_token,
-            start_time: pool_info.start_time,
-            end_time: pool_info.end_time,
-            pool_limit_per_user: pool_info.pool_limit_per_user,
+            start_time: pool_info.pool_infos[pool_info.current_phase_index as usize].start_time,
+            end_time: pool_info.pool_infos[pool_info.current_phase_index as usize].end_time,
+            pool_limit_per_user: pool_info.pool_infos[pool_info.current_phase_index as usize].pool_limit_per_user,
         },
     )?;
 
@@ -235,11 +235,10 @@ pub fn query_pools(
     Ok(pools)
 }
 
-fn query_pair_info_from_pair(querier: &QuerierWrapper, pair_contract: Addr) -> StdResult<PoolInfo> {
-    let pair_info: PoolInfo = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: pair_contract.to_string(),
+fn query_pool_info_from_pool(querier: &QuerierWrapper, pool_contract: Addr) -> StdResult<PoolInfos> {
+    let pool_info: PoolInfos = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: pool_contract.to_string(),
         msg: to_binary(&PoolQueryMsg::Pool {})?,
     }))?;
-
-    Ok(pair_info)
+    Ok(pool_info)
 }

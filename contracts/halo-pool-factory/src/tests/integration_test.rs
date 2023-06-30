@@ -21,7 +21,7 @@ mod tests {
         };
         use cw20::{BalanceResponse, Cw20ExecuteMsg};
         use cw_multi_test::Executor;
-        use halo_pool::state::{PoolInfo, RewardTokenAsset, StakerRewardAssetInfo, TokenInfo};
+        use halo_pool::state::{PoolInfo, RewardTokenAsset, StakerRewardAssetInfo, TokenInfo, PoolInfos};
 
         use crate::{
             msg::QueryMsg,
@@ -118,6 +118,7 @@ mod tests {
                 &create_pool_msg,
                 &[],
             );
+
             assert!(response_create_pool.is_ok());
 
             // query pool contract address
@@ -168,7 +169,7 @@ mod tests {
             assert!(response.is_ok());
 
             // query pool info after adding reward balance
-            let pool_info: PoolInfo = app
+            let pool_info: PoolInfos = app
                 .wrap()
                 .query_wasm_smart("contract3", &PoolQueryMsg::Pool {})
                 .unwrap();
@@ -176,14 +177,17 @@ mod tests {
             // assert pool info
             assert_eq!(
                 pool_info,
-                PoolInfo {
+                PoolInfos {
                     staked_token: lp_token_contract.to_string(),
                     reward_token: native_token_info.clone(),
-                    reward_per_second: Decimal::from_str("10000000").unwrap(), // 10_000_000 (10 NATIVE_DENOM_2)
-                    start_time: current_block_time,
-                    end_time: current_block_time + 100,
-                    pool_limit_per_user: None,
-                    whitelist: vec![Addr::unchecked(ADMIN.to_string())],
+                    current_phase_index: 0u64,
+                    pool_infos: vec![PoolInfo {
+                        reward_per_second: Decimal::from_str("10000000").unwrap(), // 10_000_000 (10 NATIVE_DENOM_2)
+                        start_time: current_block_time,
+                        end_time: current_block_time + 100,
+                        pool_limit_per_user: None,
+                        whitelist: vec![Addr::unchecked(ADMIN.to_string())],
+                    }],
                 }
             );
 
@@ -564,6 +568,7 @@ mod tests {
                 &create_pool_msg,
                 &[],
             );
+
             assert!(response_create_pool.is_ok());
 
             let reward_asset_info = TokenInfo::NativeToken {
@@ -593,7 +598,7 @@ mod tests {
             assert!(response.is_ok());
 
             // query pool info after adding reward balance
-            let pool_info: PoolInfo = app
+            let pool_info: PoolInfos = app
                 .wrap()
                 .query_wasm_smart("contract3", &PoolQueryMsg::Pool {})
                 .unwrap();
@@ -601,14 +606,17 @@ mod tests {
             // assert pool info
             assert_eq!(
                 pool_info,
-                PoolInfo {
+                PoolInfos {
                     staked_token: lp_token_contract.to_string(),
                     reward_token: native_token_info.clone(),
-                    reward_per_second: Decimal::from_str("10000000").unwrap(), // 10_000_000 (10 NATIVE_DENOM_2)
-                    start_time: current_block_time,
-                    end_time: current_block_time + 100,
-                    pool_limit_per_user: None,
-                    whitelist: vec![Addr::unchecked(ADMIN.to_string())],
+                    current_phase_index: 0u64,
+                    pool_infos: vec![PoolInfo {
+                        reward_per_second: Decimal::from_str("10000000").unwrap(), // 10_000_000 (10 NATIVE_DENOM_2)
+                        start_time: current_block_time,
+                        end_time: current_block_time + 100,
+                        pool_limit_per_user: None,
+                        whitelist: vec![Addr::unchecked(ADMIN.to_string())],
+                    }],
                 }
             );
 
@@ -1311,8 +1319,12 @@ mod tests {
 
             // Extend end time by ADMIN more 80 seconds
             let extend_end_time_msg = PoolExecuteMsg::AddPhase {
-                new_start_time: pool_info.end_time + 10,
-                new_end_time: pool_info.end_time + 90,
+                new_start_time: pool_info.pool_infos[pool_info.current_phase_index as usize]
+                    .end_time
+                    + 10,
+                new_end_time: pool_info.pool_infos[pool_info.current_phase_index as usize]
+                    .end_time
+                    + 90,
             };
 
             // Execute extend end time by ADMIN
@@ -1349,7 +1361,7 @@ mod tests {
                 StakerRewardAssetInfo {
                     amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
                     reward_debt: Uint128::from(217_391_304u128),
-                    joined_phases: 0u64,
+                    joined_phase: 0u64,
                 }
             );
 
@@ -1496,7 +1508,7 @@ mod tests {
             assert!(response.is_ok());
 
             // Query pool info after add reward balance
-            let pool_info_phase1: PoolInfo = app
+            let pool_info_phase1: PoolInfos = app
                 .wrap()
                 .query_wasm_smart("contract3", &PoolQueryMsg::Pool {})
                 .unwrap();
@@ -1504,14 +1516,28 @@ mod tests {
             // assert pool info
             assert_eq!(
                 pool_info_phase1,
-                PoolInfo {
+                PoolInfos {
                     staked_token: lp_token_contract.to_string(),
                     reward_token: native_token_info,
-                    reward_per_second: Decimal::from_str("12500000").unwrap(), // 12_500_000 (12.5 NATIVE_DENOM_2)
-                    start_time: pool_info.end_time + 10,
-                    end_time: pool_info.end_time + 90,
-                    pool_limit_per_user: None,
-                    whitelist: vec![Addr::unchecked(ADMIN.to_string())],
+                    current_phase_index: 1u64,
+                    pool_infos: vec![
+                        PoolInfo {
+                            reward_per_second: Decimal::from_str("10000000").unwrap(), // 10_000_000 (10 NATIVE_DENOM_2)
+                            start_time: pool_info.pool_infos[pool_info.current_phase_index as usize]
+                                .start_time,
+                            end_time: pool_info.pool_infos[pool_info.current_phase_index as usize]
+                                .end_time,
+                            pool_limit_per_user: None,
+                            whitelist: vec![Addr::unchecked(ADMIN.to_string())],
+                        },
+                        PoolInfo {
+                            reward_per_second: Decimal::from_str("12500000").unwrap(), // 12_500_000 (12.5 NATIVE_DENOM_2)
+                            start_time: pool_info.pool_infos[pool_info.current_phase_index as usize].end_time + 10,
+                            end_time: pool_info.pool_infos[pool_info.current_phase_index as usize].end_time + 90,
+                            pool_limit_per_user: None,
+                            whitelist: vec![Addr::unchecked(ADMIN.to_string())],
+                        }
+                    ]
                 }
             );
 
@@ -1575,7 +1601,7 @@ mod tests {
                 StakerRewardAssetInfo {
                     amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
                     reward_debt: Uint128::from(217_391_304u128),
-                    joined_phases: 1u64, // Joined new phases
+                    joined_phase: 1u64, // Joined new phases
                 }
             );
 
@@ -1856,7 +1882,7 @@ mod tests {
                 StakerRewardAssetInfo {
                     amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
                     reward_debt: Uint128::from(217_391_304u128),
-                    joined_phases: 1u64,
+                    joined_phase: 1u64,
                 }
             );
 
@@ -2112,6 +2138,7 @@ mod tests {
         // -> 1s: 5 HALO REWARD token for ADMIN (2)
         // Harvest reward by ADMIN after 8 seconds
         // -> 1s(2) + 1s = 5 + 6,666 = 11,666 HALO REWARD token for ADMIN
+
         #[test]
         fn proper_operation_with_reward_token_decimal_18() {
             // get integration test app and contracts

@@ -39,7 +39,7 @@ pub struct StakerRewardAssetInfo {
     // Phases of the pool that the user has joined.
     // If the user deposit, withdraw or harvest reward, it will be updated to the latest phase
     // to calculate the reward amount correctly if the pool has multiple phases.
-    pub joined_phases: u64,
+    pub joined_phase: u64,
 }
 
 #[cw_serde]
@@ -162,8 +162,6 @@ impl TokenInfo {
 // We define a custom struct for each query response
 #[cw_serde]
 pub struct PoolInfo {
-    pub staked_token: String,
-    pub reward_token: TokenInfo,
     pub reward_per_second: Decimal,
     pub start_time: u64,
     pub end_time: u64,
@@ -173,6 +171,8 @@ pub struct PoolInfo {
 
 #[cw_serde]
 pub struct PoolInfos {
+    pub staked_token: String,
+    pub reward_token: TokenInfo,
     pub current_phase_index: u64,
     pub pool_infos: Vec<PoolInfo>,
 }

@@ -4,14 +4,14 @@
   "type": "object",
   "required": [
     "amount",
-    "joined_phases",
+    "joined_phase",
     "reward_debt"
   ],
   "properties": {
     "amount": {
       "$ref": "#/definitions/Uint128"
     },
-    "joined_phases": {
+    "joined_phase": {
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0

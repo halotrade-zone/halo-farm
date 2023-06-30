@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint128};
 
-use crate::state::{PoolInfo, RewardTokenAsset, StakerRewardAssetInfo, TokenInfo};
+use crate::state::{RewardTokenAsset, StakerRewardAssetInfo, TokenInfo, PoolInfos};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -64,7 +64,7 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(PoolInfo)]
+    #[returns(PoolInfos)]
     Pool {},
     #[returns(RewardTokenAsset)]
     PendingReward { address: String },
