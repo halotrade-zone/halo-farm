@@ -52,10 +52,10 @@
     {
       "type": "object",
       "required": [
-        "staked_info"
+        "staker_info"
       ],
       "properties": {
-        "staked_info": {
+        "staker_info": {
           "type": "object",
           "required": [
             "address"

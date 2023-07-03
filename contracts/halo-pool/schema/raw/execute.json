@@ -148,6 +148,30 @@
     {
       "type": "object",
       "required": [
+        "remove_phase"
+      ],
+      "properties": {
+        "remove_phase": {
+          "type": "object",
+          "required": [
+            "phase_index"
+          ],
+          "properties": {
+            "phase_index": {
+              "description": "Reward phase index",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
         "activate_phase"
       ],
       "properties": {

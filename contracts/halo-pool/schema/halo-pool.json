@@ -268,6 +268,30 @@
       {
         "type": "object",
         "required": [
+          "remove_phase"
+        ],
+        "properties": {
+          "remove_phase": {
+            "type": "object",
+            "required": [
+              "phase_index"
+            ],
+            "properties": {
+              "phase_index": {
+                "description": "Reward phase index",
+                "type": "integer",
+                "format": "uint64",
+                "minimum": 0.0
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "required": [
           "activate_phase"
         ],
         "properties": {
@@ -402,10 +426,10 @@
       {
         "type": "object",
         "required": [
-          "staked_info"
+          "staker_info"
         ],
         "properties": {
-          "staked_info": {
+          "staker_info": {
             "type": "object",
             "required": [
               "address"
@@ -497,45 +521,55 @@
     },
     "pool": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "PoolInfo",
+      "title": "PoolInfos",
       "type": "object",
       "required": [
-        "end_time",
-        "reward_per_second",
+        "accrued_token_per_share",
+        "current_phase_index",
+        "last_reward_time",
+        "pool_infos",
+        "reward_balance",
         "reward_token",
         "staked_token",
-        "start_time",
         "whitelist"
       ],
       "properties": {
-        "end_time": {
+        "accrued_token_per_share": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Decimal"
+          }
+        },
+        "current_phase_index": {
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
         },
-        "pool_limit_per_user": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Uint128"
-            },
-            {
-              "type": "null"
-            }
-          ]
+        "last_reward_time": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "uint64",
+            "minimum": 0.0
+          }
         },
-        "reward_per_second": {
-          "$ref": "#/definitions/Decimal"
+        "pool_infos": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/PoolInfo"
+          }
+        },
+        "reward_balance": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Uint128"
+          }
         },
         "reward_token": {
           "$ref": "#/definitions/TokenInfo"
         },
         "staked_token": {
           "type": "string"
-        },
-        "start_time": {
-          "type": "integer",
-          "format": "uint64",
-          "minimum": 0.0
         },
         "whitelist": {
           "type": "array",
@@ -553,6 +587,40 @@
         "Decimal": {
           "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
           "type": "string"
+        },
+        "PoolInfo": {
+          "type": "object",
+          "required": [
+            "end_time",
+            "reward_per_second",
+            "start_time"
+          ],
+          "properties": {
+            "end_time": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "pool_limit_per_user": {
+              "anyOf": [
+                {
+                  "$ref": "#/definitions/Uint128"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "reward_per_second": {
+              "$ref": "#/definitions/Decimal"
+            },
+            "start_time": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
         },
         "TokenInfo": {
           "oneOf": [
@@ -606,7 +674,7 @@
         }
       }
     },
-    "staked_info": {
+    "staker_info": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "StakerRewardAssetInfo",
       "type": "object",
