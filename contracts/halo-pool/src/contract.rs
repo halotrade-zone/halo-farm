@@ -18,8 +18,7 @@ use crate::{
     formulas::{calc_reward_amount, get_multiplier, update_pool},
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{
-        Config, PoolInfo,
-        PoolInfos, RewardTokenAsset, StakerRewardAssetInfo, TokenInfo, CONFIG,
+        Config, PoolInfo, PoolInfos, RewardTokenAsset, StakerRewardAssetInfo, TokenInfo, CONFIG,
         POOL_INFO, POOL_INFOS, STAKERS_INFO,
     },
 };
@@ -57,7 +56,6 @@ pub fn instantiate(
             reward_balance: vec![Uint128::zero()],
             last_reward_time: vec![msg.start_time],
             accrued_token_per_share: vec![Decimal::zero()],
-
         },
     )?;
 
@@ -101,7 +99,9 @@ pub fn execute(
             new_end_time,
         } => execute_add_phase(deps, info, new_start_time, new_end_time),
         ExecuteMsg::ActivatePhase {} => execute_activate_phase(deps, env),
-        ExecuteMsg::RemovePhase { phase_index } => execute_remove_phase(deps, env, info, phase_index),
+        ExecuteMsg::RemovePhase { phase_index } => {
+                execute_remove_phase(deps, env, info, phase_index)
+        }
         // ExecuteMsg::RemoveRewardBalance { phase_index } => {
         //     execute_remove_reward_balance(deps, env, info, phase_index)
         // }
@@ -186,11 +186,8 @@ pub fn execute_add_reward_balance(
     phases_reward_balance[phase_index as usize] = reward_balance.clone();
 
     // Update reward_per_second base on new reward balance
-    let new_reward_per_second = Decimal::from_ratio(
-        reward_balance,
-        pool_info.end_time - pool_info.start_time,
-    )
-    .floor();
+    let new_reward_per_second =
+        Decimal::from_ratio(reward_balance, pool_info.end_time - pool_info.start_time).floor();
 
     let new_pool_info = PoolInfo {
         reward_per_second: new_reward_per_second,
@@ -198,8 +195,11 @@ pub fn execute_add_reward_balance(
     };
 
     // Get staked token balance from pool contract
-    let staked_token_supply =
-        query_token_balance(&deps.querier, pool_infos.staked_token.clone(), env.contract.address)?;
+    let staked_token_supply = query_token_balance(
+        &deps.querier,
+        pool_infos.staked_token.clone(),
+        env.contract.address
+    )?;
 
     // Update phases reward balance
     pool_infos.reward_balance = phases_reward_balance;
@@ -320,7 +320,6 @@ pub fn execute_remove_phase(
     // Get current time
     let current_time = env.block.time;
 
-
     // Only allow removing phase when the pool is inactive
     if current_phase_index == phase_index {
         return Err(ContractError::Std(StdError::generic_err(
@@ -362,7 +361,9 @@ pub fn execute_remove_phase(
     pool_infos.pool_infos.remove(phase_index as usize);
     pool_infos.reward_balance.remove(phase_index as usize);
     pool_infos.last_reward_time.remove(phase_index as usize);
-    pool_infos.accrued_token_per_share.remove(phase_index as usize);
+    pool_infos
+        .accrued_token_per_share
+        .remove(phase_index as usize);
 
     // Save pool infos
     POOL_INFOS.save(deps.storage, &pool_infos)?;
@@ -959,7 +960,7 @@ pub fn execute_add_phase(
     Ok(res)
 }
 
-pub fn execute_activate_phase(deps: DepsMut , env: Env) -> Result<Response, ContractError> {
+pub fn execute_activate_phase(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
     // Get current time
     let current_time = env.block.time;
 
@@ -967,7 +968,9 @@ pub fn execute_activate_phase(deps: DepsMut , env: Env) -> Result<Response, Cont
     let mut pool_infos: PoolInfos = POOL_INFOS.load(deps.storage)?;
 
     // Only activate phase if current time is greater than end time of the current pool
-    if current_time.seconds() < pool_infos.pool_infos[pool_infos.current_phase_index as usize].end_time {
+    if current_time.seconds()
+        < pool_infos.pool_infos[pool_infos.current_phase_index as usize].end_time
+    {
         return Err(ContractError::Std(StdError::generic_err(
             "Only activate new phase if current time is greater than end time of the current pool",
         )));
