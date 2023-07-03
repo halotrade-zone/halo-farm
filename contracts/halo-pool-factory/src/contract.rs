@@ -14,7 +14,7 @@ use cw2::set_contract_version;
 use cw_utils::parse_reply_instantiate_data;
 use halo_pool::msg::InstantiateMsg as PoolInstantiateMsg;
 use halo_pool::msg::QueryMsg as PoolQueryMsg;
-use halo_pool::state::{TokenInfo, PoolInfos};
+use halo_pool::state::{PoolInfos, TokenInfo};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:halo-pool-factory";
@@ -178,7 +178,8 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
             reward_token: pool_info.reward_token,
             start_time: pool_info.pool_infos[pool_info.current_phase_index as usize].start_time,
             end_time: pool_info.pool_infos[pool_info.current_phase_index as usize].end_time,
-            pool_limit_per_user: pool_info.pool_infos[pool_info.current_phase_index as usize].pool_limit_per_user,
+            pool_limit_per_user: pool_info.pool_infos[pool_info.current_phase_index as usize]
+                .pool_limit_per_user,
         },
     )?;
 
@@ -235,7 +236,10 @@ pub fn query_pools(
     Ok(pools)
 }
 
-fn query_pool_info_from_pool(querier: &QuerierWrapper, pool_contract: Addr) -> StdResult<PoolInfos> {
+fn query_pool_info_from_pool(
+    querier: &QuerierWrapper,
+    pool_contract: Addr,
+) -> StdResult<PoolInfos> {
     let pool_info: PoolInfos = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: pool_contract.to_string(),
         msg: to_binary(&PoolQueryMsg::Pool {})?,

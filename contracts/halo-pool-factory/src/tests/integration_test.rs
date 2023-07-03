@@ -21,7 +21,9 @@ mod tests {
         };
         use cw20::{BalanceResponse, Cw20ExecuteMsg};
         use cw_multi_test::Executor;
-        use halo_pool::state::{PoolInfo, RewardTokenAsset, StakerRewardAssetInfo, TokenInfo, PoolInfos};
+        use halo_pool::state::{
+            PoolInfo, PoolInfos, RewardTokenAsset, StakerRewardAssetInfo, TokenInfo,
+        };
 
         use crate::{
             msg::QueryMsg,
@@ -1328,8 +1330,7 @@ mod tests {
                 new_start_time: pool_info.pool_infos[pool_info.current_phase_index as usize]
                     .end_time
                     + 10,
-                new_end_time: pool_info.pool_infos[pool_info.current_phase_index as usize]
-                    .end_time
+                new_end_time: pool_info.pool_infos[pool_info.current_phase_index as usize].end_time
                     + 90,
             };
 
@@ -1353,7 +1354,7 @@ mod tests {
             // Query staked info of ADMIN
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: "contract3".to_string(),
-                msg: to_binary(&PoolQueryMsg::StakedInfo {
+                msg: to_binary(&PoolQueryMsg::StakerInfo {
                     address: ADMIN.to_string(),
                 })
                 .unwrap(),
@@ -1529,7 +1530,8 @@ mod tests {
                     pool_infos: vec![
                         PoolInfo {
                             reward_per_second: Decimal::from_str("10000000").unwrap(), // 10_000_000 (10 NATIVE_DENOM_2)
-                            start_time: pool_info.pool_infos[pool_info.current_phase_index as usize]
+                            start_time: pool_info.pool_infos
+                                [pool_info.current_phase_index as usize]
                                 .start_time,
                             end_time: pool_info.pool_infos[pool_info.current_phase_index as usize]
                                 .end_time,
@@ -1537,16 +1539,29 @@ mod tests {
                         },
                         PoolInfo {
                             reward_per_second: Decimal::from_str("12500000").unwrap(), // 12_500_000 (12.5 NATIVE_DENOM_2)
-                            start_time: pool_info.pool_infos[pool_info.current_phase_index as usize].end_time + 10,
-                            end_time: pool_info.pool_infos[pool_info.current_phase_index as usize].end_time + 90,
+                            start_time: pool_info.pool_infos
+                                [pool_info.current_phase_index as usize]
+                                .end_time
+                                + 10,
+                            end_time: pool_info.pool_infos[pool_info.current_phase_index as usize]
+                                .end_time
+                                + 90,
                             pool_limit_per_user: None,
                         }
                     ],
                     whitelist: vec![Addr::unchecked(ADMIN.to_string())],
-                    reward_balance: vec![Uint128::from(ADD_1000_NATIVE_BALANCE_2), Uint128::from(ADD_1000_NATIVE_BALANCE_2)],
-                    last_reward_time: vec![pool_info.pool_infos[pool_info.current_phase_index as usize].end_time,
-                        pool_info.pool_infos[pool_info.current_phase_index as usize].end_time + 10],
-                    accrued_token_per_share: vec![Decimal::from_str("0.93043478260869565").unwrap(), Decimal::zero()],
+                    reward_balance: vec![
+                        Uint128::from(ADD_1000_NATIVE_BALANCE_2),
+                        Uint128::from(ADD_1000_NATIVE_BALANCE_2)
+                    ],
+                    last_reward_time: vec![
+                        pool_info.pool_infos[pool_info.current_phase_index as usize].end_time,
+                        pool_info.pool_infos[pool_info.current_phase_index as usize].end_time + 10
+                    ],
+                    accrued_token_per_share: vec![
+                        Decimal::from_str("0.93043478260869565").unwrap(),
+                        Decimal::zero()
+                    ],
                 }
             );
 
@@ -1596,7 +1611,7 @@ mod tests {
             // Query staked info of ADMIN after join new phase
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: "contract3".to_string(),
-                msg: to_binary(&PoolQueryMsg::StakedInfo {
+                msg: to_binary(&PoolQueryMsg::StakerInfo {
                     address: ADMIN.to_string(),
                 })
                 .unwrap(),
@@ -1877,7 +1892,7 @@ mod tests {
             // Query staked info of ADMIN after withdraw
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: "contract3".to_string(),
-                msg: to_binary(&PoolQueryMsg::StakedInfo {
+                msg: to_binary(&PoolQueryMsg::StakerInfo {
                     address: ADMIN.to_string(),
                 })
                 .unwrap(),
@@ -2639,6 +2654,21 @@ mod tests {
                     + pending_reward_admin_6s.amount
                     + pending_reward_admin_7s.amount
                     + pending_reward_admin_8s.amount
+            );
+
+            // Query total LP staked by calling TotalStaked query
+            let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&PoolQueryMsg::TotalStaked {}).unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let total_staked: Uint128 = from_binary(&res).unwrap();
+
+            // It should be 1000 HALO LP token
+            assert_eq!(
+                total_staked,
+                Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT + MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2)
             );
         }
     }

@@ -22,10 +22,6 @@ pub const POOL_INFOS: Item<PoolInfos> = Item::new("pool_infos");
 /// Mappping from staker address to staker balance.
 pub const STAKERS_INFO: Map<Addr, StakerRewardAssetInfo> = Map::new("stakers_info");
 
-/// Stores the accrued token per share of the pool in multiple phases.
-pub const PHASES_ACCRUED_TOKEN_PER_SHARE: Item<PhaseAccruedTokenPerShare> =
-    Item::new("phases_accrued_token_per_share");
-
 #[cw_serde]
 pub struct StakerRewardAssetInfo {
     pub amount: Uint128,      // How many staked tokens the user has provided.
@@ -172,17 +168,4 @@ pub struct PoolInfos {
     pub reward_balance: Vec<Uint128>,
     pub last_reward_time: Vec<u64>,
     pub accrued_token_per_share: Vec<Decimal>,
-}
-
-#[cw_serde]
-pub struct PhaseAccruedTokenPerShare {
-    pub current_phase_index: u64,
-
-}
-
-// We define a custom struct for each query response
-#[cw_serde]
-pub struct PoolResponse {
-    pub staked_token: String,
-    pub total_share: Uint128,
 }

@@ -51,6 +51,11 @@ pub enum ExecuteMsg {
         /// New end time
         new_end_time: u64,
     },
+    // Remove inactive farming phase
+    RemovePhase {
+        /// Reward phase index
+        phase_index: u64,
+    },
     // Activate latest farming phase
     ActivatePhase {},
     // /// Removing reward balance from pool by whitelisted address
@@ -71,5 +76,5 @@ pub enum QueryMsg {
     #[returns(Uint128)]
     TotalStaked {},
     #[returns(StakerRewardAssetInfo)]
-    StakedInfo { address: String },
+    StakerInfo { address: String },
 }
