@@ -100,11 +100,10 @@ pub fn execute(
         } => execute_add_phase(deps, info, new_start_time, new_end_time),
         ExecuteMsg::ActivatePhase {} => execute_activate_phase(deps, env),
         ExecuteMsg::RemovePhase { phase_index } => {
-                execute_remove_phase(deps, env, info, phase_index)
-        }
-        // ExecuteMsg::RemoveRewardBalance { phase_index } => {
-        //     execute_remove_reward_balance(deps, env, info, phase_index)
-        // }
+            execute_remove_phase(deps, env, info, phase_index)
+        } // ExecuteMsg::RemoveRewardBalance { phase_index } => {
+          //     execute_remove_reward_balance(deps, env, info, phase_index)
+          // }
     }
 }
 
@@ -198,7 +197,7 @@ pub fn execute_add_reward_balance(
     let staked_token_supply = query_token_balance(
         &deps.querier,
         pool_infos.staked_token.clone(),
-        env.contract.address
+        env.contract.address,
     )?;
 
     // Update phases reward balance
