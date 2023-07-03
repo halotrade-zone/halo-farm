@@ -141,7 +141,7 @@ pub fn execute_add_reward_balance(
     let mut phases_reward_balance = pool_infos.reward_balance;
 
     // Get reward token balance of the pool in current phase
-    let mut reward_balance = phases_reward_balance[phase_index as usize].clone();
+    let mut reward_balance = phases_reward_balance[phase_index as usize];
 
     // Only allow adding reward balance once
     if reward_balance > Uint128::zero() {
@@ -182,7 +182,7 @@ pub fn execute_add_reward_balance(
     reward_balance += asset.amount;
 
     // Save reward balance to phases reward balance
-    phases_reward_balance[phase_index as usize] = reward_balance.clone();
+    phases_reward_balance[phase_index as usize] = reward_balance;
 
     // Update reward_per_second base on new reward balance
     let new_reward_per_second =
