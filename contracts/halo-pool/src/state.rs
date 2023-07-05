@@ -14,16 +14,14 @@ pub struct Config {
 
 pub const CONFIG: Item<Config> = Item::new("config");
 
-pub const POOL_INFO: Item<PoolInfo> = Item::new("pool_info");
-
 /// Stores pool info of multiple phases of the same pool.
 pub const POOL_INFOS: Item<PoolInfos> = Item::new("pool_infos");
 
 /// Mappping from staker address to staker balance.
-pub const STAKERS_INFO: Map<Addr, StakerRewardAssetInfo> = Map::new("stakers_info");
+pub const STAKERS_INFO: Map<Addr, StakerInfoResponse> = Map::new("stakers_info_response");
 
 #[cw_serde]
-pub struct StakerRewardAssetInfo {
+pub struct StakerInfoResponse {
     pub amount: Uint128,      // How many staked tokens the user has provided.
     pub reward_debt: Uint128, // Reward debt.
     // Phases of the pool that the user has joined.

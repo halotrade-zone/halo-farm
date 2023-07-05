@@ -18,8 +18,8 @@ use crate::{
     formulas::{calc_reward_amount, get_multiplier, update_pool},
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{
-        Config, PoolInfo, PoolInfos, RewardTokenAsset, StakerRewardAssetInfo, TokenInfo, CONFIG,
-        POOL_INFO, POOL_INFOS, STAKERS_INFO,
+        Config, PoolInfo, PoolInfos, RewardTokenAsset, StakerInfoResponse, TokenInfo, CONFIG,
+        POOL_INFOS, STAKERS_INFO,
     },
 };
 
@@ -93,7 +93,7 @@ pub fn execute(
         ExecuteMsg::Harvest {} => execute_harvest(deps, env, info),
         ExecuteMsg::UpdatePoolLimitPerUser {
             new_pool_limit_per_user,
-        } => execute_update_pool_limit_per_user(deps, info, new_pool_limit_per_user),
+        } => execute_update_pool_limit_per_user(deps, env, info, new_pool_limit_per_user),
         ExecuteMsg::AddPhase {
             new_start_time,
             new_end_time,
@@ -116,10 +116,12 @@ pub fn execute_add_reward_balance(
 ) -> Result<Response, ContractError> {
     // Get current time
     let current_time = env.block.time;
+
+     // Check the balance of native token is sent with the message
+    asset.assert_sent_native_token_balance(&info)?;
+
     // Get pool infos
     let mut pool_infos = POOL_INFOS.load(deps.storage)?;
-    // Get pool info in pool infos
-    let pool_info = POOL_INFOS.load(deps.storage)?.pool_infos[phase_index as usize].clone();
 
     // Check the message sender is the whitelisted address
     if !pool_infos.whitelist.contains(&info.sender) {
@@ -128,18 +130,18 @@ pub fn execute_add_reward_balance(
         )));
     }
 
-    // Only allow adding reward balance when the pool is inactive
-    if current_time.seconds() > pool_info.end_time {
+    // Get pool info in pool infos
+    let pool_info = pool_infos.pool_infos[phase_index as usize].clone();
+
+    // Not allow adding reward balance when current time is greater than start time of the phase
+    if current_time.seconds() > pool_info.start_time {
         return Err(ContractError::Std(StdError::generic_err(
-            "Unauthorized: Can not add reward balance when the pool is active",
+            "Unauthorized: Current time is greater than start time of the phase",
         )));
     }
 
-    // Get accrued token per share
-    let accrued_token_per_share = pool_infos.accrued_token_per_share[phase_index as usize];
     // Get the reward token balance of the pool in multiple phases.
     let mut phases_reward_balance = pool_infos.reward_balance;
-
     // Get reward token balance of the pool in current phase
     let mut reward_balance = phases_reward_balance[phase_index as usize];
 
@@ -150,8 +152,8 @@ pub fn execute_add_reward_balance(
         )));
     }
 
-    // Check the balance of native token is sent with the message
-    asset.assert_sent_native_token_balance(&info)?;
+    // Get accrued token per share
+    let accrued_token_per_share = pool_infos.accrued_token_per_share[phase_index as usize];
 
     let mut res = Response::new();
 
@@ -304,6 +306,8 @@ pub fn execute_remove_phase(
     info: MessageInfo,
     phase_index: u64,
 ) -> Result<Response, ContractError> {
+    // Get current time
+    let current_time = env.block.time;
     // Get pool infos
     let mut pool_infos = POOL_INFOS.load(deps.storage)?;
 
@@ -316,13 +320,11 @@ pub fn execute_remove_phase(
 
     // Get current pool index
     let current_phase_index = pool_infos.current_phase_index;
-    // Get current time
-    let current_time = env.block.time;
 
-    // Only allow removing phase when the pool is inactive
+    // Not allow removing activated phase
     if current_phase_index == phase_index {
         return Err(ContractError::Std(StdError::generic_err(
-            "Unauthorized: Can not remove active phase",
+            "Unauthorized: Can not remove activated phase",
         )));
     }
 
@@ -383,21 +385,26 @@ pub fn execute_deposit(
     // Get current pool index
     let current_phase_index = pool_infos.current_phase_index;
     // Get current pool info in pool infos
-    let pool_info = POOL_INFOS.load(deps.storage)?.pool_infos[current_phase_index as usize].clone();
-    // Init reward amount
-    let mut reward_amount = Uint128::zero();
-    // Init new accrued token per share
-    let mut new_accrued_token_per_share;
-    // Init new last reward time
-    let mut new_last_reward_time;
+    let pool_info = pool_infos.pool_infos[current_phase_index as usize].clone();
     // get staker info
     let mut staker_info = STAKERS_INFO
         .may_load(deps.storage, info.sender.clone())?
-        .unwrap_or(StakerRewardAssetInfo {
+        .unwrap_or(StakerInfoResponse {
             amount: Uint128::zero(),
             reward_debt: Uint128::zero(),
             joined_phase: current_phase_index,
         });
+
+    // Not allow depositing when current time is greater than end time of the phase
+    // and less than start time of the phase
+    if current_time.seconds() > pool_info.end_time
+        || current_time.seconds() < pool_info.start_time
+    {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Unauthorized: Current time is not in the range of the phase",
+        )));
+    }
+
     // Check pool limit per user
     if let Some(pool_limit_per_user) = pool_info.pool_limit_per_user {
         if staker_info.amount + amount > pool_limit_per_user {
@@ -407,8 +414,14 @@ pub fn execute_deposit(
         }
     }
 
+    // Init reward amount
+    let mut reward_amount = Uint128::zero();
+    // Init new accrued token per share
+    let mut new_accrued_token_per_share;
+    // Init new last reward time
+    let mut new_last_reward_time;
+    // Init response
     let mut res = Response::new();
-
     // get staker joined phase
     let staker_joined_phase = staker_info.joined_phase;
 
@@ -540,6 +553,8 @@ pub fn execute_withdraw(
     info: MessageInfo,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
+    // Get current time
+    let current_time = env.block.time;
     // Get pool infos
     let mut pool_infos = POOL_INFOS.load(deps.storage)?;
     // Get current pool index
@@ -547,7 +562,7 @@ pub fn execute_withdraw(
     // Get Staker info
     let mut staker_info = STAKERS_INFO
         .may_load(deps.storage, info.sender.clone())?
-        .unwrap_or(StakerRewardAssetInfo {
+        .unwrap_or(StakerInfoResponse {
             amount: Uint128::zero(),
             reward_debt: Uint128::zero(),
             joined_phase: current_phase_index,
@@ -558,25 +573,22 @@ pub fn execute_withdraw(
             "Unauthorized: Only staker can withdraw",
         )));
     }
+
+     // Check staker amount is greater than withdraw amount
+    if staker_info.amount < amount {
+        return Err(ContractError::Std(StdError::generic_err(
+            "InsufficientFunds: Withdraw amount exceeds staked amount",
+        )));
+    }
+
     // Init reward amount
     let mut reward_amount = Uint128::zero();
-    // Get current time
-    let current_time = env.block.time;
     // Get current pool info in pool infos
     let pool_info = POOL_INFOS.load(deps.storage)?.pool_infos[current_phase_index as usize].clone();
     // Init new accrued token per share
     let mut new_accrued_token_per_share;
     // Init new last reward time
     let mut new_last_reward_time;
-
-    let current_staker_amount = staker_info.amount;
-
-    // Check staker amount is greater than withdraw amount
-    if current_staker_amount < amount {
-        return Err(ContractError::Std(StdError::generic_err(
-            "InsufficientFunds: Withdraw amount exceeds staked amount",
-        )));
-    }
 
     let mut res = Response::new();
 
@@ -712,6 +724,8 @@ pub fn execute_harvest(
     env: Env,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
+    // Get current time
+    let current_time = env.block.time;
     // Get pool infos
     let mut pool_infos = POOL_INFOS.load(deps.storage)?;
     // Get current pool index
@@ -719,7 +733,7 @@ pub fn execute_harvest(
     // Get Staker info
     let mut staker_info = STAKERS_INFO
         .may_load(deps.storage, info.sender.clone())?
-        .unwrap_or(StakerRewardAssetInfo {
+        .unwrap_or(StakerInfoResponse {
             amount: Uint128::zero(),
             reward_debt: Uint128::zero(),
             joined_phase: current_phase_index,
@@ -730,11 +744,9 @@ pub fn execute_harvest(
             "Unauthorized: Only staker can harvest reward",
         )));
     }
-    // Get current time
-    let current_time = env.block.time;
 
     // Get current pool info in pool infos
-    let pool_info = POOL_INFOS.load(deps.storage)?.pool_infos[current_phase_index as usize].clone();
+    let pool_info = pool_infos.pool_infos[current_phase_index as usize].clone();
     // Init reward amount
     let mut reward_amount = Uint128::zero();
     // get staker joined phases
@@ -867,6 +879,7 @@ pub fn execute_harvest(
 
 fn execute_update_pool_limit_per_user(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     new_pool_limit_per_user: Uint128,
 ) -> Result<Response, ContractError> {
@@ -878,12 +891,25 @@ fn execute_update_pool_limit_per_user(
             "Unauthorized: Only owner can update pool limit per user",
         )));
     }
-    // Get pool info
-    let mut pool_info: PoolInfo = POOL_INFO.load(deps.storage)?;
+
+    // Get current time
+    let current_time = env.block.time;
+    // Get pool infos
+    let mut pool_infos = POOL_INFOS.load(deps.storage)?;
+    // Get current pool index
+    let current_phase_index = pool_infos.current_phase_index;
+
+    // Not allow updating pool limit per user when current time is greater than start time of the phase
+    if current_time.seconds() > pool_infos.pool_infos[current_phase_index as usize].start_time {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Unauthorized: Current time is greater than start time of the phase",
+        )));
+    }
+
     // Update pool limit per user
-    pool_info.pool_limit_per_user = Some(new_pool_limit_per_user);
+    pool_infos.pool_infos[current_phase_index as usize].pool_limit_per_user = Some(new_pool_limit_per_user);
     // Save pool info
-    POOL_INFO.save(deps.storage, &pool_info)?;
+    POOL_INFOS.save(deps.storage, &pool_infos)?;
 
     let res = Response::new()
         .add_attribute("method", "update_pool_limit_per_user")
@@ -962,16 +988,16 @@ pub fn execute_add_phase(
 pub fn execute_activate_phase(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
     // Get current time
     let current_time = env.block.time;
-
     // Get pool infos
     let mut pool_infos: PoolInfos = POOL_INFOS.load(deps.storage)?;
 
-    // Only activate phase if current time is greater than end time of the current pool
-    if current_time.seconds()
-        < pool_infos.pool_infos[pool_infos.current_phase_index as usize].end_time
+    // Not allow activating phase when current time is less than end time of the current pool
+    // or greater than start time of the phase to be activated
+    if current_time.seconds() < pool_infos.pool_infos[pool_infos.current_phase_index as usize].end_time
+        || current_time.seconds() > pool_infos.pool_infos[pool_infos.current_phase_index as usize + 1].start_time
     {
         return Err(ContractError::Std(StdError::generic_err(
-            "Only activate new phase if current time is greater than end time of the current pool",
+            "Unauthorized: Current time is not in range of the phase to be activated",
         )));
     }
 
@@ -1056,7 +1082,7 @@ fn query_pending_reward(
     // Get staker info
     let mut staker_info = STAKERS_INFO
         .may_load(deps.storage, Addr::unchecked(address))?
-        .unwrap_or(StakerRewardAssetInfo {
+        .unwrap_or(StakerInfoResponse {
             amount: Uint128::zero(),
             reward_debt: Uint128::zero(),
             joined_phase: 0u64,
@@ -1134,11 +1160,11 @@ fn query_total_lp_token_staked(deps: Deps, env: Env) -> Result<Uint128, Contract
     Ok(staked_token_supply)
 }
 
-fn query_staker_info(deps: Deps, address: String) -> Result<StakerRewardAssetInfo, ContractError> {
+fn query_staker_info(deps: Deps, address: String) -> Result<StakerInfoResponse, ContractError> {
     // Get staker info
     let staker_info = STAKERS_INFO
         .may_load(deps.storage, Addr::unchecked(address))?
-        .unwrap_or(StakerRewardAssetInfo {
+        .unwrap_or(StakerInfoResponse {
             amount: Uint128::zero(),
             reward_debt: Uint128::zero(),
             joined_phase: 0u64,

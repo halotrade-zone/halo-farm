@@ -22,7 +22,7 @@ mod tests {
         use cw20::{BalanceResponse, Cw20ExecuteMsg};
         use cw_multi_test::Executor;
         use halo_pool::state::{
-            PoolInfo, PoolInfos, RewardTokenAsset, StakerRewardAssetInfo, TokenInfo,
+            PoolInfo, PoolInfos, RewardTokenAsset, StakerInfoResponse, TokenInfo,
         };
 
         use crate::{
@@ -1361,11 +1361,11 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let staked_info_admin: StakerRewardAssetInfo = from_binary(&res).unwrap();
+            let staked_info_admin: StakerInfoResponse = from_binary(&res).unwrap();
 
             assert_eq!(
                 staked_info_admin,
-                StakerRewardAssetInfo {
+                StakerInfoResponse {
                     amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
                     reward_debt: Uint128::from(217_391_304u128),
                     joined_phase: 0u64,
@@ -1512,6 +1512,7 @@ mod tests {
                 &[],
             );
 
+            println!("{:?}", response);
             assert!(response.is_ok());
 
             // Query pool info after add reward balance
@@ -1618,11 +1619,11 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let staked_info_admin: StakerRewardAssetInfo = from_binary(&res).unwrap();
+            let staked_info_admin: StakerInfoResponse = from_binary(&res).unwrap();
 
             assert_eq!(
                 staked_info_admin,
-                StakerRewardAssetInfo {
+                StakerInfoResponse {
                     amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
                     reward_debt: Uint128::from(217_391_304u128),
                     joined_phase: 1u64, // Joined new phases
@@ -1899,11 +1900,11 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let staked_info_admin: StakerRewardAssetInfo = from_binary(&res).unwrap();
+            let staked_info_admin: StakerInfoResponse = from_binary(&res).unwrap();
 
             assert_eq!(
                 staked_info_admin,
-                StakerRewardAssetInfo {
+                StakerInfoResponse {
                     amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
                     reward_debt: Uint128::from(217_391_304u128),
                     joined_phase: 1u64,

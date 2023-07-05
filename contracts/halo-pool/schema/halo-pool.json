@@ -676,7 +676,7 @@
     },
     "staker_info": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "StakerRewardAssetInfo",
+      "title": "StakerInfoResponse",
       "type": "object",
       "required": [
         "amount",
