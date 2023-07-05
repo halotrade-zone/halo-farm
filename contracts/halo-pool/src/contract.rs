@@ -117,7 +117,7 @@ pub fn execute_add_reward_balance(
     // Get current time
     let current_time = env.block.time;
 
-     // Check the balance of native token is sent with the message
+    // Check the balance of native token is sent with the message
     asset.assert_sent_native_token_balance(&info)?;
 
     // Get pool infos
@@ -397,8 +397,7 @@ pub fn execute_deposit(
 
     // Not allow depositing when current time is greater than end time of the phase
     // and less than start time of the phase
-    if current_time.seconds() > pool_info.end_time
-        || current_time.seconds() < pool_info.start_time
+    if current_time.seconds() > pool_info.end_time || current_time.seconds() < pool_info.start_time
     {
         return Err(ContractError::Std(StdError::generic_err(
             "Unauthorized: Current time is not in the range of the phase",
@@ -574,7 +573,7 @@ pub fn execute_withdraw(
         )));
     }
 
-     // Check staker amount is greater than withdraw amount
+    // Check staker amount is greater than withdraw amount
     if staker_info.amount < amount {
         return Err(ContractError::Std(StdError::generic_err(
             "InsufficientFunds: Withdraw amount exceeds staked amount",
@@ -907,7 +906,8 @@ fn execute_update_pool_limit_per_user(
     }
 
     // Update pool limit per user
-    pool_infos.pool_infos[current_phase_index as usize].pool_limit_per_user = Some(new_pool_limit_per_user);
+    pool_infos.pool_infos[current_phase_index as usize].pool_limit_per_user =
+        Some(new_pool_limit_per_user);
     // Save pool info
     POOL_INFOS.save(deps.storage, &pool_infos)?;
 
@@ -993,8 +993,10 @@ pub fn execute_activate_phase(deps: DepsMut, env: Env) -> Result<Response, Contr
 
     // Not allow activating phase when current time is less than end time of the current pool
     // or greater than start time of the phase to be activated
-    if current_time.seconds() < pool_infos.pool_infos[pool_infos.current_phase_index as usize].end_time
-        || current_time.seconds() > pool_infos.pool_infos[pool_infos.current_phase_index as usize + 1].start_time
+    if current_time.seconds()
+        < pool_infos.pool_infos[pool_infos.current_phase_index as usize].end_time
+        || current_time.seconds()
+            > pool_infos.pool_infos[pool_infos.current_phase_index as usize + 1].start_time
     {
         return Err(ContractError::Std(StdError::generic_err(
             "Unauthorized: Current time is not in range of the phase to be activated",
