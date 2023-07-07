@@ -1,9 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{
-    to_binary, Addr, Api, BankMsg, Coin, CosmosMsg, Decimal, MessageInfo, StdError, StdResult,
-    SubMsg, Uint128, WasmMsg,
+    Addr, Decimal, MessageInfo, StdError, StdResult, Uint128,
 };
-use cw20::Cw20ExecuteMsg;
 use cw_storage_plus::{Item, Map};
 use std::fmt;
 

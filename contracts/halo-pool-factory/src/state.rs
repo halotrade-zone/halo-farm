@@ -1,7 +1,7 @@
 use cosmwasm_schema::cw_serde;
 use cosmwasm_std::{Addr, Uint128};
 use cw_storage_plus::{Item, Map};
-use halo_pool::state::{PoolInfos, TokenInfo};
+use halo_pool::state::TokenInfo;
 
 #[cw_serde]
 pub struct Config {
