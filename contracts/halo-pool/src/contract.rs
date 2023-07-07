@@ -917,8 +917,8 @@ fn execute_update_pool_limit_per_user(
     // Not allow new pool limit per user is less than previous pool limit per user
     if new_pool_limit_per_user
         < pool_infos.pool_infos[current_phase_index as usize]
-        .pool_limit_per_user
-        .unwrap_or(Uint128::zero())
+            .pool_limit_per_user
+            .unwrap_or(Uint128::zero())
     {
         return Err(ContractError::Std(StdError::generic_err(
             "Unauthorized: New pool limit per user is less than previous pool limit per user",
