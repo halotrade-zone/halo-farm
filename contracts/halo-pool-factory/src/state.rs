@@ -26,19 +26,6 @@ pub struct FactoryPoolInfo {
     pub pool_limit_per_user: Option<Uint128>,
 }
 
-impl From<PoolInfos> for FactoryPoolInfo {
-    fn from(value: PoolInfos) -> Self {
-        Self {
-            staked_token: value.staked_token,
-            reward_token: value.reward_token,
-            start_time: value.pool_infos[value.current_phase_index as usize].start_time,
-            end_time: value.pool_infos[value.current_phase_index as usize].end_time,
-            pool_limit_per_user: value.pool_infos[value.current_phase_index as usize]
-                .pool_limit_per_user,
-        }
-    }
-}
-
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const POOLS: Map<u64, FactoryPoolInfo> = Map::new("pools");
 pub const NUMBER_OF_POOLS: Item<u64> = Item::new("number_of_pools");

@@ -43,44 +43,6 @@ impl fmt::Display for RewardTokenAsset {
 }
 
 impl RewardTokenAsset {
-    pub fn new(info: TokenInfo, amount: Uint128) -> Self {
-        Self { info, amount }
-    }
-
-    pub fn is_token(&self) -> bool {
-        self.info.is_token()
-    }
-
-    pub fn is_native_token(&self) -> bool {
-        self.info.is_native_token()
-    }
-
-    pub fn into_msg(self, recipient: Addr) -> StdResult<CosmosMsg> {
-        let amount = self.amount;
-
-        match &self.info {
-            TokenInfo::Token { contract_addr } => Ok(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: contract_addr.to_string(),
-                msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: recipient.to_string(),
-                    amount,
-                })?,
-                funds: vec![],
-            })),
-            TokenInfo::NativeToken { denom } => Ok(CosmosMsg::Bank(BankMsg::Send {
-                to_address: recipient.to_string(),
-                amount: vec![Coin {
-                    amount: self.amount,
-                    denom: denom.to_string(),
-                }],
-            })),
-        }
-    }
-
-    pub fn into_submsg(self, recipient: Addr) -> StdResult<SubMsg> {
-        Ok(SubMsg::new(self.into_msg(recipient)?))
-    }
-
     pub fn assert_sent_native_token_balance(&self, message_info: &MessageInfo) -> StdResult<()> {
         if let TokenInfo::NativeToken { denom } = &self.info {
             match message_info.funds.iter().find(|x| x.denom == *denom) {
@@ -124,27 +86,6 @@ impl fmt::Display for TokenInfo {
 pub enum TokenInfoRaw {
     Token { contract_addr: Addr },
     NativeToken { denom: String },
-}
-
-impl TokenInfo {
-    pub fn is_token(&self) -> bool {
-        matches!(self, TokenInfo::Token { .. })
-    }
-
-    pub fn is_native_token(&self) -> bool {
-        matches!(self, TokenInfo::NativeToken { .. })
-    }
-
-    pub fn to_raw(&self, api: &dyn Api) -> StdResult<TokenInfoRaw> {
-        match self {
-            TokenInfo::NativeToken { denom } => Ok(TokenInfoRaw::NativeToken {
-                denom: denom.to_string(),
-            }),
-            TokenInfo::Token { contract_addr } => Ok(TokenInfoRaw::Token {
-                contract_addr: api.addr_validate(contract_addr)?,
-            }),
-        }
-    }
 }
 
 // We define a custom struct for each query response

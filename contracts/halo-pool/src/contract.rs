@@ -1,3 +1,5 @@
+use std::env;
+
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
@@ -97,7 +99,7 @@ pub fn execute(
         ExecuteMsg::AddPhase {
             new_start_time,
             new_end_time,
-        } => execute_add_phase(deps, info, new_start_time, new_end_time),
+        } => execute_add_phase(deps, env, info, new_start_time, new_end_time),
         ExecuteMsg::ActivatePhase {} => execute_activate_phase(deps, env),
         ExecuteMsg::RemovePhase { phase_index } => {
             execute_remove_phase(deps, env, info, phase_index)
@@ -114,14 +116,22 @@ pub fn execute_add_reward_balance(
     phase_index: u64,
     asset: RewardTokenAsset,
 ) -> Result<Response, ContractError> {
-    // Get current time
-    let current_time = env.block.time;
-
     // Check the balance of native token is sent with the message
     asset.assert_sent_native_token_balance(&info)?;
 
+    // Get current time
+    let current_time = env.block.time;
     // Get pool infos
     let mut pool_infos = POOL_INFOS.load(deps.storage)?;
+    // Get current phase index
+    let current_phase_index = pool_infos.current_phase_index;
+
+    // Not allow to add reward balance to finished phase
+    if phase_index < current_phase_index {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Unauthorized: Can not add reward balance to finished phase",
+        )));
+    }
 
     // Check the message sender is the whitelisted address
     if !pool_infos.whitelist.contains(&info.sender) {
@@ -310,21 +320,20 @@ pub fn execute_remove_phase(
     let current_time = env.block.time;
     // Get pool infos
     let mut pool_infos = POOL_INFOS.load(deps.storage)?;
+    // Get current pool index
+    let current_phase_index = pool_infos.current_phase_index;
+
+    // Not allow removing activated phase
+    if current_phase_index >= phase_index {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Unauthorized: Can not remove activated phase",
+        )));
+    }
 
     // Check the message sender is the whitelisted address
     if !pool_infos.whitelist.contains(&info.sender) {
         return Err(ContractError::Std(StdError::generic_err(
             "Unauthorized: Sender is not in the whitelisted address",
-        )));
-    }
-
-    // Get current pool index
-    let current_phase_index = pool_infos.current_phase_index;
-
-    // Not allow removing activated phase
-    if current_phase_index == phase_index {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Unauthorized: Can not remove activated phase",
         )));
     }
 
@@ -905,6 +914,16 @@ fn execute_update_pool_limit_per_user(
         )));
     }
 
+    // Not allow new pool limit per user is less than previous pool limit per user
+    if new_pool_limit_per_user < pool_infos.pool_infos[current_phase_index as usize]
+        .pool_limit_per_user
+        .unwrap_or(Uint128::zero())
+    {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Unauthorized: New pool limit per user is less than previous pool limit per user",
+        )));
+    }
+
     // Update pool limit per user
     pool_infos.pool_infos[current_phase_index as usize].pool_limit_per_user =
         Some(new_pool_limit_per_user);
@@ -923,10 +942,19 @@ fn execute_update_pool_limit_per_user(
 
 pub fn execute_add_phase(
     deps: DepsMut,
+    env: Env,
     info: MessageInfo,
     new_start_time: u64,
     new_end_time: u64,
 ) -> Result<Response, ContractError> {
+    // Not allow new start time is greater than new end time
+    if new_start_time >= new_end_time {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Unauthorized: New start time is greater than new end time",
+        )));
+    }
+    // Get current time
+    let current_time = env.block.time;
     // Get config
     let config: Config = CONFIG.load(deps.storage)?;
     // Check if the message sender is the owner of the contract
@@ -937,6 +965,12 @@ pub fn execute_add_phase(
     }
     // Get pool infos
     let mut pool_infos: PoolInfos = POOL_INFOS.load(deps.storage)?;
+    // Not allow to add new phase when current time is greater than new start time
+    if current_time.seconds() > new_start_time {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Unauthorized: Current time is greater than new start time",
+        )));
+    }
     // Get phases reward balance
     let mut phases_reward_balance = pool_infos.reward_balance;
     // Get last reward time
