@@ -100,7 +100,7 @@ pub fn execute(
             new_start_time,
             new_end_time,
         } => execute_add_phase(deps, env, info, new_start_time, new_end_time),
-        ExecuteMsg::ActivatePhase {} => execute_activate_phase(deps, env),
+        ExecuteMsg::ActivatePhase {} => execute_activate_phase(deps, env, info),
         ExecuteMsg::RemovePhase { phase_index } => {
             execute_remove_phase(deps, env, info, phase_index)
         } // ExecuteMsg::RemoveRewardBalance { phase_index } => {
@@ -118,11 +118,20 @@ pub fn execute_add_reward_balance(
 ) -> Result<Response, ContractError> {
     // Check the balance of native token is sent with the message
     asset.assert_sent_native_token_balance(&info)?;
-
     // Get current time
     let current_time = env.block.time;
     // Get pool infos
     let mut pool_infos = POOL_INFOS.load(deps.storage)?;
+
+    // If reward token is cw20 token, check the contract address of asset is valid
+    if let TokenInfo::Token { contract_addr } = asset.info.clone() {
+        if contract_addr != pool_infos.reward_token.to_string() {
+            return Err(ContractError::Std(StdError::generic_err(
+                "Unauthorized: Invalid reward token contract address",
+            )));
+        }
+    }
+
     // Get current phase index
     let current_phase_index = pool_infos.current_phase_index;
 
@@ -1020,9 +1029,18 @@ pub fn execute_add_phase(
     Ok(res)
 }
 
-pub fn execute_activate_phase(deps: DepsMut, env: Env) -> Result<Response, ContractError> {
+pub fn execute_activate_phase(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, ContractError> {
     // Get current time
     let current_time = env.block.time;
+    // Get config
+    let config: Config = CONFIG.load(deps.storage)?;
+
+    // Check if the message sender is the owner of the contract
+    if config.halo_factory_owner != info.sender {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Unauthorized: Only owner can active new phase",
+        )));
+    }
     // Get pool infos
     let mut pool_infos: PoolInfos = POOL_INFOS.load(deps.storage)?;
 
