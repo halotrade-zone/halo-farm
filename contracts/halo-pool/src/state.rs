@@ -1,9 +1,5 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{
-    to_binary, Addr, Api, BankMsg, Coin, CosmosMsg, Decimal, MessageInfo, StdError, StdResult,
-    SubMsg, Uint128, WasmMsg,
-};
-use cw20::Cw20ExecuteMsg;
+use cosmwasm_std::{Addr, Decimal, MessageInfo, StdError, StdResult, Uint128};
 use cw_storage_plus::{Item, Map};
 use std::fmt;
 
@@ -14,21 +10,20 @@ pub struct Config {
 
 pub const CONFIG: Item<Config> = Item::new("config");
 
-pub const POOL_INFO: Item<PoolInfo> = Item::new("pool_info");
-
-/// Stores the last reward time which will be updated every time when the reward is withdrawn.
-pub const LAST_REWARD_TIME: Item<u64> = Item::new("last_reward_time");
-
-// Stores the accrued token per share.
-pub const ACCRUED_TOKEN_PER_SHARE: Item<Decimal> = Item::new("accrued_token_per_share");
+/// Stores pool info of multiple phases of the same pool.
+pub const POOL_INFOS: Item<PoolInfos> = Item::new("pool_infos");
 
 /// Mappping from staker address to staker balance.
-pub const STAKERS_INFO: Map<Addr, StakerRewardAssetInfo> = Map::new("stakers_info");
+pub const STAKERS_INFO: Map<Addr, StakerInfoResponse> = Map::new("stakers_info_response");
 
 #[cw_serde]
-pub struct StakerRewardAssetInfo {
+pub struct StakerInfoResponse {
     pub amount: Uint128,      // How many staked tokens the user has provided.
     pub reward_debt: Uint128, // Reward debt.
+    // Phases of the pool that the user has joined.
+    // If the user deposit, withdraw or harvest reward, it will be updated to the latest phase
+    // to calculate the reward amount correctly if the pool has multiple phases.
+    pub joined_phase: u64,
 }
 
 #[cw_serde]
@@ -44,44 +39,6 @@ impl fmt::Display for RewardTokenAsset {
 }
 
 impl RewardTokenAsset {
-    pub fn new(info: TokenInfo, amount: Uint128) -> Self {
-        Self { info, amount }
-    }
-
-    pub fn is_token(&self) -> bool {
-        self.info.is_token()
-    }
-
-    pub fn is_native_token(&self) -> bool {
-        self.info.is_native_token()
-    }
-
-    pub fn into_msg(self, recipient: Addr) -> StdResult<CosmosMsg> {
-        let amount = self.amount;
-
-        match &self.info {
-            TokenInfo::Token { contract_addr } => Ok(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: contract_addr.to_string(),
-                msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: recipient.to_string(),
-                    amount,
-                })?,
-                funds: vec![],
-            })),
-            TokenInfo::NativeToken { denom } => Ok(CosmosMsg::Bank(BankMsg::Send {
-                to_address: recipient.to_string(),
-                amount: vec![Coin {
-                    amount: self.amount,
-                    denom: denom.to_string(),
-                }],
-            })),
-        }
-    }
-
-    pub fn into_submsg(self, recipient: Addr) -> StdResult<SubMsg> {
-        Ok(SubMsg::new(self.into_msg(recipient)?))
-    }
-
     pub fn assert_sent_native_token_balance(&self, message_info: &MessageInfo) -> StdResult<()> {
         if let TokenInfo::NativeToken { denom } = &self.info {
             match message_info.funds.iter().find(|x| x.denom == *denom) {
@@ -127,42 +84,23 @@ pub enum TokenInfoRaw {
     NativeToken { denom: String },
 }
 
-impl TokenInfo {
-    pub fn is_token(&self) -> bool {
-        matches!(self, TokenInfo::Token { .. })
-    }
-
-    pub fn is_native_token(&self) -> bool {
-        matches!(self, TokenInfo::NativeToken { .. })
-    }
-
-    pub fn to_raw(&self, api: &dyn Api) -> StdResult<TokenInfoRaw> {
-        match self {
-            TokenInfo::NativeToken { denom } => Ok(TokenInfoRaw::NativeToken {
-                denom: denom.to_string(),
-            }),
-            TokenInfo::Token { contract_addr } => Ok(TokenInfoRaw::Token {
-                contract_addr: api.addr_validate(contract_addr)?,
-            }),
-        }
-    }
-}
-
 // We define a custom struct for each query response
 #[cw_serde]
 pub struct PoolInfo {
-    pub staked_token: String,
-    pub reward_token: TokenInfo,
     pub reward_per_second: Decimal,
     pub start_time: u64,
     pub end_time: u64,
     pub pool_limit_per_user: Option<Uint128>,
-    pub whitelist: Vec<Addr>,
 }
 
-// We define a custom struct for each query response
 #[cw_serde]
-pub struct PoolResponse {
+pub struct PoolInfos {
     pub staked_token: String,
-    pub total_share: Uint128,
+    pub reward_token: TokenInfo,
+    pub current_phase_index: u64,
+    pub pool_infos: Vec<PoolInfo>,
+    pub whitelist: Vec<Addr>,
+    pub reward_balance: Vec<Uint128>,
+    pub last_reward_time: Vec<u64>,
+    pub accrued_token_per_share: Vec<Decimal>,
 }

@@ -4,6 +4,7 @@
   "type": "object",
   "required": [
     "end_time",
+    "pool_owner",
     "reward_token",
     "staked_token",
     "start_time",
@@ -25,6 +26,9 @@
           "type": "null"
         }
       ]
+    },
+    "pool_owner": {
+      "$ref": "#/definitions/Addr"
     },
     "reward_token": {
       "description": "Reward Token address (CW20 or Native)",
