@@ -446,7 +446,11 @@ pub fn execute_deposit(
     if staker_joined_phase < current_phase_index {
         for i in staker_joined_phase..current_phase_index {
             // Get last reward time
-            let last_reward_time = pool_infos.last_reward_time[i as usize];
+            let mut last_reward_time = pool_infos.last_reward_time[i as usize];
+            // For the first deposit, set last reward time to current time
+            if last_reward_time == pool_infos.pool_infos[i as usize].start_time {
+                last_reward_time = current_time.seconds();
+            }
             // Get accrued token per share
             let accrued_token_per_share = pool_infos.accrued_token_per_share[i as usize];
             // Get pool info from pool infos
@@ -488,7 +492,11 @@ pub fn execute_deposit(
         staker_info.reward_debt = Uint128::zero();
     }
     // Get last reward time
-    let last_reward_time = pool_infos.last_reward_time[current_phase_index as usize];
+    let mut last_reward_time = pool_infos.last_reward_time[current_phase_index as usize];
+    // For the first deposit, set last reward time to current time
+    if last_reward_time == pool_infos.pool_infos[current_phase_index as usize].start_time {
+        last_reward_time = current_time.seconds();
+    }
     // Get accrued token per share
     let accrued_token_per_share = pool_infos.accrued_token_per_share[current_phase_index as usize];
     // Get staked token balance from pool contract
@@ -559,7 +567,9 @@ pub fn execute_deposit(
 
     res = res
         .add_submessage(transfer)
-        .add_attribute("method", "deposit");
+        .add_attribute("method", "deposit")
+        .add_attribute("deposit_amount", amount.to_string())
+        .add_attribute("reward_amount", reward_amount.to_string());
 
     Ok(res)
 }
@@ -730,7 +740,9 @@ pub fn execute_withdraw(
     res = res
         .add_submessage(transfer_reward)
         .add_submessage(withdraw)
-        .add_attribute("method", "withdraw");
+        .add_attribute("method", "withdraw")
+        .add_attribute("withdraw_amount", amount.to_string())
+        .add_attribute("reward_amount", reward_amount.to_string());
 
     Ok(res)
 }
@@ -889,7 +901,8 @@ pub fn execute_harvest(
     STAKERS_INFO.save(deps.storage, info.sender, &staker_info)?;
     let res = Response::new()
         .add_submessage(transfer)
-        .add_attribute("method", "harvest");
+        .add_attribute("method", "harvest")
+        .add_attribute("reward_amount", reward_amount.to_string());
 
     Ok(res)
 }

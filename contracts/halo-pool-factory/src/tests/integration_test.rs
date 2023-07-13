@@ -237,6 +237,13 @@ mod tests {
 
             assert!(response.is_ok());
 
+            // increase 1 second to make phase active
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
             // deposit lp token to the pool contract
             let deposit_msg = PoolExecuteMsg::Deposit {
                 amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT),
