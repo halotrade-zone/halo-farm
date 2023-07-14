@@ -567,6 +567,7 @@ pub fn execute_deposit(
 
     res = res
         .add_submessage(transfer)
+        .add_attribute("previous_receive_reward_time", last_reward_time.to_string())
         .add_attribute("method", "deposit")
         .add_attribute("deposit_amount", amount.to_string())
         .add_attribute("reward_amount", reward_amount.to_string());
@@ -740,6 +741,7 @@ pub fn execute_withdraw(
     res = res
         .add_submessage(transfer_reward)
         .add_submessage(withdraw)
+        .add_attribute("previous_receive_reward_time", last_reward_time.to_string())
         .add_attribute("method", "withdraw")
         .add_attribute("withdraw_amount", amount.to_string())
         .add_attribute("reward_amount", reward_amount.to_string());
@@ -901,6 +903,7 @@ pub fn execute_harvest(
     STAKERS_INFO.save(deps.storage, info.sender, &staker_info)?;
     let res = Response::new()
         .add_submessage(transfer)
+        .add_attribute("previous_receive_reward_time", last_reward_time.to_string())
         .add_attribute("method", "harvest")
         .add_attribute("reward_amount", reward_amount.to_string());
 
@@ -970,14 +973,20 @@ pub fn execute_add_phase(
     new_start_time: u64,
     new_end_time: u64,
 ) -> Result<Response, ContractError> {
+    // Get current time
+    let current_time = env.block.time;
     // Not allow new start time is greater than new end time
     if new_start_time >= new_end_time {
         return Err(ContractError::Std(StdError::generic_err(
             "Unauthorized: New start time is greater than new end time",
         )));
     }
-    // Get current time
-    let current_time = env.block.time;
+    // Not allow to add new phase when current time is greater than new start time
+    if current_time.seconds() > new_start_time {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Unauthorized: Current time is greater than new start time",
+        )));
+    }
     // Get config
     let config: Config = CONFIG.load(deps.storage)?;
     // Check if the message sender is the owner of the contract
@@ -988,12 +997,6 @@ pub fn execute_add_phase(
     }
     // Get pool infos
     let mut pool_infos: PoolInfos = POOL_INFOS.load(deps.storage)?;
-    // Not allow to add new phase when current time is greater than new start time
-    if current_time.seconds() > new_start_time {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Unauthorized: Current time is greater than new start time",
-        )));
-    }
     // Get phases reward balance
     let mut phases_reward_balance = pool_infos.reward_balance;
     // Get last reward time
@@ -1003,8 +1006,7 @@ pub fn execute_add_phase(
 
     // Increase length of pool infos
     pool_infos.pool_infos.push(PoolInfo {
-        reward_per_second: pool_infos.pool_infos[pool_infos.current_phase_index as usize]
-            .reward_per_second,
+        reward_per_second: Decimal::zero(),
         start_time: pool_infos.pool_infos[pool_infos.current_phase_index as usize].end_time,
         end_time: new_end_time,
         pool_limit_per_user: pool_infos.pool_infos[pool_infos.current_phase_index as usize]
