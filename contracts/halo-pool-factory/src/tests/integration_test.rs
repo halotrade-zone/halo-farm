@@ -22,7 +22,7 @@ mod tests {
         use cw20::{BalanceResponse, Cw20ExecuteMsg};
         use cw_multi_test::Executor;
         use halo_pool::state::{
-            PoolInfo, PoolInfos, RewardTokenAsset, StakerInfoResponse, TokenInfo,
+            PoolInfo, PoolInfos, RewardTokenAsset, StakerInfoResponse, TokenInfo, RewardTokenAssetForTest,
         };
 
         use crate::{
@@ -307,16 +307,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 60_000_000 as reward is accrued
             assert_eq!(
                 pending_reward,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::from(60000000u128)
+                    amount: Uint128::from(60000000u128),
+                    time_query: app.block_info().time.seconds(),
                 }
             );
 
@@ -371,16 +372,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 20_000_000 as reward is accrued
             assert_eq!(
                 pending_reward,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::from(20_000_000u128)
+                    amount: Uint128::from(20_000_000u128),
+                    time_query: 1571797428,
                 }
             );
 
@@ -708,16 +710,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_2s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_admin_2s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 13333333 as reward is accrued
             assert_eq!(
                 pending_reward_admin_2s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::from(13_333_333u128)
+                    amount: Uint128::from(13_333_333u128),
+                    time_query: 1571797421
                 }
             );
 
@@ -731,16 +734,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user1_2s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_user1_2s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 6666666 as reward is accrued
             assert_eq!(
                 pending_reward_user1_2s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::from(6_666_666u128)
+                    amount: Uint128::from(6_666_666u128),
+                    time_query: 1571797421
                 }
             );
 
@@ -817,16 +821,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_6s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_admin_6s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 26666666 as reward is accrued
             assert_eq!(
                 pending_reward_admin_6s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::from(26_666_666u128)
+                    amount: Uint128::from(26_666_666u128),
+                    time_query: 1571797425
                 }
             );
 
@@ -897,16 +902,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user1_8s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_user1_8s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 23333333 as reward is accrued
             assert_eq!(
                 pending_reward_user1_8s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::from(23_333_333u128)
+                    amount: Uint128::from(23_333_333u128),
+                    time_query: 1571797427
                 }
             );
 
@@ -975,16 +981,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_10s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_admin_10s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 30000000 as reward is accrued
             assert_eq!(
                 pending_reward_admin_10s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::from(30_000_000u128)
+                    amount: Uint128::from(30_000_000u128),
+                    time_query: 1571797429
                 }
             );
 
@@ -1037,16 +1044,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user_1_10s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_user_1_10s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 0 as all lp token is withdrawn
             assert_eq!(
                 pending_reward_user_1_10s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::zero()
+                    amount: Uint128::zero(),
+                    time_query: 1571797431
                 }
             );
 
@@ -1116,16 +1124,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_14s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_admin_14s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 40000000 as reward is accrued
             assert_eq!(
                 pending_reward_admin_14s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::from(40_000_000u128)
+                    amount: Uint128::from(40_000_000u128),
+                    time_query: 1571797433
                 }
             );
 
@@ -1196,16 +1205,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_16s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_admin_16s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 20000000 as reward is accrued
             assert_eq!(
                 pending_reward_admin_16s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::from(20_000_000u128)
+                    amount: Uint128::from(20_000_000u128),
+                    time_query: 1571797435
                 }
             );
 
@@ -1226,16 +1236,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_18s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_admin_18s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 37391305 as reward is accrued
             assert_eq!(
                 pending_reward_admin_18s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::from(37_391_305u128)
+                    amount: Uint128::from(37_391_305u128),
+                    time_query: 1571797437
                 }
             );
 
@@ -1286,16 +1297,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user_1_18s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_user_1_18s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 2608696 as reward is accrued
             assert_eq!(
                 pending_reward_user_1_18s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::from(2_608_696u128)
+                    amount: Uint128::from(2_608_696u128),
+                    time_query: 1571797437
                 }
             );
 
@@ -1389,16 +1401,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_100s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_admin_100s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 713_043_478 as reward is accrued
             assert_eq!(
                 pending_reward_admin_100s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::from(713_043_478u128)
+                    amount: Uint128::from(713_043_478u128),
+                    time_query: 1571797519
                 }
             );
 
@@ -1450,16 +1463,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user_1_100s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_user_1_100s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 106_956_522 as reward is accrued
             assert_eq!(
                 pending_reward_user_1_100s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::from(106_956_522u128)
+                    amount: Uint128::from(106_956_522u128),
+                    time_query: 1571797519
                 }
             );
 
@@ -1589,16 +1603,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_135s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_admin_135s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 217_391_304 as reward is accrued
             assert_eq!(
                 pending_reward_admin_135s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::from(217_391_304u128)
+                    amount: Uint128::from(217_391_304u128),
+                    time_query: 1571797549
                 }
             );
 
@@ -1673,16 +1688,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user_1_135s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_user_1_135s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 106_956_522 + 32_608_695 = 139_565_217 as reward is accrued
             assert_eq!(
                 pending_reward_user_1_135s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::from(139_565_217u128)
+                    amount: Uint128::from(139_565_217u128),
+                    time_query: 1571797549
                 }
             );
 
@@ -1738,16 +1754,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_150s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_admin_150s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 163_043_478 as reward is accrued
             assert_eq!(
                 pending_reward_admin_150s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::from(163_043_478u128)
+                    amount: Uint128::from(163_043_478u128),
+                    time_query: 1571797564
                 }
             );
 
@@ -1802,16 +1819,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user_1_150s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_user_1_150s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 24_456_522 as reward is accrued
             assert_eq!(
                 pending_reward_user_1_150s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::from(24_456_522u128)
+                    amount: Uint128::from(24_456_522u128),
+                    time_query: 1571797564
                 }
             );
 
@@ -1868,16 +1886,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_155s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_admin_155s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 54_347_826 as reward is accrued
             assert_eq!(
                 pending_reward_admin_155s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::from(54_347_826u128)
+                    amount: Uint128::from(54_347_826u128),
+                    time_query: 1571797569
                 }
             );
 
@@ -1962,16 +1981,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user_1_160s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_user_1_160s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 22_575_251 as reward is accrued
             assert_eq!(
                 pending_reward_user_1_160s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::from(22_575_251u128)
+                    amount: Uint128::from(22_575_251u128),
+                    time_query: 1571797574
                 }
             );
 
@@ -2027,16 +2047,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_165s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_admin_165s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 96_153_846 as reward is accrued
             assert_eq!(
                 pending_reward_admin_165s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::from(96_153_846u128)
+                    amount: Uint128::from(96_153_846u128),
+                    time_query: 1571797579
                 }
             );
 
@@ -2089,16 +2110,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_170s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_admin_170s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 54_347_826 as reward is accrued
             assert_eq!(
                 pending_reward_admin_170s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::from(54_347_826u128)
+                    amount: Uint128::from(54_347_826u128),
+                    time_query: 1571797584
                 }
             );
 
@@ -2387,16 +2409,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_2s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_admin_2s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 20x10^18 as reward is accrued
             assert_eq!(
                 pending_reward_admin_2s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::Token {
                         contract_addr: reward_token_contract.clone()
                     },
-                    amount: Uint128::from(20_000_000_000_000_000_000u128)
+                    amount: Uint128::from(20_000_000_000_000_000_000u128),
+                    time_query: 1571797421,
                 }
             );
 
@@ -2479,16 +2502,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user1_4s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_user1_4s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 6,6666x10^18 as reward is accrued
             assert_eq!(
                 pending_reward_user1_4s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::Token {
                         contract_addr: reward_token_contract.clone()
                     },
-                    amount: Uint128::from(6_666_666_666_666_666_666u128)
+                    amount: Uint128::from(6_666_666_666_666_666_666u128),
+                    time_query: 1571797423,
                 }
             );
 
@@ -2536,16 +2560,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_6s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_admin_6s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 26,666x10^18 as reward is accrued
             assert_eq!(
                 pending_reward_admin_6s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::Token {
                         contract_addr: reward_token_contract.clone()
                     },
-                    amount: Uint128::from(26_666_666_666_666_666_666u128)
+                    amount: Uint128::from(26_666_666_666_666_666_666u128),
+                    time_query: 1571797425,
                 }
             );
 
@@ -2599,16 +2624,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_7s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_admin_7s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 5x10^18 as reward is accrued
             assert_eq!(
                 pending_reward_admin_7s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::Token {
                         contract_addr: reward_token_contract.clone()
                     },
-                    amount: Uint128::from(5_000_000_000_000_000_000u128)
+                    amount: Uint128::from(5_000_000_000_000_000_000u128),
+                    time_query: 1571797426,
                 }
             );
 
@@ -2661,16 +2687,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_8s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_admin_8s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 6,66x10^18 as reward is accrued
             assert_eq!(
                 pending_reward_admin_8s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::Token {
                         contract_addr: reward_token_contract.clone()
                     },
-                    amount: Uint128::from(6_666_666_666_666_666_667u128)
+                    amount: Uint128::from(6_666_666_666_666_666_667u128),
+                    time_query: 1571797427,
                 }
             );
 
@@ -2717,16 +2744,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user1_8s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_user1_8s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 15x10^18 as reward is accrued
             assert_eq!(
                 pending_reward_user1_8s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::Token {
                         contract_addr: reward_token_contract.clone()
                     },
-                    amount: Uint128::from(15_000_000_000_000_000_000u128)
+                    amount: Uint128::from(15_000_000_000_000_000_000u128),
+                    time_query: 1571797427,
                 }
             );
 
@@ -2808,16 +2836,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_100s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_admin_100s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 920x10^18 as reward is accrued
             assert_eq!(
                 pending_reward_admin_100s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::Token {
                         contract_addr: reward_token_contract.clone()
                     },
-                    amount: Uint128::from(613_333_333_333_333_333_333u128)
+                    amount: Uint128::from(613_333_333_333_333_333_333u128),
+                    time_query: 1571797519,
                 }
             );
 
@@ -2831,17 +2860,18 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user_1_100s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_user_1_100s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 306,666x10^18 as reward is accrued
 
             assert_eq!(
                 pending_reward_user_1_100s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::Token {
                         contract_addr: reward_token_contract.clone()
                     },
-                    amount: Uint128::from(306_666_666_666_666_666_667u128)
+                    amount: Uint128::from(306_666_666_666_666_666_667u128),
+                    time_query: 1571797519,
                 }
             );
 
@@ -2929,16 +2959,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_101s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_admin_101s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 679,999^18 as reward is accrued
             assert_eq!(
                 pending_reward_admin_101s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::Token {
                         contract_addr: reward_token_contract.clone()
                     },
-                    amount: Uint128::from(679_999_999_999_999_999_999u128)
+                    amount: Uint128::from(679_999_999_999_999_999_999u128),
+                    time_query: 1571797520,
                 }
             );
 
@@ -2952,16 +2983,17 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user_1_101s: RewardTokenAsset = from_binary(&res).unwrap();
+            let pending_reward_user_1_101s: RewardTokenAssetForTest = from_binary(&res).unwrap();
 
             // It should be 340,000^18 as reward is accrued
             assert_eq!(
                 pending_reward_user_1_101s,
-                RewardTokenAsset {
+                RewardTokenAssetForTest {
                     info: TokenInfo::Token {
                         contract_addr: reward_token_contract.clone()
                     },
-                    amount: Uint128::from(340_000_000_000_000_000_000u128)
+                    amount: Uint128::from(340_000_000_000_000_000_000u128),
+                    time_query: 1571797520,
                 }
             );
 

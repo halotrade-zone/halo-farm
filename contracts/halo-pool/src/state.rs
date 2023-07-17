@@ -32,6 +32,13 @@ pub struct RewardTokenAsset {
     pub amount: Uint128,
 }
 
+#[cw_serde]
+pub struct RewardTokenAssetForTest {
+    pub info: TokenInfo,
+    pub amount: Uint128,
+    pub time_query: u64,
+}
+
 impl fmt::Display for RewardTokenAsset {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}: {}", self.info, self.amount)
