@@ -568,6 +568,7 @@ pub fn execute_deposit(
     res = res
         .add_submessage(transfer)
         .add_attribute("previous_receive_reward_time", last_reward_time.to_string())
+        .add_attribute("current_time", current_time.seconds().to_string())
         .add_attribute("method", "deposit")
         .add_attribute("deposit_amount", amount.to_string())
         .add_attribute("reward_amount", reward_amount.to_string());
@@ -742,6 +743,7 @@ pub fn execute_withdraw(
         .add_submessage(transfer_reward)
         .add_submessage(withdraw)
         .add_attribute("previous_receive_reward_time", last_reward_time.to_string())
+        .add_attribute("current_time", current_time.seconds().to_string())
         .add_attribute("method", "withdraw")
         .add_attribute("withdraw_amount", amount.to_string())
         .add_attribute("reward_amount", reward_amount.to_string());
@@ -904,6 +906,7 @@ pub fn execute_harvest(
     let res = Response::new()
         .add_submessage(transfer)
         .add_attribute("previous_receive_reward_time", last_reward_time.to_string())
+        .add_attribute("current_time", current_time.seconds().to_string())
         .add_attribute("method", "harvest")
         .add_attribute("reward_amount", reward_amount.to_string());
 
