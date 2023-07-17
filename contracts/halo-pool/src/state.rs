@@ -33,7 +33,7 @@ pub struct RewardTokenAsset {
 }
 
 #[cw_serde]
-pub struct RewardTokenAssetForTest {
+pub struct RewardTokenAssetResponse {
     pub info: TokenInfo,
     pub amount: Uint128,
     pub time_query: u64,

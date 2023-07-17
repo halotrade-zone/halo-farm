@@ -21,7 +21,7 @@ use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{
         Config, PoolInfo, PoolInfos, RewardTokenAsset, StakerInfoResponse, TokenInfo, CONFIG,
-        POOL_INFOS, STAKERS_INFO, RewardTokenAssetForTest,
+        POOL_INFOS, STAKERS_INFO, RewardTokenAssetResponse,
     },
 };
 
@@ -1138,7 +1138,7 @@ fn query_pending_reward(
     deps: Deps,
     env: Env,
     address: String,
-) -> Result<RewardTokenAssetForTest, ContractError> {
+) -> Result<RewardTokenAssetResponse, ContractError> {
     // Get current time
     let current_time = env.block.time;
     // Get pool infos
@@ -1175,7 +1175,7 @@ fn query_pending_reward(
     // Check if there is any staked token in the pool
     if staked_token_supply == Uint128::zero() {
         // No staked token in the pool, save last reward time and return
-        let res = RewardTokenAssetForTest {
+        let res = RewardTokenAssetResponse {
             info: pool_infos.reward_token,
             amount: Uint128::zero(),
             time_query: current_time.seconds(),
@@ -1220,7 +1220,7 @@ fn query_pending_reward(
         staker_info.reward_debt,
     );
 
-    Ok(RewardTokenAssetForTest {
+    Ok(RewardTokenAssetResponse {
         info: pool_infos.reward_token,
         amount: reward_amount,
         time_query: current_time.seconds(),
