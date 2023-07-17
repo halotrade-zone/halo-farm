@@ -20,8 +20,8 @@ use crate::{
     formulas::{calc_reward_amount, get_multiplier, update_pool},
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{
-        Config, PoolInfo, PoolInfos, RewardTokenAsset, StakerInfoResponse, TokenInfo, CONFIG,
-        POOL_INFOS, STAKERS_INFO, RewardTokenAssetResponse,
+        Config, PoolInfo, PoolInfos, RewardTokenAsset, RewardTokenAssetResponse,
+        StakerInfoResponse, TokenInfo, CONFIG, POOL_INFOS, STAKERS_INFO,
     },
 };
 
@@ -1047,7 +1047,11 @@ pub fn execute_add_phase(
     Ok(res)
 }
 
-pub fn execute_activate_phase(deps: DepsMut, env: Env, info: MessageInfo) -> Result<Response, ContractError> {
+pub fn execute_activate_phase(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+) -> Result<Response, ContractError> {
     // Get current time
     let current_time = env.block.time;
     // Get config
