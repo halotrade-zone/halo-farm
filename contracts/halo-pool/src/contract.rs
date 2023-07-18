@@ -1203,11 +1203,7 @@ fn query_pending_reward(
 
     // If phase not started yet
     if current_time.seconds() < pool_info.start_time {
-        multiplier = get_multiplier(
-            last_reward_time[current_phase_index as usize - 1],
-            pool_infos.pool_infos[current_phase_index as usize - 1].end_time,
-            pool_info.end_time,
-        );
+        multiplier = 0u64;
     } else {
         multiplier = get_multiplier(
             last_reward_time[current_phase_index as usize],
@@ -1217,6 +1213,7 @@ fn query_pending_reward(
     }
 
     let reward: Decimal = Decimal::new(multiplier.into()) * pool_info.reward_per_second;
+
     accrued_token_per_share[current_phase_index as usize] +=
         reward / Decimal::new(staked_token_supply);
 
