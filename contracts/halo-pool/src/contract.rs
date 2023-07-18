@@ -102,7 +102,7 @@ pub fn execute(
         } => execute_add_phase(deps, env, info, new_start_time, new_end_time),
         ExecuteMsg::ActivatePhase {} => execute_activate_phase(deps, env, info),
         ExecuteMsg::RemovePhase { phase_index } => {
-            execute_remove_phase(deps, env, info, phase_index)
+            execute_remove_phase(deps, info, phase_index)
         } // ExecuteMsg::RemoveRewardBalance { phase_index } => {
           //     execute_remove_reward_balance(deps, env, info, phase_index)
           // }
@@ -321,12 +321,9 @@ pub fn execute_add_reward_balance(
 
 pub fn execute_remove_phase(
     deps: DepsMut,
-    env: Env,
     info: MessageInfo,
     phase_index: u64,
 ) -> Result<Response, ContractError> {
-    // Get current time
-    let current_time = env.block.time;
     // Get pool infos
     let mut pool_infos = POOL_INFOS.load(deps.storage)?;
     // Get current pool index
@@ -343,13 +340,6 @@ pub fn execute_remove_phase(
     if !pool_infos.whitelist.contains(&info.sender) {
         return Err(ContractError::Std(StdError::generic_err(
             "Unauthorized: Sender is not in the whitelisted address",
-        )));
-    }
-
-    // Not allow removing phase when current time is greater than start time of the phase
-    if current_time.seconds() > pool_infos.pool_infos[phase_index as usize].start_time {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Unauthorized: Current time is greater than start time of the phase",
         )));
     }
 
