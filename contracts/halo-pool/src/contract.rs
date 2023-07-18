@@ -1145,6 +1145,8 @@ fn query_pending_reward(
     let last_reward_time = pool_infos.last_reward_time;
     // Get accrued token per share
     let mut accrued_token_per_share = pool_infos.accrued_token_per_share;
+    // Multiply factor
+    let mut multiplier: u64;
 
     // Get staker info
     let mut staker_info = STAKERS_INFO
@@ -1182,7 +1184,7 @@ fn query_pending_reward(
             // Get pool info from pool infos
             let pool_info = POOL_INFOS.load(deps.storage)?.pool_infos[i as usize].clone();
 
-            let multiplier = get_multiplier(
+            multiplier = get_multiplier(
                 last_reward_time[i as usize],
                 pool_info.end_time,
                 pool_info.end_time,
@@ -1198,11 +1200,21 @@ fn query_pending_reward(
         }
         staker_info.reward_debt = Uint128::zero();
     }
-    let multiplier = get_multiplier(
-        last_reward_time[current_phase_index as usize],
-        current_time.seconds(),
-        pool_info.end_time,
-    );
+
+    // If phase not started yet
+    if current_time.seconds() < pool_info.start_time {
+        multiplier = get_multiplier(
+            last_reward_time[current_phase_index as usize - 1],
+            pool_infos.pool_infos[current_phase_index as usize - 1].end_time,
+            pool_info.end_time,
+        );
+    } else {
+        multiplier = get_multiplier(
+            last_reward_time[current_phase_index as usize],
+            current_time.seconds(),
+            pool_info.end_time,
+        );
+    }
 
     let reward: Decimal = Decimal::new(multiplier.into()) * pool_info.reward_per_second;
     accrued_token_per_share[current_phase_index as usize] +=
