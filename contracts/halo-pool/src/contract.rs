@@ -119,7 +119,7 @@ pub fn execute_add_reward_balance(
     // Check the balance of native token is sent with the message
     asset.assert_sent_native_token_balance(&info)?;
     // Get current time
-    let current_time = env.block.time;
+    let current_time = env.block.time.seconds();
     // Get pool infos
     let mut pool_infos = POOL_INFOS.load(deps.storage)?;
 
@@ -153,7 +153,7 @@ pub fn execute_add_reward_balance(
     let pool_info = pool_infos.pool_infos[phase_index as usize].clone();
 
     // Not allow adding reward balance when current time is greater than start time of the phase
-    if current_time.seconds() > pool_info.start_time {
+    if current_time > pool_info.start_time {
         return Err(ContractError::Std(StdError::generic_err(
             "Unauthorized: Current time is greater than start time of the phase",
         )));
@@ -237,7 +237,7 @@ pub fn execute_add_reward_balance(
         pool_info.reward_per_second,
         staked_token_supply,
         accrued_token_per_share,
-        current_time.seconds(),
+        current_time,
         pool_infos.last_reward_time[phase_index as usize],
     );
 
@@ -387,7 +387,7 @@ pub fn execute_deposit(
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     // Get current time
-    let current_time = env.block.time;
+    let current_time = env.block.time.seconds();
     // Get pool infos
     let mut pool_infos = POOL_INFOS.load(deps.storage)?;
     // Get current pool index
@@ -405,7 +405,7 @@ pub fn execute_deposit(
 
     // Not allow depositing when current time is greater than end time of the phase
     // and less than start time of the phase
-    if current_time.seconds() > pool_info.end_time || current_time.seconds() < pool_info.start_time
+    if current_time > pool_info.end_time || current_time < pool_info.start_time
     {
         return Err(ContractError::Std(StdError::generic_err(
             "Unauthorized: Current time is not in the range of the phase",
@@ -439,7 +439,7 @@ pub fn execute_deposit(
             let mut last_reward_time = pool_infos.last_reward_time[i as usize];
             // For the first deposit, set last reward time to current time
             if last_reward_time == pool_infos.pool_infos[i as usize].start_time {
-                last_reward_time = current_time.seconds();
+                last_reward_time = current_time;
             }
             // Get accrued token per share
             let accrued_token_per_share = pool_infos.accrued_token_per_share[i as usize];
@@ -485,7 +485,7 @@ pub fn execute_deposit(
     let mut last_reward_time = pool_infos.last_reward_time[current_phase_index as usize];
     // For the first deposit, set last reward time to current time
     if last_reward_time == pool_infos.pool_infos[current_phase_index as usize].start_time {
-        last_reward_time = current_time.seconds();
+        last_reward_time = current_time;
     }
     // Get accrued token per share
     let accrued_token_per_share = pool_infos.accrued_token_per_share[current_phase_index as usize];
@@ -502,7 +502,7 @@ pub fn execute_deposit(
         pool_info.reward_per_second,
         staked_token_supply,
         accrued_token_per_share,
-        current_time.seconds(),
+        current_time,
         last_reward_time,
     );
 
@@ -558,7 +558,7 @@ pub fn execute_deposit(
     res = res
         .add_submessage(transfer)
         .add_attribute("previous_receive_reward_time", last_reward_time.to_string())
-        .add_attribute("current_time", current_time.seconds().to_string())
+        .add_attribute("current_time", current_time.to_string())
         .add_attribute("method", "deposit")
         .add_attribute("deposit_amount", amount.to_string())
         .add_attribute("reward_amount", reward_amount.to_string());
@@ -573,7 +573,7 @@ pub fn execute_withdraw(
     amount: Uint128,
 ) -> Result<Response, ContractError> {
     // Get current time
-    let current_time = env.block.time;
+    let current_time = env.block.time.seconds();
     // Get pool infos
     let mut pool_infos = POOL_INFOS.load(deps.storage)?;
     // Get current pool index
@@ -674,7 +674,7 @@ pub fn execute_withdraw(
         pool_info.reward_per_second,
         staked_token_supply,
         accrued_token_per_share,
-        current_time.seconds(),
+        current_time,
         last_reward_time,
     );
 
@@ -733,7 +733,7 @@ pub fn execute_withdraw(
         .add_submessage(transfer_reward)
         .add_submessage(withdraw)
         .add_attribute("previous_receive_reward_time", last_reward_time.to_string())
-        .add_attribute("current_time", current_time.seconds().to_string())
+        .add_attribute("current_time", current_time.to_string())
         .add_attribute("method", "withdraw")
         .add_attribute("withdraw_amount", amount.to_string())
         .add_attribute("reward_amount", reward_amount.to_string());
@@ -748,7 +748,7 @@ pub fn execute_harvest(
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
     // Get current time
-    let current_time = env.block.time;
+    let current_time = env.block.time.seconds();
     // Get pool infos
     let mut pool_infos = POOL_INFOS.load(deps.storage)?;
     // Get current pool index
@@ -847,7 +847,7 @@ pub fn execute_harvest(
         pool_info.reward_per_second,
         staked_token_supply,
         accrued_token_per_share,
-        current_time.seconds(),
+        current_time,
         last_reward_time,
     );
 
@@ -896,7 +896,7 @@ pub fn execute_harvest(
     let res = Response::new()
         .add_submessage(transfer)
         .add_attribute("previous_receive_reward_time", last_reward_time.to_string())
-        .add_attribute("current_time", current_time.seconds().to_string())
+        .add_attribute("current_time", current_time.to_string())
         .add_attribute("method", "harvest")
         .add_attribute("reward_amount", reward_amount.to_string());
 
@@ -919,14 +919,14 @@ fn execute_update_pool_limit_per_user(
     }
 
     // Get current time
-    let current_time = env.block.time;
+    let current_time = env.block.time.seconds();
     // Get pool infos
     let mut pool_infos = POOL_INFOS.load(deps.storage)?;
     // Get current pool index
     let current_phase_index = pool_infos.current_phase_index;
 
     // Not allow updating pool limit per user when current time is greater than start time of the phase
-    if current_time.seconds() > pool_infos.pool_infos[current_phase_index as usize].start_time {
+    if current_time > pool_infos.pool_infos[current_phase_index as usize].start_time {
         return Err(ContractError::Std(StdError::generic_err(
             "Unauthorized: Current time is greater than start time of the phase",
         )));
@@ -967,7 +967,7 @@ pub fn execute_add_phase(
     new_end_time: u64,
 ) -> Result<Response, ContractError> {
     // Get current time
-    let current_time = env.block.time;
+    let current_time = env.block.time.seconds();
     // Not allow new start time is greater than new end time
     if new_start_time >= new_end_time {
         return Err(ContractError::Std(StdError::generic_err(
@@ -975,7 +975,7 @@ pub fn execute_add_phase(
         )));
     }
     // Not allow to add new phase when current time is greater than new start time
-    if current_time.seconds() > new_start_time {
+    if current_time > new_start_time {
         return Err(ContractError::Std(StdError::generic_err(
             "Unauthorized: Current time is greater than new start time",
         )));
@@ -1000,24 +1000,16 @@ pub fn execute_add_phase(
     // Increase length of pool infos
     pool_infos.pool_infos.push(PoolInfo {
         reward_per_second: Decimal::zero(),
-        start_time: pool_infos.pool_infos[pool_infos.current_phase_index as usize].end_time,
+        start_time: new_start_time,
         end_time: new_end_time,
         pool_limit_per_user: pool_infos.pool_infos[pool_infos.current_phase_index as usize]
             .pool_limit_per_user,
     });
 
-    // Update new start time of the current pool to end time of the previous pool
-    pool_infos.pool_infos[pool_infos.current_phase_index as usize + 1].start_time = new_start_time;
-
-    // Update end time of the current pool
-    pool_infos.pool_infos[pool_infos.current_phase_index as usize + 1].end_time = new_end_time;
-
     // Increase length of reward balance
     phases_reward_balance.push(Uint128::zero());
-
     // Increase length of last reward time
     phases_last_reward_time.push(new_start_time);
-
     // Increase length of accrued token per share
     phases_accrued_token_per_share.push(Decimal::zero());
 
@@ -1043,7 +1035,7 @@ pub fn execute_activate_phase(
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
     // Get current time
-    let current_time = env.block.time;
+    let current_time = env.block.time.seconds();
     // Get config
     let config: Config = CONFIG.load(deps.storage)?;
 
@@ -1058,9 +1050,9 @@ pub fn execute_activate_phase(
 
     // Not allow activating phase when current time is less than end time of the current pool
     // or greater than start time of the phase to be activated
-    if current_time.seconds()
+    if current_time
         < pool_infos.pool_infos[pool_infos.current_phase_index as usize].end_time
-        || current_time.seconds()
+        || current_time
             > pool_infos.pool_infos[pool_infos.current_phase_index as usize + 1].start_time
     {
         return Err(ContractError::Std(StdError::generic_err(
@@ -1134,7 +1126,7 @@ fn query_pending_reward(
     address: String,
 ) -> Result<RewardTokenAssetResponse, ContractError> {
     // Get current time
-    let current_time = env.block.time;
+    let current_time = env.block.time.seconds();
     // Get pool infos
     let pool_infos = POOL_INFOS.load(deps.storage)?;
     // Get current pool index
@@ -1174,7 +1166,7 @@ fn query_pending_reward(
         let res = RewardTokenAssetResponse {
             info: pool_infos.reward_token,
             amount: Uint128::zero(),
-            time_query: current_time.seconds(),
+            time_query: current_time,
         };
         return Ok(res);
     }
@@ -1202,12 +1194,12 @@ fn query_pending_reward(
     }
 
     // If phase not started yet
-    if current_time.seconds() < pool_info.start_time {
+    if current_time < pool_info.start_time {
         multiplier = 0u64;
     } else {
         multiplier = get_multiplier(
             last_reward_time[current_phase_index as usize],
-            current_time.seconds(),
+            current_time,
             pool_info.end_time,
         );
     }
@@ -1226,7 +1218,7 @@ fn query_pending_reward(
     Ok(RewardTokenAssetResponse {
         info: pool_infos.reward_token,
         amount: reward_amount,
-        time_query: current_time.seconds(),
+        time_query: current_time,
     })
 }
 
