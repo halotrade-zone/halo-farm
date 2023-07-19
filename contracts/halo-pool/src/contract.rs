@@ -990,13 +990,23 @@ pub fn execute_add_phase(
     }
     // Get pool infos
     let mut pool_infos: PoolInfos = POOL_INFOS.load(deps.storage)?;
+    // Get current pool infos length
+    let pool_length = pool_infos.pool_infos.len();
+    // Get current phase index
+    let current_phase_index = pool_infos.current_phase_index;
+    // Not allow add new phase when previous phase is not active yet
+    if pool_length as u64 > current_phase_index + 2 {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Unauthorized: Previous phase is not active",
+        )));
+    }
+
     // Get phases reward balance
     let mut phases_reward_balance = pool_infos.reward_balance;
     // Get last reward time
     let mut phases_last_reward_time = pool_infos.last_reward_time;
     // Get accrued token per share
     let mut phases_accrued_token_per_share = pool_infos.accrued_token_per_share;
-
     // Increase length of pool infos
     pool_infos.pool_infos.push(PoolInfo {
         reward_per_second: Decimal::zero(),
@@ -1148,6 +1158,15 @@ fn query_pending_reward(
             reward_debt: Uint128::zero(),
             joined_phase: 0u64,
         });
+
+    // If staked amount is zero, return zero reward
+    if staker_info.amount == Uint128::zero() {
+        return Ok(RewardTokenAssetResponse {
+            info: pool_infos.reward_token,
+            amount: Uint128::zero(),
+            time_query: current_time,
+        });
+    }
 
     // Get staked token balance from pool contract
     let staked_token_supply = query_token_balance(
