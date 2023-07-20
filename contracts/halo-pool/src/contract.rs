@@ -1062,7 +1062,7 @@ pub fn execute_activate_phase(
     let total_staked_token = query_token_balance(
         &deps.querier,
         pool_infos.staked_token.clone(),
-        env.contract.address.clone(),
+        env.contract.address,
     )?;
 
     // Update total staked token
