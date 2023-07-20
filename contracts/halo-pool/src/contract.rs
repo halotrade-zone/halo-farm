@@ -104,9 +104,10 @@ pub fn execute(
         ExecuteMsg::ActivatePhase {} => execute_activate_phase(deps, env, info),
         ExecuteMsg::RemovePhase { phase_index } => {
             execute_remove_phase(deps, info, phase_index)
-        } // ExecuteMsg::RemoveRewardBalance { phase_index } => {
-          //     execute_remove_reward_balance(deps, env, info, phase_index)
-          // }
+        },
+        // ExecuteMsg::RemoveRewardBalance { phase_index } => {
+        //     execute_remove_reward_balance(deps, env, info, phase_index)
+        // }
     }
 }
 
@@ -406,8 +407,7 @@ pub fn execute_deposit(
 
     // Not allow depositing when current time is greater than end time of the phase
     // and less than start time of the phase
-    if current_time > pool_info.end_time || current_time < pool_info.start_time
-    {
+    if current_time > pool_info.end_time || current_time < pool_info.start_time {
         return Err(ContractError::Std(StdError::generic_err(
             "Unauthorized: Current time is not in the range of the phase",
         )));
@@ -543,7 +543,8 @@ pub fn execute_deposit(
 
     // Update staker info
     staker_info.amount += amount;
-    staker_info.reward_debt[current_phase_index as usize] = staker_info.amount * new_accrued_token_per_share;
+    staker_info.reward_debt[current_phase_index as usize] =
+        staker_info.amount * new_accrued_token_per_share;
     staker_info.joined_phase = current_phase_index;
 
     STAKERS_INFO.save(deps.storage, info.sender, &staker_info)?;
@@ -707,7 +708,8 @@ pub fn execute_withdraw(
 
     // Update staker amount
     staker_info.amount -= amount;
-    staker_info.reward_debt[current_phase_index as usize] = staker_info.amount * new_accrued_token_per_share;
+    staker_info.reward_debt[current_phase_index as usize] =
+        staker_info.amount * new_accrued_token_per_share;
     staker_info.joined_phase = current_phase_index;
 
     // Check if staker amount is zero, remove staker info from storage
@@ -852,7 +854,8 @@ pub fn execute_harvest(
         staker_info.reward_debt[current_phase_index as usize],
     );
     // Update staker reward debt
-    staker_info.reward_debt[current_phase_index as usize] = staker_info.amount * new_accrued_token_per_share;
+    staker_info.reward_debt[current_phase_index as usize] =
+        staker_info.amount * new_accrued_token_per_share;
     // Update staker info
     STAKERS_INFO.save(deps.storage, info.sender.clone(), &staker_info)?;
 
@@ -1051,8 +1054,7 @@ pub fn execute_activate_phase(
 
     // Not allow activating phase when current time is less than end time of the current pool
     // or greater than start time of the phase to be activated
-    if current_time
-        < pool_infos.pool_infos[pool_infos.current_phase_index as usize].end_time
+    if current_time < pool_infos.pool_infos[pool_infos.current_phase_index as usize].end_time
         || current_time
             > pool_infos.pool_infos[pool_infos.current_phase_index as usize + 1].start_time
     {
@@ -1142,12 +1144,14 @@ fn query_pending_reward(
     // Get pool infos
     let pool_infos = POOL_INFOS.load(deps.storage)?;
     // Check if staker has staked in the pool
-    if STAKERS_INFO.may_load(deps.storage, Addr::unchecked(address.clone()))?.is_none() {
-        return Ok(RewardTokenAssetResponse {
-            info: pool_infos.reward_token,
-            amount: Uint128::zero(),
-            time_query: current_time,
-        });
+    if STAKERS_INFO
+        .may_load(deps.storage, Addr::unchecked(address.clone()))?
+        .is_none() {
+            return Ok(RewardTokenAssetResponse {
+                info: pool_infos.reward_token,
+                amount: Uint128::zero(),
+                time_query: current_time,
+            });
     }
     // Get current pool index
     let current_phase_index = pool_infos.current_phase_index;
@@ -1162,7 +1166,8 @@ fn query_pending_reward(
 
     // Get staker info
     let staker_info = STAKERS_INFO
-        .load(deps.storage, Addr::unchecked(address)).unwrap();
+        .load(deps.storage, Addr::unchecked(address))
+        .unwrap();
 
     // get staker joined phases
     let staker_joined_phase = staker_info.joined_phase;

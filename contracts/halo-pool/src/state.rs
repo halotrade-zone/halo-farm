@@ -18,7 +18,7 @@ pub const STAKERS_INFO: Map<Addr, StakerInfoResponse> = Map::new("stakers_info_r
 
 #[cw_serde]
 pub struct StakerInfoResponse {
-    pub amount: Uint128,      // How many staked tokens the user has provided.
+    pub amount: Uint128,           // How many staked tokens the user has provided.
     pub reward_debt: Vec<Uint128>, // Store reward debt in multiple phases.
     pub joined_phase: u64,
 }
