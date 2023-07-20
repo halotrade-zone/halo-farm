@@ -329,7 +329,7 @@ pub fn execute_remove_phase(
     let mut res = Response::new();
 
     // Not allow removing activated phase
-    if  phase_index <= current_phase_index {
+    if phase_index <= current_phase_index {
         return Err(ContractError::Std(StdError::generic_err(
             "Unauthorized: Can not remove activated phase",
         )));
