@@ -325,9 +325,11 @@ pub fn execute_remove_phase(
     let mut pool_infos = POOL_INFOS.load(deps.storage)?;
     // Get current pool index
     let current_phase_index = pool_infos.current_phase_index;
+    // Init response
+    let mut res = Response::new();
 
     // Not allow removing activated phase
-    if current_phase_index >= phase_index {
+    if  phase_index <= current_phase_index {
         return Err(ContractError::Std(StdError::generic_err(
             "Unauthorized: Can not remove activated phase",
         )));
@@ -340,9 +342,8 @@ pub fn execute_remove_phase(
         )));
     }
 
-    // If the pool already added reward balance, transfer all phase reward token balance to the sender
+    // If the pool already added reward balance, transfer back all phase reward balance to the sender
     if pool_infos.reward_balance[phase_index as usize] > Uint128::zero() {
-        // Transfer all remaining reward token balance to the sender
         let transfer_reward = match pool_infos.reward_token.clone() {
             TokenInfo::Token { contract_addr } => SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr,
@@ -360,7 +361,7 @@ pub fn execute_remove_phase(
                 )],
             })),
         };
-        return Ok(Response::new().add_submessage(transfer_reward));
+        res = res.add_submessage(transfer_reward);
     }
 
     // Remove phase
@@ -374,7 +375,7 @@ pub fn execute_remove_phase(
     // Save pool infos
     POOL_INFOS.save(deps.storage, &pool_infos)?;
 
-    Ok(Response::new().add_attribute("method", "remove_phase"))
+    Ok(res.add_attribute("method", "remove_phase"))
 }
 
 pub fn execute_deposit(
