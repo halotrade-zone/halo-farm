@@ -12,7 +12,7 @@ mod tests {
     // create pool contract by factory contract
     // deposit some lp token to the pool contract
     // withdraw some lp token from the pool contract
-    mod execute_deposit_and_withdraw {
+    mod execute_proper_operation {
         use std::str::FromStr;
 
         use cosmwasm_std::{
@@ -22,14 +22,17 @@ mod tests {
         use cw20::{BalanceResponse, Cw20ExecuteMsg};
         use cw_multi_test::Executor;
         use halo_pool::state::{
-            PoolInfo, PoolInfos, RewardTokenAsset, StakerInfoResponse, TokenInfo, RewardTokenAssetResponse,
+            PoolInfo, PoolInfos, RewardTokenAsset, RewardTokenAssetResponse, StakerInfoResponse,
+            TokenInfo,
         };
 
         use crate::{
             msg::QueryMsg,
             state::FactoryPoolInfo,
             tests::{
-                env_setup::env::{instantiate_contracts, ADMIN, NATIVE_DENOM_2, USER_1, NATIVE_BALANCE_2},
+                env_setup::env::{
+                    instantiate_contracts, ADMIN, NATIVE_BALANCE_2, NATIVE_DENOM_2, USER_1,
+                },
                 integration_test::tests::{
                     ADD_1000_NATIVE_BALANCE_2, INIT_1000_000_NATIVE_BALANCE_2,
                     MOCK_1000_HALO_LP_TOKEN_AMOUNT, MOCK_1000_HALO_REWARD_TOKEN_AMOUNT,
@@ -1554,7 +1557,9 @@ mod tests {
                             end_time: pool_info.pool_infos[pool_info.current_phase_index as usize]
                                 .end_time,
                             pool_limit_per_user: None,
-                            total_staked_at_end_time: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT + MOCK_150_HALO_LP_TOKEN_AMOUNT),
+                            total_staked_at_end_time: Uint128::from(
+                                MOCK_1000_HALO_LP_TOKEN_AMOUNT + MOCK_150_HALO_LP_TOKEN_AMOUNT
+                            ),
                         },
                         PoolInfo {
                             reward_per_second: Decimal::from_str("12500000").unwrap(), // 12_500_000 (12.5 NATIVE_DENOM_2)
@@ -3211,16 +3216,21 @@ mod tests {
         // ----- Phase 0 -----
         // Add 1000 NATIVE_2 reward balance amount to pool contract by ADMIN in phase 0
         // with end time 10 seconds -> 100 NATIVE_2 per second
-        // Deposit 1000 lp token to the pool contract by ADMIN after 2 seconds
+        // Increase 2 seconds
+        // Deposit 1000 lp token to the pool contract by ADMIN
+        // Increase 8 seconds
         // -> ADMIN Reward balance 8s: 800 NATIVE_2 (Not claim yet)
         // ----- Phase 1 -----
-        // Extend end time by ADMIN more 10 seconds
+        // Extend end time by ADMIN more 10 seconds with start time = Phase 0's endtime + 2 seconds
         // Increase 1 second
         // Add 1000 NATIVE_2 reward balance amount to pool contract by ADMIN in phase 1
         // with end time 10 seconds -> 100 NATIVE_2 per second
-        // Deposit 500 lp token to the pool contract by USER_1 after 2 seconds
-        // -> ADMIN Reward balance 13s: 200 NATIVE_2 (Not claim yet)
-        //
+        // Increase 1 second to make 12 seconds passed -> Phase 1 starts
+        // Increase 2 seconds to make 14 seconds passed
+        // Deposit 500 lp token to the pool contract by USER_1
+        // -> ADMIN Reward balance 14s: 200 NATIVE_2 (Not claim yet)
+        // Increase 6 second
+        // USER_1 Pending reward 6s: (500 / (1000 + 500) * 6 * 100) = 200 NATIVE_2
         // Harvest reward by ADMIN after 6 seconds
         // -> Reward balance 19s: 800 + 200 + (1000 / (1000 + 500) * 6 * 100) = 1400 NATIVE_2
         #[test]
@@ -3417,8 +3427,11 @@ mod tests {
             // ----- Phase 1 -----
             // Extend end time by ADMIN more 10 seconds
             let extend_end_time_msg = PoolExecuteMsg::AddPhase {
-                new_start_time: pool_info.pool_infos[pool_info.current_phase_index as usize].end_time + 2,
-                new_end_time: pool_info.pool_infos[pool_info.current_phase_index as usize].end_time + 12,
+                new_start_time: pool_info.pool_infos[pool_info.current_phase_index as usize]
+                    .end_time
+                    + 2,
+                new_end_time: pool_info.pool_infos[pool_info.current_phase_index as usize].end_time
+                    + 12,
             };
 
             // Execute extend end time by ADMIN
@@ -3550,58 +3563,6 @@ mod tests {
                 chain_id: app.block_info().chain_id,
             });
 
-
-
-
-            // // query balance of ADMIN in native token
-            // let req: QueryRequest<BankQuery> = QueryRequest::Bank(BankQuery::Balance {
-            //     address: ADMIN.to_string(),
-            //     denom: NATIVE_DENOM_2.to_string(),
-            // });
-            // let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            // let balance: BankBalanceResponse = from_binary(&res).unwrap();
-
-            // // It should be 1_000_000 NATIVE_DENOM_2 as minting happened
-            // assert_eq!(
-            //     balance.amount.amount,
-            //     Uint128::from(
-            //         NATIVE_BALANCE_2
-            //         - ADD_1000_NATIVE_BALANCE_2
-            //         - ADD_1000_NATIVE_BALANCE_2
-            //     ));
-
-            // // deposit 1000 lp token to the pool contract by ADMIN
-            // let deposit_msg = PoolExecuteMsg::Deposit {
-            //     amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT),
-            // };
-
-            // // Execute deposit by ADMIN
-            // let response = app.execute_contract(
-            //     Addr::unchecked(ADMIN.to_string()),
-            //     Addr::unchecked("contract3"),
-            //     &deposit_msg,
-            //     &[],
-            // );
-
-            // assert!(response.is_ok());
-
-            // // query balance of ADMIN in native token
-            // let req: QueryRequest<BankQuery> = QueryRequest::Bank(BankQuery::Balance {
-            //     address: ADMIN.to_string(),
-            //     denom: NATIVE_DENOM_2.to_string(),
-            // });
-            // let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            // let balance: BankBalanceResponse = from_binary(&res).unwrap();
-
-            // // It should be 1_000_000 NATIVE_DENOM_2 as minting happened
-            // assert_eq!(
-            //     balance.amount.amount,
-            //     Uint128::from(
-            //         NATIVE_BALANCE_2
-            //         - ADD_1000_NATIVE_BALANCE_2
-            //         - ADD_1000_NATIVE_BALANCE_2
-            //     ));
-
             // query pending reward by ADMIN after 20 seconds
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: "contract3".to_string(),
@@ -3626,7 +3587,101 @@ mod tests {
                 }
             );
 
-        }
+            // query pending reward by USER_1 after 6 seconds
+            let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&PoolQueryMsg::PendingReward {
+                    address: USER_1.to_string(),
+                })
+                .unwrap(),
+            });
 
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_user1_6s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+
+            // It should be 200 NATIVE_2 as reward is accrued
+            assert_eq!(
+                pending_reward_user1_6s,
+                RewardTokenAssetResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(200_000_000u128),
+                    time_query: 1571797439,
+                }
+            );
+
+            // query balance of ADMIN in native token
+            let req: QueryRequest<BankQuery> = QueryRequest::Bank(BankQuery::Balance {
+                address: ADMIN.to_string(),
+                denom: NATIVE_DENOM_2.to_string(),
+            });
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let balance: BankBalanceResponse = from_binary(&res).unwrap();
+
+            // It should be 1_000_000 NATIVE_DENOM_2 as minting happened
+            assert_eq!(
+                balance.amount.amount,
+                Uint128::from(
+                    NATIVE_BALANCE_2 - ADD_1000_NATIVE_BALANCE_2 - ADD_1000_NATIVE_BALANCE_2
+                )
+            );
+
+            // deposit 1000 lp token to the pool contract by ADMIN
+            let deposit_msg = PoolExecuteMsg::Deposit {
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT),
+            };
+
+            // Execute deposit by ADMIN
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked("contract3"),
+                &deposit_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // query balance of ADMIN in native token
+            let req: QueryRequest<BankQuery> = QueryRequest::Bank(BankQuery::Balance {
+                address: ADMIN.to_string(),
+                denom: NATIVE_DENOM_2.to_string(),
+            });
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let balance: BankBalanceResponse = from_binary(&res).unwrap();
+
+            // It should be 1_000_000 NATIVE_DENOM_2 as minting happened
+            assert_eq!(
+                balance.amount.amount,
+                Uint128::from(Uint128::from(
+                    NATIVE_BALANCE_2 - ADD_1000_NATIVE_BALANCE_2 - ADD_1000_NATIVE_BALANCE_2
+                        + pending_reward_admin_20s.amount.u128()
+                ))
+            );
+
+            // query pending reward by USER_1 after 6 seconds after ADMIN harvest
+            let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&PoolQueryMsg::PendingReward {
+                    address: USER_1.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_user1_6s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+
+            // It should be 200 NATIVE_2 as reward is accrued
+            assert_eq!(
+                pending_reward_user1_6s,
+                RewardTokenAssetResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(200_000_000u128),
+                    time_query: 1571797439,
+                }
+            );
+        }
     }
 }

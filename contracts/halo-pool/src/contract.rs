@@ -40,7 +40,7 @@ pub fn instantiate(
 
     // Init pool info
     let pool_info = PoolInfo {
-        reward_per_second: Decimal::zero(), // will be updated when admin adding reward balance
+        reward_per_second: Decimal::zero(), // will be updated after admin adding reward balance
         start_time: msg.start_time,
         end_time: msg.end_time,
         pool_limit_per_user: msg.pool_limit_per_user,
@@ -469,9 +469,7 @@ pub fn execute_deposit(
             // Save pool infos
             POOL_INFOS.save(deps.storage, &pool_infos)?;
         }
-        // // Reset reward debt to 0
-        // staker_info.reward_debt = Uint128::zero();
-        // Increase length of user reward debt
+        // Increase length of user reward debt to current pool index
         staker_info.reward_debt.push(Uint128::zero());
     }
 
@@ -645,9 +643,7 @@ pub fn execute_withdraw(
             // Update staker info
             staker_info.reward_debt[i as usize] = staker_info.amount * new_accrued_token_per_share;
         }
-        // // Reset reward debt to 0
-        // staker_info.reward_debt = Uint128::zero();
-        // Increase length of user reward debt
+        // Increase length of user reward debt to current pool index
         staker_info.reward_debt.push(Uint128::zero());
     }
     // Get last reward time
@@ -1165,7 +1161,7 @@ fn query_pending_reward(
     let mut multiplier: u64;
 
     // Get staker info
-    let mut staker_info = STAKERS_INFO
+    let staker_info = STAKERS_INFO
         .load(deps.storage, Addr::unchecked(address)).unwrap();
 
     // get staker joined phases
@@ -1193,9 +1189,7 @@ fn query_pending_reward(
                 accrued_token_per_share[i as usize],
                 staker_info.reward_debt[i as usize],
             );
-            println!("reward_amount: {}", reward_amount);
         }
-        // staker_info.reward_debt = Uint128::zero();
     }
 
     // If phase not started yet
