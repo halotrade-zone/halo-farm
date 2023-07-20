@@ -72,7 +72,8 @@
       "required": [
         "end_time",
         "reward_per_second",
-        "start_time"
+        "start_time",
+        "total_staked_at_end_time"
       ],
       "properties": {
         "end_time": {
@@ -97,6 +98,9 @@
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
+        },
+        "total_staked_at_end_time": {
+          "$ref": "#/definitions/Uint128"
         }
       },
       "additionalProperties": false

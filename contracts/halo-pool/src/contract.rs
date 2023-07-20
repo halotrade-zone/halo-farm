@@ -102,9 +102,7 @@ pub fn execute(
             new_end_time,
         } => execute_add_phase(deps, env, info, new_start_time, new_end_time),
         ExecuteMsg::ActivatePhase {} => execute_activate_phase(deps, env, info),
-        ExecuteMsg::RemovePhase { phase_index } => {
-            execute_remove_phase(deps, info, phase_index)
-        }
+        ExecuteMsg::RemovePhase { phase_index } => execute_remove_phase(deps, info, phase_index),
     }
 }
 
