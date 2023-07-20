@@ -105,9 +105,11 @@ pub fn execute(
         ExecuteMsg::RemovePhase { phase_index } => {
             execute_remove_phase(deps, info, phase_index)
         },
-        // ExecuteMsg::RemoveRewardBalance { phase_index } => {
-        //     execute_remove_reward_balance(deps, env, info, phase_index)
-        // }
+        /*
+            ExecuteMsg::RemoveRewardBalance { phase_index } => {
+                execute_remove_reward_balance(deps, env, info, phase_index)
+            }
+        */
     }
 }
 
@@ -1146,12 +1148,13 @@ fn query_pending_reward(
     // Check if staker has staked in the pool
     if STAKERS_INFO
         .may_load(deps.storage, Addr::unchecked(address.clone()))?
-        .is_none() {
-            return Ok(RewardTokenAssetResponse {
-                info: pool_infos.reward_token,
-                amount: Uint128::zero(),
-                time_query: current_time,
-            });
+        .is_none()
+    {
+        return Ok(RewardTokenAssetResponse {
+            info: pool_infos.reward_token,
+            amount: Uint128::zero(),
+            time_query: current_time,
+        });
     }
     // Get current pool index
     let current_phase_index = pool_infos.current_phase_index;
