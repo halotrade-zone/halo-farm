@@ -3653,10 +3653,10 @@ mod tests {
             // It should be 1_000_000 NATIVE_DENOM_2 as minting happened
             assert_eq!(
                 balance.amount.amount,
-                Uint128::from(Uint128::from(
+                Uint128::from(
                     NATIVE_BALANCE_2 - ADD_1000_NATIVE_BALANCE_2 - ADD_1000_NATIVE_BALANCE_2
                         + pending_reward_admin_20s.amount.u128()
-                ))
+                )
             );
 
             // query pending reward by USER_1 after 6 seconds after ADMIN harvest
