@@ -19,10 +19,7 @@ pub const STAKERS_INFO: Map<Addr, StakerInfoResponse> = Map::new("stakers_info_r
 #[cw_serde]
 pub struct StakerInfoResponse {
     pub amount: Uint128,      // How many staked tokens the user has provided.
-    pub reward_debt: Uint128, // Reward debt.
-    // Phases of the pool that the user has joined.
-    // If the user deposit, withdraw or harvest reward, it will be updated to the latest phase
-    // to calculate the reward amount correctly if the pool has multiple phases.
+    pub reward_debt: Vec<Uint128>, // Store reward debt in multiple phases.
     pub joined_phase: u64,
 }
 
@@ -98,6 +95,9 @@ pub struct PoolInfo {
     pub start_time: u64,
     pub end_time: u64,
     pub pool_limit_per_user: Option<Uint128>,
+    // Total staked token at end time to calculate the reward amount correctly
+    //if the pool has multiple phases.
+    pub total_staked_at_end_time: Uint128,
 }
 
 #[cw_serde]
