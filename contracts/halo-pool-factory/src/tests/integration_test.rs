@@ -155,7 +155,7 @@ mod tests {
             let add_reward_balance_msg = PoolExecuteMsg::AddRewardBalance {
                 phase_index: 0u64,
                 asset: RewardTokenAsset {
-                    info: reward_asset_info.clone(),
+                    info: reward_asset_info,
                     amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
                 },
             };
@@ -3339,7 +3339,7 @@ mod tests {
                 pool_info,
                 PoolInfos {
                     staked_token: lp_token_contract.to_string(),
-                    reward_token: native_token_info.clone(),
+                    reward_token: native_token_info,
                     current_phase_index: 0u64,
                     pool_infos: vec![PoolInfo {
                         reward_per_second: Decimal::from_str("100000000").unwrap(), // 100_000_000 (100 NATIVE_DENOM_2)
@@ -3519,7 +3519,7 @@ mod tests {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
-                    amount: Uint128::from(1000_000_000u128),
+                    amount: Uint128::from(1_000_000_000u128),
                     time_query: 1571797433,
                 }
             );
@@ -3654,9 +3654,10 @@ mod tests {
             assert_eq!(
                 balance.amount.amount,
                 Uint128::from(Uint128::from(
-                    NATIVE_BALANCE_2 - ADD_1000_NATIVE_BALANCE_2 - ADD_1000_NATIVE_BALANCE_2
-                        + pending_reward_admin_20s.amount.u128()
-                ))
+                        NATIVE_BALANCE_2 - ADD_1000_NATIVE_BALANCE_2 - ADD_1000_NATIVE_BALANCE_2
+                            + pending_reward_admin_20s.amount.u128()
+                    )
+                )
             );
 
             // query pending reward by USER_1 after 6 seconds after ADMIN harvest
