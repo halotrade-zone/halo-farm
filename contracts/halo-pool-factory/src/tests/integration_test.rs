@@ -3654,10 +3654,9 @@ mod tests {
             assert_eq!(
                 balance.amount.amount,
                 Uint128::from(Uint128::from(
-                        NATIVE_BALANCE_2 - ADD_1000_NATIVE_BALANCE_2 - ADD_1000_NATIVE_BALANCE_2
-                            + pending_reward_admin_20s.amount.u128()
-                    )
-                )
+                    NATIVE_BALANCE_2 - ADD_1000_NATIVE_BALANCE_2 - ADD_1000_NATIVE_BALANCE_2
+                        + pending_reward_admin_20s.amount.u128()
+                ))
             );
 
             // query pending reward by USER_1 after 6 seconds after ADMIN harvest
