@@ -104,12 +104,7 @@ pub fn execute(
         ExecuteMsg::ActivatePhase {} => execute_activate_phase(deps, env, info),
         ExecuteMsg::RemovePhase { phase_index } => {
             execute_remove_phase(deps, info, phase_index)
-        },
-        /*
-            ExecuteMsg::RemoveRewardBalance { phase_index } => {
-                execute_remove_reward_balance(deps, env, info, phase_index)
-            }
-        */
+        }
     }
 }
 
