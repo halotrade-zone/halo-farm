@@ -124,7 +124,7 @@ pub fn execute_add_reward_balance(
     if let TokenInfo::Token { contract_addr } = asset.info.clone() {
         if contract_addr != pool_infos.reward_token.to_string() {
             return Err(ContractError::Std(StdError::generic_err(
-                "Unauthorized: Invalid reward token contract address",
+                "Invalid reward token contract address",
             )));
         }
     }
@@ -135,7 +135,7 @@ pub fn execute_add_reward_balance(
     // Not allow to add reward balance to finished phase
     if phase_index < current_phase_index {
         return Err(ContractError::Std(StdError::generic_err(
-            "Unauthorized: Can not add reward balance to finished phase",
+            "Can not add reward balance to finished phase",
         )));
     }
 
@@ -152,7 +152,7 @@ pub fn execute_add_reward_balance(
     // Not allow adding reward balance when current time is greater than start time of the phase
     if current_time > pool_info.start_time {
         return Err(ContractError::Std(StdError::generic_err(
-            "Unauthorized: Current time is greater than start time of the phase",
+            "Current time is greater than start time of the phase",
         )));
     }
 
@@ -164,7 +164,7 @@ pub fn execute_add_reward_balance(
     // Only allow adding reward balance once
     if reward_balance > Uint128::zero() {
         return Err(ContractError::Std(StdError::generic_err(
-            "Unauthorized: Can not add reward balance twice",
+            "Can not add reward balance twice",
         )));
     }
 
@@ -331,7 +331,7 @@ pub fn execute_remove_phase(
     // Not allow removing activated phase
     if phase_index <= current_phase_index {
         return Err(ContractError::Std(StdError::generic_err(
-            "Unauthorized: Can not remove activated phase",
+            "Can not remove activated phase",
         )));
     }
 
@@ -405,7 +405,7 @@ pub fn execute_deposit(
     // and less than start time of the phase
     if current_time > pool_info.end_time || current_time < pool_info.start_time {
         return Err(ContractError::Std(StdError::generic_err(
-            "Unauthorized: Current time is not in the range of the phase",
+            "Current time is not in the range of the phase",
         )));
     }
 
@@ -413,7 +413,7 @@ pub fn execute_deposit(
     if let Some(pool_limit_per_user) = pool_info.pool_limit_per_user {
         if staker_info.amount + amount > pool_limit_per_user {
             return Err(ContractError::Std(StdError::generic_err(
-                "Unauthorized: Deposit amount exceeds pool limit per user",
+                "Deposit amount exceeds pool limit per user",
             )));
         }
     }
@@ -765,8 +765,6 @@ pub fn execute_harvest(
     let mut new_accrued_token_per_share;
     // Init new last reward time
     let mut new_last_reward_time;
-    // // Get last reward time
-    // let last_reward_time = LAST_REWARD_TIME.load(deps.storage)?;
 
     // If staker has joined previous phases, loops all pool infos to get reward per second from current pool index to staker joined phases
     if staker_joined_phase < current_phase_index {
@@ -810,9 +808,6 @@ pub fn execute_harvest(
             // Update staker info
             STAKERS_INFO.save(deps.storage, info.sender.clone(), &staker_info)?;
         }
-        // staker_info.reward_debt = Uint128::zero();
-        // // Update staker info
-        // STAKERS_INFO.save(deps.storage, info.sender.clone(), &staker_info)?;
         // Increase length of user reward debt
         staker_info.reward_debt.push(Uint128::zero());
     }
@@ -916,7 +911,7 @@ fn execute_update_pool_limit_per_user(
     // Not allow updating pool limit per user when current time is greater than start time of the phase
     if current_time > pool_infos.pool_infos[current_phase_index as usize].start_time {
         return Err(ContractError::Std(StdError::generic_err(
-            "Unauthorized: Current time is greater than start time of the phase",
+            "Current time is greater than start time of the phase",
         )));
     }
 
@@ -927,7 +922,7 @@ fn execute_update_pool_limit_per_user(
             .unwrap_or(Uint128::zero())
     {
         return Err(ContractError::Std(StdError::generic_err(
-            "Unauthorized: New pool limit per user is less than previous pool limit per user",
+            "New pool limit per user is less than previous pool limit per user",
         )));
     }
 
@@ -959,13 +954,13 @@ pub fn execute_add_phase(
     // Not allow new start time is greater than new end time
     if new_start_time >= new_end_time {
         return Err(ContractError::Std(StdError::generic_err(
-            "Unauthorized: New start time is greater than new end time",
+            "New start time is greater than new end time",
         )));
     }
     // Not allow to add new phase when current time is greater than new start time
     if current_time > new_start_time {
         return Err(ContractError::Std(StdError::generic_err(
-            "Unauthorized: Current time is greater than new start time",
+            "Current time is greater than new start time",
         )));
     }
     // Get config
@@ -984,9 +979,9 @@ pub fn execute_add_phase(
     let current_phase_index = pool_infos.current_phase_index;
 
     // Not allow add new phase when previous phase is not active yet
-    if pool_length as u64 > current_phase_index + 1 {
+    if pool_length as u64 - 1 > current_phase_index {
         return Err(ContractError::Std(StdError::generic_err(
-            "Unauthorized: Previous phase is not active",
+            "Previous phase is not active",
         )));
     }
 
@@ -1001,7 +996,7 @@ pub fn execute_add_phase(
         reward_per_second: Decimal::zero(),
         start_time: new_start_time,
         end_time: new_end_time,
-        pool_limit_per_user: pool_infos.pool_infos[pool_infos.current_phase_index as usize]
+        pool_limit_per_user: pool_infos.pool_infos[current_phase_index as usize]
             .pool_limit_per_user,
         total_staked_at_end_time: Uint128::zero(),
     });
@@ -1055,7 +1050,7 @@ pub fn execute_activate_phase(
             > pool_infos.pool_infos[pool_infos.current_phase_index as usize + 1].start_time
     {
         return Err(ContractError::Std(StdError::generic_err(
-            "Unauthorized: Current time is not in range of the phase to be activated",
+            "Current time is not in range of the phase to be activated",
         )));
     }
 
@@ -1066,11 +1061,11 @@ pub fn execute_activate_phase(
         env.contract.address,
     )?;
 
-    // Update total staked token
+    // Update total staked token at end time of the current pool
     pool_infos.pool_infos[pool_infos.current_phase_index as usize].total_staked_at_end_time =
         total_staked_token;
 
-    // Increase current pool index
+    // Increase current pool index to activate new phase
     pool_infos.current_phase_index += 1;
 
     // Save pool infos
