@@ -19,7 +19,7 @@ pub struct ConfigResponse {
 // We define a custom struct for storing pools info
 #[cw_serde]
 pub struct FactoryPoolInfo {
-    pub staked_token: String,
+    pub staked_token: Addr,
     pub reward_token: TokenInfo,
     pub start_time: u64,
     pub end_time: u64,

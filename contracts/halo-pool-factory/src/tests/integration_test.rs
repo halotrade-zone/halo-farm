@@ -21,10 +21,10 @@ mod tests {
         };
         use cw20::{BalanceResponse, Cw20ExecuteMsg};
         use cw_multi_test::Executor;
-        use halo_pool::state::{
-            PoolInfo, PoolInfos, RewardTokenAsset, RewardTokenAssetResponse, StakerInfoResponse,
+        use halo_pool::{state::{
+            PhaseInfo, PoolInfos, RewardTokenAsset, RewardTokenAssetResponse,
             TokenInfo,
-        };
+        }, msg::StakerInfoResponse};
 
         use crate::{
             msg::QueryMsg,
@@ -108,12 +108,12 @@ mod tests {
 
             // create pool contract by factory contract
             let create_pool_msg = crate::msg::ExecuteMsg::CreatePool {
-                staked_token: lp_token_contract.clone(),
+                staked_token: Addr::unchecked(lp_token_contract.clone()),
                 reward_token: native_token_info.clone(),
                 start_time: current_block_time,
                 end_time: current_block_time + 100,
                 pool_limit_per_user: None,
-                whitelist: vec![Addr::unchecked(ADMIN.to_string())],
+                whitelist: Addr::unchecked(ADMIN.to_string()),
             };
 
             // Execute create pool
@@ -139,7 +139,7 @@ mod tests {
             assert_eq!(
                 pool_info,
                 FactoryPoolInfo {
-                    staked_token: lp_token_contract.to_string(),
+                    staked_token: Addr::unchecked(lp_token_contract),
                     reward_token: native_token_info.clone(),
                     start_time: current_block_time,
                     end_time: current_block_time + 100,
@@ -183,18 +183,18 @@ mod tests {
             assert_eq!(
                 pool_info,
                 PoolInfos {
-                    staked_token: lp_token_contract.to_string(),
+                    staked_token: Addr::unchecked(lp_token_contract.clone()),
                     reward_token: native_token_info.clone(),
                     current_phase_index: 0u64,
-                    pool_infos: vec![PoolInfo {
+                    phases_info: vec![PhaseInfo {
                         reward_per_second: Decimal::from_str("10000000").unwrap(), // 10_000_000 (10 NATIVE_DENOM_2)
                         start_time: current_block_time,
                         end_time: current_block_time + 100,
                         pool_limit_per_user: None,
+                        whitelist: Addr::unchecked(ADMIN.to_string()),
+                        reward_balance: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
                         total_staked_at_end_time: Uint128::zero(),
                     }],
-                    whitelist: vec![Addr::unchecked(ADMIN.to_string())],
-                    reward_balance: vec![Uint128::from(ADD_1000_NATIVE_BALANCE_2)],
                     last_reward_time: vec![current_block_time],
                     accrued_token_per_share: vec![Decimal::zero()],
                 }
@@ -216,7 +216,7 @@ mod tests {
             assert_eq!(
                 pools,
                 vec![FactoryPoolInfo {
-                    staked_token: lp_token_contract.to_string(),
+                    staked_token: Addr::unchecked(lp_token_contract),
                     reward_token: native_token_info,
                     start_time: current_block_time,
                     end_time: current_block_time + 100,
@@ -570,12 +570,12 @@ mod tests {
 
             // create pool contract by factory contract
             let create_pool_msg = crate::msg::ExecuteMsg::CreatePool {
-                staked_token: lp_token_contract.clone(),
+                staked_token: Addr::unchecked(lp_token_contract.clone()),
                 reward_token: native_token_info.clone(),
                 start_time: current_block_time,
                 end_time: current_block_time + 100,
                 pool_limit_per_user: None,
-                whitelist: vec![Addr::unchecked(ADMIN.to_string())],
+                whitelist: Addr::unchecked(ADMIN.to_string()),
             };
 
             // Execute create pool
@@ -624,18 +624,18 @@ mod tests {
             assert_eq!(
                 pool_info,
                 PoolInfos {
-                    staked_token: lp_token_contract.to_string(),
+                    staked_token: Addr::unchecked(lp_token_contract),
                     reward_token: native_token_info.clone(),
                     current_phase_index: 0u64,
-                    pool_infos: vec![PoolInfo {
+                    phases_info: vec![PhaseInfo {
                         reward_per_second: Decimal::from_str("10000000").unwrap(), // 10_000_000 (10 NATIVE_DENOM_2)
                         start_time: current_block_time,
                         end_time: current_block_time + 100,
                         pool_limit_per_user: None,
+                        whitelist: Addr::unchecked(ADMIN.to_string()),
+                        reward_balance: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
                         total_staked_at_end_time: Uint128::zero(),
                     }],
-                    whitelist: vec![Addr::unchecked(ADMIN.to_string())],
-                    reward_balance: vec![Uint128::from(ADD_1000_NATIVE_BALANCE_2)],
                     last_reward_time: vec![current_block_time],
                     accrued_token_per_share: vec![Decimal::zero()],
                 }
@@ -1350,11 +1350,12 @@ mod tests {
 
             // Extend end time by ADMIN more 80 seconds
             let extend_end_time_msg = PoolExecuteMsg::AddPhase {
-                new_start_time: pool_info.pool_infos[pool_info.current_phase_index as usize]
+                new_start_time: pool_info.phases_info[pool_info.current_phase_index as usize]
                     .end_time
                     + 10,
-                new_end_time: pool_info.pool_infos[pool_info.current_phase_index as usize].end_time
+                new_end_time: pool_info.phases_info[pool_info.current_phase_index as usize].end_time
                     + 90,
+                whitelist: Addr::unchecked(ADMIN.to_string()),
             };
 
             // Execute extend end time by ADMIN
@@ -1545,43 +1546,42 @@ mod tests {
             assert_eq!(
                 pool_info_phase1,
                 PoolInfos {
-                    staked_token: lp_token_contract.to_string(),
+                    staked_token: Addr::unchecked(lp_token_contract),
                     reward_token: native_token_info,
                     current_phase_index: 1u64,
-                    pool_infos: vec![
-                        PoolInfo {
+                    phases_info: vec![
+                        PhaseInfo {
                             reward_per_second: Decimal::from_str("10000000").unwrap(), // 10_000_000 (10 NATIVE_DENOM_2)
-                            start_time: pool_info.pool_infos
+                            start_time: pool_info.phases_info
                                 [pool_info.current_phase_index as usize]
                                 .start_time,
-                            end_time: pool_info.pool_infos[pool_info.current_phase_index as usize]
+                            end_time: pool_info.phases_info[pool_info.current_phase_index as usize]
                                 .end_time,
                             pool_limit_per_user: None,
+                            whitelist: Addr::unchecked(ADMIN.to_string()),
+                            reward_balance: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
                             total_staked_at_end_time: Uint128::from(
                                 MOCK_1000_HALO_LP_TOKEN_AMOUNT + MOCK_150_HALO_LP_TOKEN_AMOUNT
                             ),
                         },
-                        PoolInfo {
+                        PhaseInfo {
                             reward_per_second: Decimal::from_str("12500000").unwrap(), // 12_500_000 (12.5 NATIVE_DENOM_2)
-                            start_time: pool_info.pool_infos
+                            start_time: pool_info.phases_info
                                 [pool_info.current_phase_index as usize]
                                 .end_time
                                 + 10,
-                            end_time: pool_info.pool_infos[pool_info.current_phase_index as usize]
+                            end_time: pool_info.phases_info[pool_info.current_phase_index as usize]
                                 .end_time
                                 + 90,
                             pool_limit_per_user: None,
+                            whitelist: Addr::unchecked(ADMIN.to_string()),
+                            reward_balance: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
                             total_staked_at_end_time: Uint128::zero(),
                         }
                     ],
-                    whitelist: vec![Addr::unchecked(ADMIN.to_string())],
-                    reward_balance: vec![
-                        Uint128::from(ADD_1000_NATIVE_BALANCE_2),
-                        Uint128::from(ADD_1000_NATIVE_BALANCE_2)
-                    ],
                     last_reward_time: vec![
-                        pool_info.pool_infos[pool_info.current_phase_index as usize].end_time,
-                        pool_info.pool_infos[pool_info.current_phase_index as usize].end_time + 10
+                        pool_info.phases_info[pool_info.current_phase_index as usize].end_time,
+                        pool_info.phases_info[pool_info.current_phase_index as usize].end_time + 10
                     ],
                     accrued_token_per_share: vec![
                         Decimal::from_str("0.93043478260869565").unwrap(),
@@ -2276,17 +2276,17 @@ mod tests {
 
             // reward token info
             let reward_token_info = TokenInfo::Token {
-                contract_addr: reward_token_contract.clone(),
+                contract_addr: Addr::unchecked(reward_token_contract.clone()),
             };
 
             // create pool contract by factory contract
             let create_pool_msg = crate::msg::ExecuteMsg::CreatePool {
-                staked_token: lp_token_contract.clone(),
+                staked_token: Addr::unchecked(lp_token_contract.clone()),
                 reward_token: reward_token_info.clone(),
                 start_time: current_block_time,
                 end_time: current_block_time + 100,
                 pool_limit_per_user: None,
-                whitelist: vec![Addr::unchecked(ADMIN.to_string())],
+                whitelist: Addr::unchecked(ADMIN.to_string()),
             };
 
             // Execute create pool by ADMIN
@@ -2312,7 +2312,7 @@ mod tests {
             assert_eq!(
                 pool_info,
                 FactoryPoolInfo {
-                    staked_token: lp_token_contract.to_string(),
+                    staked_token: Addr::unchecked(lp_token_contract),
                     reward_token: reward_token_info.clone(),
                     start_time: current_block_time,
                     end_time: current_block_time + 100,
@@ -2412,7 +2412,7 @@ mod tests {
                 pending_reward_admin_2s,
                 RewardTokenAssetResponse {
                     info: TokenInfo::Token {
-                        contract_addr: reward_token_contract.clone()
+                        contract_addr: Addr::unchecked(reward_token_contract.clone()),
                     },
                     amount: Uint128::from(20_000_000_000_000_000_000u128),
                     time_query: 1571797421,
@@ -2505,7 +2505,7 @@ mod tests {
                 pending_reward_user1_4s,
                 RewardTokenAssetResponse {
                     info: TokenInfo::Token {
-                        contract_addr: reward_token_contract.clone()
+                        contract_addr: Addr::unchecked(reward_token_contract.clone()),
                     },
                     amount: Uint128::from(6_666_666_666_666_666_666u128),
                     time_query: 1571797423,
@@ -2563,7 +2563,7 @@ mod tests {
                 pending_reward_admin_6s,
                 RewardTokenAssetResponse {
                     info: TokenInfo::Token {
-                        contract_addr: reward_token_contract.clone()
+                        contract_addr: Addr::unchecked(reward_token_contract.clone()),
                     },
                     amount: Uint128::from(26_666_666_666_666_666_666u128),
                     time_query: 1571797425,
@@ -2627,7 +2627,7 @@ mod tests {
                 pending_reward_admin_7s,
                 RewardTokenAssetResponse {
                     info: TokenInfo::Token {
-                        contract_addr: reward_token_contract.clone()
+                        contract_addr: Addr::unchecked(reward_token_contract.clone()),
                     },
                     amount: Uint128::from(5_000_000_000_000_000_000u128),
                     time_query: 1571797426,
@@ -2690,7 +2690,7 @@ mod tests {
                 pending_reward_admin_8s,
                 RewardTokenAssetResponse {
                     info: TokenInfo::Token {
-                        contract_addr: reward_token_contract.clone()
+                        contract_addr: Addr::unchecked(reward_token_contract.clone())
                     },
                     amount: Uint128::from(6_666_666_666_666_666_667u128),
                     time_query: 1571797427,
@@ -2747,7 +2747,7 @@ mod tests {
                 pending_reward_user1_8s,
                 RewardTokenAssetResponse {
                     info: TokenInfo::Token {
-                        contract_addr: reward_token_contract.clone()
+                        contract_addr: Addr::unchecked(reward_token_contract.clone())
                     },
                     amount: Uint128::from(15_000_000_000_000_000_000u128),
                     time_query: 1571797427,
@@ -2803,6 +2803,7 @@ mod tests {
             let extend_end_time_msg = PoolExecuteMsg::AddPhase {
                 new_start_time: pool_info.end_time,
                 new_end_time: pool_info.end_time + 10,
+                whitelist: Addr::unchecked(ADMIN.to_string()),
             };
 
             // Execute extend end time by ADMIN
@@ -2839,7 +2840,7 @@ mod tests {
                 pending_reward_admin_100s,
                 RewardTokenAssetResponse {
                     info: TokenInfo::Token {
-                        contract_addr: reward_token_contract.clone()
+                        contract_addr: Addr::unchecked(reward_token_contract.clone())
                     },
                     amount: Uint128::from(613_333_333_333_333_333_333u128),
                     time_query: 1571797519,
@@ -2864,7 +2865,7 @@ mod tests {
                 pending_reward_user_1_100s,
                 RewardTokenAssetResponse {
                     info: TokenInfo::Token {
-                        contract_addr: reward_token_contract.clone()
+                        contract_addr: Addr::unchecked(reward_token_contract.clone())
                     },
                     amount: Uint128::from(306_666_666_666_666_666_667u128),
                     time_query: 1571797519,
@@ -2909,7 +2910,7 @@ mod tests {
                 phase_index: 1u64,
                 asset: RewardTokenAsset {
                     info: TokenInfo::Token {
-                        contract_addr: reward_token_contract.clone(),
+                        contract_addr: Addr::unchecked(reward_token_contract.clone())
                     },
                     amount: Uint128::from(MOCK_1000_HALO_REWARD_TOKEN_AMOUNT),
                 },
@@ -2962,7 +2963,7 @@ mod tests {
                 pending_reward_admin_101s,
                 RewardTokenAssetResponse {
                     info: TokenInfo::Token {
-                        contract_addr: reward_token_contract.clone()
+                        contract_addr: Addr::unchecked(reward_token_contract.clone())
                     },
                     amount: Uint128::from(679_999_999_999_999_999_999u128),
                     time_query: 1571797520,
@@ -2986,7 +2987,7 @@ mod tests {
                 pending_reward_user_1_101s,
                 RewardTokenAssetResponse {
                     info: TokenInfo::Token {
-                        contract_addr: reward_token_contract.clone()
+                        contract_addr: Addr::unchecked(reward_token_contract.clone())
                     },
                     amount: Uint128::from(340_000_000_000_000_000_000u128),
                     time_query: 1571797520,
@@ -3101,6 +3102,7 @@ mod tests {
             let extend_end_time_msg = PoolExecuteMsg::AddPhase {
                 new_start_time: pool_info.end_time + 10,
                 new_end_time: pool_info.end_time + 20,
+                whitelist: Addr::unchecked(ADMIN.to_string()),
             };
 
             // Execute extend end time by ADMIN
@@ -3135,7 +3137,7 @@ mod tests {
                 phase_index: 2u64,
                 asset: RewardTokenAsset {
                     info: TokenInfo::Token {
-                        contract_addr: reward_token_contract.clone(),
+                        contract_addr: Addr::unchecked(reward_token_contract.clone()),
                     },
                     amount: Uint128::from(10_000_000_000_000_000_000u128),
                 },
@@ -3284,12 +3286,12 @@ mod tests {
 
             // create pool contract by factory contract
             let create_pool_msg = crate::msg::ExecuteMsg::CreatePool {
-                staked_token: lp_token_contract.clone(),
+                staked_token: Addr::unchecked(lp_token_contract.clone()),
                 reward_token: native_token_info.clone(),
                 start_time: current_block_time,
                 end_time: current_block_time + 10,
                 pool_limit_per_user: None,
-                whitelist: vec![Addr::unchecked(ADMIN.to_string())],
+                whitelist: Addr::unchecked(ADMIN.to_string()),
             };
 
             // Execute create pool
@@ -3338,18 +3340,18 @@ mod tests {
             assert_eq!(
                 pool_info,
                 PoolInfos {
-                    staked_token: lp_token_contract.to_string(),
+                    staked_token: Addr::unchecked(lp_token_contract),
                     reward_token: native_token_info,
                     current_phase_index: 0u64,
-                    pool_infos: vec![PoolInfo {
+                    phases_info: vec![PhaseInfo {
                         reward_per_second: Decimal::from_str("100000000").unwrap(), // 100_000_000 (100 NATIVE_DENOM_2)
                         start_time: current_block_time,
                         end_time: current_block_time + 10,
                         pool_limit_per_user: None,
+                        whitelist: Addr::unchecked(ADMIN.to_string()),
+                        reward_balance: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
                         total_staked_at_end_time: Uint128::zero(),
                     }],
-                    whitelist: vec![Addr::unchecked(ADMIN.to_string())],
-                    reward_balance: vec![Uint128::from(ADD_1000_NATIVE_BALANCE_2)],
                     last_reward_time: vec![current_block_time],
                     accrued_token_per_share: vec![Decimal::zero()],
                 }
@@ -3427,11 +3429,12 @@ mod tests {
             // ----- Phase 1 -----
             // Extend end time by ADMIN more 10 seconds
             let extend_end_time_msg = PoolExecuteMsg::AddPhase {
-                new_start_time: pool_info.pool_infos[pool_info.current_phase_index as usize]
+                new_start_time: pool_info.phases_info[pool_info.current_phase_index as usize]
                     .end_time
                     + 2,
-                new_end_time: pool_info.pool_infos[pool_info.current_phase_index as usize].end_time
+                new_end_time: pool_info.phases_info[pool_info.current_phase_index as usize].end_time
                     + 12,
+                whitelist: Addr::unchecked(ADMIN.to_string()),
             };
 
             // Execute extend end time by ADMIN

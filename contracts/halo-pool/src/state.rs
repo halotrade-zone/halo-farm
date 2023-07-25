@@ -3,6 +3,8 @@ use cosmwasm_std::{Addr, Decimal, MessageInfo, StdError, StdResult, Uint128};
 use cw_storage_plus::{Item, Map};
 use std::fmt;
 
+use crate::msg::StakerInfoResponse;
+
 #[cw_serde]
 pub struct Config {
     pub halo_factory_owner: Addr,
@@ -15,13 +17,6 @@ pub const POOL_INFOS: Item<PoolInfos> = Item::new("pool_infos");
 
 /// Mappping from staker address to staker balance.
 pub const STAKERS_INFO: Map<Addr, StakerInfoResponse> = Map::new("stakers_info_response");
-
-#[cw_serde]
-pub struct StakerInfoResponse {
-    pub amount: Uint128,           // How many staked tokens the user has provided.
-    pub reward_debt: Vec<Uint128>, // Store reward debt in multiple phases.
-    pub joined_phase: u64,
-}
 
 #[cw_serde]
 pub struct RewardTokenAsset {
@@ -69,7 +64,7 @@ impl RewardTokenAsset {
 // TokenInfo is an enum that can be either a Token or a NativeToken
 #[cw_serde]
 pub enum TokenInfo {
-    Token { contract_addr: String },
+    Token { contract_addr: Addr },
     NativeToken { denom: String },
 }
 
@@ -82,19 +77,15 @@ impl fmt::Display for TokenInfo {
     }
 }
 
-#[cw_serde]
-pub enum TokenInfoRaw {
-    Token { contract_addr: Addr },
-    NativeToken { denom: String },
-}
-
 // We define a custom struct for each query response
 #[cw_serde]
-pub struct PoolInfo {
+pub struct PhaseInfo {
     pub reward_per_second: Decimal,
     pub start_time: u64,
     pub end_time: u64,
     pub pool_limit_per_user: Option<Uint128>,
+    pub whitelist: Addr,
+    pub reward_balance: Uint128,
     // Total staked token at end time to calculate the reward amount correctly
     //if the pool has multiple phases.
     pub total_staked_at_end_time: Uint128,
@@ -102,12 +93,10 @@ pub struct PoolInfo {
 
 #[cw_serde]
 pub struct PoolInfos {
-    pub staked_token: String,
+    pub staked_token: Addr,
     pub reward_token: TokenInfo,
     pub current_phase_index: u64,
-    pub pool_infos: Vec<PoolInfo>,
-    pub whitelist: Vec<Addr>,
-    pub reward_balance: Vec<Uint128>,
+    pub phases_info: Vec<PhaseInfo>,
     pub last_reward_time: Vec<u64>,
     pub accrued_token_per_share: Vec<Decimal>,
 }

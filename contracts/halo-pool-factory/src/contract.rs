@@ -8,7 +8,7 @@ use crate::{
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper,
-    QueryRequest, Reply, ReplyOn, Response, StdResult, SubMsg, Uint128, WasmMsg, WasmQuery,
+    QueryRequest, Reply, ReplyOn, Response, StdError, StdResult, SubMsg, Uint128, WasmMsg, WasmQuery,
 };
 use cw2::set_contract_version;
 use cw_utils::parse_reply_instantiate_data;
@@ -111,22 +111,34 @@ pub fn execute_create_pool(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
-    staked_token: String,
+    staked_token: Addr,
     reward_token: TokenInfo,
     start_time: u64,
     end_time: u64,
     pool_limit_per_user: Option<Uint128>,
-    whitelist: Vec<Addr>,
+    whitelist: Addr,
 ) -> Result<Response, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
-
+    // get current time
+    let current_time = env.block.time.seconds();
     // permission check
     if info.sender != config.owner {
         return Err(ContractError::Unauthorized {});
     }
 
-    // validate address format
-    let _ = deps.api.addr_validate(&staked_token)?;
+    // Not allow start time is greater than end time
+    if start_time >= end_time {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Start time is greater than end time",
+        )));
+    }
+
+    // Not allow to create a pool when current time is greater than start time
+    if current_time > start_time {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Current time is greater than start time",
+        )));
+    }
 
     Ok(Response::new()
         .add_attributes(vec![
@@ -176,9 +188,9 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
         &FactoryPoolInfo {
             staked_token: pool_info.staked_token.clone(),
             reward_token: pool_info.reward_token,
-            start_time: pool_info.pool_infos[pool_info.current_phase_index as usize].start_time,
-            end_time: pool_info.pool_infos[pool_info.current_phase_index as usize].end_time,
-            pool_limit_per_user: pool_info.pool_infos[pool_info.current_phase_index as usize]
+            start_time: pool_info.phases_info[pool_info.current_phase_index as usize].start_time,
+            end_time: pool_info.phases_info[pool_info.current_phase_index as usize].end_time,
+            pool_limit_per_user: pool_info.phases_info[pool_info.current_phase_index as usize]
                 .pool_limit_per_user,
         },
     )?;
@@ -190,7 +202,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
         ("action", "reply_on_create_pool_success"),
         ("pool_id", pool_key.to_string().as_str()),
         ("pool_contract_addr", pool_contract),
-        ("staked_token_addr", &pool_info.staked_token),
+        ("staked_token_addr", &pool_info.staked_token.to_string()),
     ]))
 }
 

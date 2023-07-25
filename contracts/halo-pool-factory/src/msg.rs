@@ -20,7 +20,7 @@ pub enum ExecuteMsg {
     /// CreatePool instantiates pair contract
     CreatePool {
         /// Staked LP Token address
-        staked_token: String,
+        staked_token: Addr,
         /// Reward Token address (CW20 or Native)
         reward_token: TokenInfo,
         /// Start time
@@ -30,7 +30,7 @@ pub enum ExecuteMsg {
         /// The pool limit of staked tokens per user (0 for unlimited)
         pool_limit_per_user: Option<Uint128>,
         /// Whitelisted addresses
-        whitelist: Vec<Addr>,
+        whitelist: Addr,
     },
 }
 
