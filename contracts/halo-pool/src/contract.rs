@@ -46,6 +46,8 @@ pub fn instantiate(
         pool_limit_per_user: msg.pool_limit_per_user,
         whitelist: msg.whitelist,
         reward_balance: Uint128::zero(),
+        last_reward_time: msg.start_time,
+        accrued_token_per_share: Decimal::zero(),
         total_staked_at_end_time: Uint128::zero(),
     };
 
@@ -57,8 +59,6 @@ pub fn instantiate(
             reward_token: msg.reward_token.clone(),
             current_phase_index: 0u64,
             phases_info: vec![phases_info],
-            last_reward_time: vec![msg.start_time],
-            accrued_token_per_share: vec![Decimal::zero()],
         },
     )?;
 
@@ -168,7 +168,7 @@ pub fn execute_add_reward_balance(
     }
 
     // Get accrued token per share
-    let accrued_token_per_share = pool_infos.accrued_token_per_share[phase_index as usize];
+    let accrued_token_per_share = pool_infos.phases_info[phase_index as usize].accrued_token_per_share;
 
     let mut res = Response::new();
 
@@ -213,7 +213,7 @@ pub fn execute_add_reward_balance(
     POOL_INFOS.save(deps.storage, &pool_infos)?;
 
     // Update last reward time to start time
-    pool_infos.last_reward_time[phase_index as usize] = pool_info.start_time;
+    pool_infos.phases_info[phase_index as usize].last_reward_time = pool_info.start_time;
 
     // update pool
     let (new_accrued_token_per_share, new_last_reward_time) = update_pool(
@@ -222,11 +222,11 @@ pub fn execute_add_reward_balance(
         Uint128::zero(),
         accrued_token_per_share,
         current_time,
-        pool_infos.last_reward_time[phase_index as usize],
+        pool_infos.phases_info[phase_index as usize].last_reward_time,
     );
 
-    pool_infos.last_reward_time[phase_index as usize] = new_last_reward_time;
-    pool_infos.accrued_token_per_share[phase_index as usize] = new_accrued_token_per_share;
+    pool_infos.phases_info[phase_index as usize].last_reward_time = new_last_reward_time;
+    pool_infos.phases_info[phase_index as usize].accrued_token_per_share = new_accrued_token_per_share;
 
     // Save pool infos
     POOL_INFOS.save(deps.storage, &pool_infos)?;
@@ -354,10 +354,6 @@ pub fn execute_remove_phase(
 
     // Remove phase
     pool_infos.phases_info.remove(phase_index as usize);
-    pool_infos.last_reward_time.remove(phase_index as usize);
-    pool_infos
-        .accrued_token_per_share
-        .remove(phase_index as usize);
 
     // Save pool infos
     POOL_INFOS.save(deps.storage, &pool_infos)?;
@@ -417,9 +413,9 @@ pub fn execute_deposit(
     // If staker has joined previous phases, loops all pool infos to get reward per second from current pool index to staker joined phases
     for i in staker_info.joined_phase..current_phase_index {
         // Get last reward time
-        let last_reward_time = pool_infos.last_reward_time[i as usize];
+        let last_reward_time = pool_infos.phases_info[i as usize].last_reward_time;
         // Get accrued token per share
-        let accrued_token_per_share = pool_infos.accrued_token_per_share[i as usize];
+        let accrued_token_per_share = pool_infos.phases_info[i as usize].accrued_token_per_share;
         // Get pool info from pool infos
         let pool_info = POOL_INFOS.load(deps.storage)?.phases_info[i as usize].clone();
         // Get staked token balance from pool contract previous phases
@@ -444,9 +440,9 @@ pub fn execute_deposit(
         // Update staker info
         staker_info.reward_debt[i as usize] = staker_info.amount * new_accrued_token_per_share;
         // Update last reward time
-        pool_infos.last_reward_time[i as usize] = new_last_reward_time;
+        pool_infos.phases_info[i as usize].last_reward_time = new_last_reward_time;
         // Update accrued token per share
-        pool_infos.accrued_token_per_share[i as usize] = new_accrued_token_per_share;
+        pool_infos.phases_info[i as usize].accrued_token_per_share = new_accrued_token_per_share;
 
         // Save pool infos
         POOL_INFOS.save(deps.storage, &pool_infos)?;
@@ -463,13 +459,13 @@ pub fn execute_deposit(
     )?;
 
     // Get last reward time
-    let mut last_reward_time = pool_infos.last_reward_time[current_phase_index as usize];
+    let mut last_reward_time = pool_infos.phases_info[current_phase_index as usize].last_reward_time;
     // For the first deposit, set last reward time to current time
     if staked_token_supply == Uint128::zero() {
         last_reward_time = current_time;
     }
     // Get accrued token per share
-    let accrued_token_per_share = pool_infos.accrued_token_per_share[current_phase_index as usize];
+    let accrued_token_per_share = pool_infos.phases_info[current_phase_index as usize].accrued_token_per_share;
 
     // update pool
     (new_accrued_token_per_share, new_last_reward_time) = update_pool(
@@ -481,8 +477,8 @@ pub fn execute_deposit(
         last_reward_time,
     );
 
-    pool_infos.last_reward_time[current_phase_index as usize] = new_last_reward_time;
-    pool_infos.accrued_token_per_share[current_phase_index as usize] = new_accrued_token_per_share;
+    pool_infos.phases_info[current_phase_index as usize].last_reward_time = new_last_reward_time;
+    pool_infos.phases_info[current_phase_index as usize].accrued_token_per_share = new_accrued_token_per_share;
 
     // Save pool infos
     POOL_INFOS.save(deps.storage, &pool_infos)?;
@@ -593,9 +589,9 @@ pub fn execute_withdraw(
     // If staker has joined previous phases, loops all pool infos to get reward per second from current pool index to staker joined phases
     for i in staker_joined_phase..current_phase_index {
         // Get last reward time
-        let last_reward_time = pool_infos.last_reward_time[i as usize];
+        let last_reward_time = pool_infos.phases_info[i as usize].last_reward_time;
         // Get accrued token per share
-        let accrued_token_per_share = pool_infos.accrued_token_per_share[i as usize];
+        let accrued_token_per_share = pool_infos.phases_info[i as usize].accrued_token_per_share;
         // Get pool info from pool infos
         let pool_info = POOL_INFOS.load(deps.storage)?.phases_info[i as usize].clone();
         // Get staked token balance from pool contract previous phases
@@ -611,8 +607,8 @@ pub fn execute_withdraw(
             last_reward_time,
         );
 
-        pool_infos.last_reward_time[i as usize] = new_last_reward_time;
-        pool_infos.accrued_token_per_share[i as usize] = new_accrued_token_per_share;
+        pool_infos.phases_info[i as usize].last_reward_time = new_last_reward_time;
+        pool_infos.phases_info[i as usize].accrued_token_per_share = new_accrued_token_per_share;
 
 
         reward_amount += calc_reward_amount(
@@ -631,9 +627,9 @@ pub fn execute_withdraw(
     }
 
     // Get last reward time
-    let last_reward_time = pool_infos.last_reward_time[current_phase_index as usize];
+    let last_reward_time = pool_infos.phases_info[current_phase_index as usize].last_reward_time;
     // Get accrued token per share
-    let accrued_token_per_share = pool_infos.accrued_token_per_share[current_phase_index as usize];
+    let accrued_token_per_share = pool_infos.phases_info[current_phase_index as usize].accrued_token_per_share;
     // Get staked token balance from pool contract
     let staked_token_supply = query_token_balance(
         &deps.querier,
@@ -651,8 +647,8 @@ pub fn execute_withdraw(
         last_reward_time,
     );
 
-    pool_infos.last_reward_time[current_phase_index as usize] = new_last_reward_time;
-    pool_infos.accrued_token_per_share[current_phase_index as usize] = new_accrued_token_per_share;
+    pool_infos.phases_info[current_phase_index as usize].last_reward_time = new_last_reward_time;
+    pool_infos.phases_info[current_phase_index as usize].accrued_token_per_share = new_accrued_token_per_share;
 
     // Save last pool infos
     POOL_INFOS.save(deps.storage, &pool_infos)?;
@@ -756,9 +752,9 @@ pub fn execute_harvest(
     // If staker has joined previous phases, loops all pool infos to get reward per second from current pool index to staker joined phases
     for i in staker_joined_phase..current_phase_index {
         // Get last reward time
-        let last_reward_time = pool_infos.last_reward_time[i as usize];
+        let last_reward_time = pool_infos.phases_info[i as usize].last_reward_time;
         // Get accrued token per share
-        let accrued_token_per_share = pool_infos.accrued_token_per_share[i as usize];
+        let accrued_token_per_share = pool_infos.phases_info[i as usize].accrued_token_per_share;
         // Get pool info from pool infos
         let pool_info = POOL_INFOS.load(deps.storage)?.phases_info[i as usize].clone();
         // Get staked token balance from pool contract previous phases
@@ -775,7 +771,7 @@ pub fn execute_harvest(
         );
 
         // Update last reward time
-        pool_infos.last_reward_time[i as usize] = new_last_reward_time;
+        pool_infos.phases_info[i as usize].last_reward_time = new_last_reward_time;
 
         // Save pool infos
         POOL_INFOS.save(deps.storage, &pool_infos)?;
@@ -799,9 +795,9 @@ pub fn execute_harvest(
     }
 
     // Get last reward time
-    let last_reward_time = pool_infos.last_reward_time[current_phase_index as usize];
+    let last_reward_time = pool_infos.phases_info[current_phase_index as usize].last_reward_time;
     // Get accrued token per share
-    let accrued_token_per_share = pool_infos.accrued_token_per_share[current_phase_index as usize];
+    let accrued_token_per_share = pool_infos.phases_info[current_phase_index as usize].accrued_token_per_share;
 
     // Get staked token balance from pool contract
     let staked_token_supply = query_token_balance(
@@ -820,8 +816,8 @@ pub fn execute_harvest(
         last_reward_time,
     );
 
-    pool_infos.last_reward_time[current_phase_index as usize] = new_last_reward_time;
-    pool_infos.accrued_token_per_share[current_phase_index as usize] = new_accrued_token_per_share;
+    pool_infos.phases_info[current_phase_index as usize].last_reward_time = new_last_reward_time;
+    pool_infos.phases_info[current_phase_index as usize].accrued_token_per_share = new_accrued_token_per_share;
 
     // Save pool infos
     POOL_INFOS.save(deps.storage, &pool_infos)?;
@@ -973,10 +969,6 @@ pub fn execute_add_phase(
         )));
     }
 
-    // Get last reward time
-    let mut phases_last_reward_time = pool_infos.last_reward_time;
-    // Get accrued token per share
-    let mut phases_accrued_token_per_share = pool_infos.accrued_token_per_share;
     // Increase length of pool infos
     pool_infos.phases_info.push(PhaseInfo {
         reward_per_second: Decimal::zero(),
@@ -986,17 +978,10 @@ pub fn execute_add_phase(
             .pool_limit_per_user,
         whitelist,
         reward_balance: Uint128::zero(),
+        last_reward_time: new_start_time,
+        accrued_token_per_share: Decimal::zero(),
         total_staked_at_end_time: Uint128::zero(),
     });
-
-    // Increase length of last reward time
-    phases_last_reward_time.push(new_start_time);
-    // Increase length of accrued token per share
-    phases_accrued_token_per_share.push(Decimal::zero());
-
-    // Update pool infos
-    pool_infos.last_reward_time = phases_last_reward_time;
-    pool_infos.accrued_token_per_share = phases_accrued_token_per_share;
 
     // Save pool infos
     POOL_INFOS.save(deps.storage, &pool_infos)?;
@@ -1134,10 +1119,6 @@ fn query_pending_reward(
     let current_phase_index = pool_infos.current_phase_index;
     // Get current pool info in pool infos
     let pool_info = POOL_INFOS.load(deps.storage)?.phases_info[current_phase_index as usize].clone();
-    // Get last reward time
-    let last_reward_time = pool_infos.last_reward_time;
-    // Get accrued token per share
-    let mut accrued_token_per_share = pool_infos.accrued_token_per_share;
     // Multiply factor
     let mut multiplier: u64;
 
@@ -1157,18 +1138,20 @@ fn query_pending_reward(
             let pool_info = POOL_INFOS.load(deps.storage)?.phases_info[i as usize].clone();
             // Get staked token balance from pool contract previous phases
             let staked_token_supply = pool_info.total_staked_at_end_time;
+            // Get accrued token per share
+            let mut accrued_token_per_share = pool_infos.phases_info[i as usize].accrued_token_per_share;
 
             multiplier = get_multiplier(
-                last_reward_time[i as usize],
+                pool_infos.phases_info[i as usize].last_reward_time,
                 pool_info.end_time,
                 pool_info.end_time,
             );
 
             let reward = Decimal::new(multiplier.into()) * pool_info.reward_per_second;
-            accrued_token_per_share[i as usize] += reward / Decimal::new(staked_token_supply);
+            accrued_token_per_share += reward / Decimal::new(staked_token_supply);
             reward_amount += calc_reward_amount(
                 staker_info.amount,
-                accrued_token_per_share[i as usize],
+                accrued_token_per_share,
                 staker_info.reward_debt[i as usize],
             );
         }
@@ -1179,7 +1162,7 @@ fn query_pending_reward(
         multiplier = 0u64;
     } else {
         multiplier = get_multiplier(
-            last_reward_time[current_phase_index as usize],
+            pool_infos.phases_info[current_phase_index as usize].last_reward_time,
             current_time,
             pool_info.end_time,
         );
@@ -1193,8 +1176,10 @@ fn query_pending_reward(
     )?;
 
     let reward: Decimal = Decimal::new(multiplier.into()) * pool_info.reward_per_second;
+    // Get accrued token per share
+    let mut accrued_token_per_share = pool_infos.phases_info[current_phase_index as usize].accrued_token_per_share;
 
-    accrued_token_per_share[current_phase_index as usize] +=
+    accrued_token_per_share +=
         reward / Decimal::new(staked_token_supply);
 
     // Init new reward debt for current phase
@@ -1207,7 +1192,7 @@ fn query_pending_reward(
 
     reward_amount += calc_reward_amount(
         staker_info.amount,
-        accrued_token_per_share[current_phase_index as usize],
+        accrued_token_per_share,
         reward_debt,
     );
 

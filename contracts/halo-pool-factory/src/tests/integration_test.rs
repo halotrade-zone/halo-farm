@@ -193,10 +193,10 @@ mod tests {
                         pool_limit_per_user: None,
                         whitelist: Addr::unchecked(ADMIN.to_string()),
                         reward_balance: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
+                        last_reward_time: current_block_time,
+                        accrued_token_per_share: Decimal::zero(),
                         total_staked_at_end_time: Uint128::zero(),
                     }],
-                    last_reward_time: vec![current_block_time],
-                    accrued_token_per_share: vec![Decimal::zero()],
                 }
             );
 
@@ -634,10 +634,10 @@ mod tests {
                         pool_limit_per_user: None,
                         whitelist: Addr::unchecked(ADMIN.to_string()),
                         reward_balance: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
+                        last_reward_time: current_block_time,
+                        accrued_token_per_share: Decimal::zero(),
                         total_staked_at_end_time: Uint128::zero(),
                     }],
-                    last_reward_time: vec![current_block_time],
-                    accrued_token_per_share: vec![Decimal::zero()],
                 }
             );
 
@@ -1560,6 +1560,8 @@ mod tests {
                             pool_limit_per_user: None,
                             whitelist: Addr::unchecked(ADMIN.to_string()),
                             reward_balance: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
+                            last_reward_time: pool_info.phases_info[pool_info.current_phase_index as usize].end_time,
+                            accrued_token_per_share: Decimal::from_str("0.93043478260869565").unwrap(),
                             total_staked_at_end_time: Uint128::from(
                                 MOCK_1000_HALO_LP_TOKEN_AMOUNT + MOCK_150_HALO_LP_TOKEN_AMOUNT
                             ),
@@ -1576,16 +1578,10 @@ mod tests {
                             pool_limit_per_user: None,
                             whitelist: Addr::unchecked(ADMIN.to_string()),
                             reward_balance: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
+                            last_reward_time: pool_info.phases_info[pool_info.current_phase_index as usize].end_time + 10,
+                            accrued_token_per_share: Decimal::zero(),
                             total_staked_at_end_time: Uint128::zero(),
                         }
-                    ],
-                    last_reward_time: vec![
-                        pool_info.phases_info[pool_info.current_phase_index as usize].end_time,
-                        pool_info.phases_info[pool_info.current_phase_index as usize].end_time + 10
-                    ],
-                    accrued_token_per_share: vec![
-                        Decimal::from_str("0.93043478260869565").unwrap(),
-                        Decimal::zero()
                     ],
                 }
             );
@@ -3350,10 +3346,10 @@ mod tests {
                         pool_limit_per_user: None,
                         whitelist: Addr::unchecked(ADMIN.to_string()),
                         reward_balance: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
+                        last_reward_time: current_block_time,
+                        accrued_token_per_share: Decimal::zero(),
                         total_staked_at_end_time: Uint128::zero(),
                     }],
-                    last_reward_time: vec![current_block_time],
-                    accrued_token_per_share: vec![Decimal::zero()],
                 }
             );
 
