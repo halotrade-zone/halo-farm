@@ -40,7 +40,11 @@
     },
     "staked_token": {
       "description": "Staked Token address",
-      "type": "string"
+      "allOf": [
+        {
+          "$ref": "#/definitions/Addr"
+        }
+      ]
     },
     "start_time": {
       "description": "Start time",
@@ -50,10 +54,11 @@
     },
     "whitelist": {
       "description": "Whitelisted addresses",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/Addr"
-      }
+      "allOf": [
+        {
+          "$ref": "#/definitions/Addr"
+        }
+      ]
     }
   },
   "additionalProperties": false,
@@ -77,7 +82,7 @@
               ],
               "properties": {
                 "contract_addr": {
-                  "type": "string"
+                  "$ref": "#/definitions/Addr"
                 }
               },
               "additionalProperties": false

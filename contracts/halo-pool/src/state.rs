@@ -89,7 +89,7 @@ pub struct PhaseInfo {
     pub last_reward_time: u64,
     pub accrued_token_per_share: Decimal,
     // Total staked token at end time to calculate the reward amount correctly
-    //if the pool has multiple phases.
+    // if the pool has multiple phases.
     pub total_staked_at_end_time: Uint128,
 }
 

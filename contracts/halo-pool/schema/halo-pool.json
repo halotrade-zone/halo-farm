@@ -44,7 +44,11 @@
       },
       "staked_token": {
         "description": "Staked Token address",
-        "type": "string"
+        "allOf": [
+          {
+            "$ref": "#/definitions/Addr"
+          }
+        ]
       },
       "start_time": {
         "description": "Start time",
@@ -54,10 +58,11 @@
       },
       "whitelist": {
         "description": "Whitelisted addresses",
-        "type": "array",
-        "items": {
-          "$ref": "#/definitions/Addr"
-        }
+        "allOf": [
+          {
+            "$ref": "#/definitions/Addr"
+          }
+        ]
       }
     },
     "additionalProperties": false,
@@ -81,7 +86,7 @@
                 ],
                 "properties": {
                   "contract_addr": {
-                    "type": "string"
+                    "$ref": "#/definitions/Addr"
                   }
                 },
                 "additionalProperties": false
@@ -244,7 +249,8 @@
             "type": "object",
             "required": [
               "new_end_time",
-              "new_start_time"
+              "new_start_time",
+              "whitelist"
             ],
             "properties": {
               "new_end_time": {
@@ -258,6 +264,14 @@
                 "type": "integer",
                 "format": "uint64",
                 "minimum": 0.0
+              },
+              "whitelist": {
+                "description": "Whitelisted address",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Addr"
+                  }
+                ]
               }
             },
             "additionalProperties": false
@@ -304,6 +318,10 @@
       }
     ],
     "definitions": {
+      "Addr": {
+        "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+        "type": "string"
+      },
       "RewardTokenAsset": {
         "type": "object",
         "required": [
@@ -335,7 +353,7 @@
                 ],
                 "properties": {
                   "contract_addr": {
-                    "type": "string"
+                    "$ref": "#/definitions/Addr"
                   }
                 },
                 "additionalProperties": false
@@ -467,6 +485,10 @@
       },
       "additionalProperties": false,
       "definitions": {
+        "Addr": {
+          "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+          "type": "string"
+        },
         "TokenInfo": {
           "oneOf": [
             {
@@ -482,7 +504,7 @@
                   ],
                   "properties": {
                     "contract_addr": {
-                      "type": "string"
+                      "$ref": "#/definitions/Addr"
                     }
                   },
                   "additionalProperties": false
@@ -524,58 +546,28 @@
       "title": "PoolInfos",
       "type": "object",
       "required": [
-        "accrued_token_per_share",
         "current_phase_index",
-        "last_reward_time",
-        "pool_infos",
-        "reward_balance",
+        "phases_info",
         "reward_token",
-        "staked_token",
-        "whitelist"
+        "staked_token"
       ],
       "properties": {
-        "accrued_token_per_share": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Decimal"
-          }
-        },
         "current_phase_index": {
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
         },
-        "last_reward_time": {
+        "phases_info": {
           "type": "array",
           "items": {
-            "type": "integer",
-            "format": "uint64",
-            "minimum": 0.0
-          }
-        },
-        "pool_infos": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/PoolInfo"
-          }
-        },
-        "reward_balance": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Uint128"
+            "$ref": "#/definitions/PhaseInfo"
           }
         },
         "reward_token": {
           "$ref": "#/definitions/TokenInfo"
         },
         "staked_token": {
-          "type": "string"
-        },
-        "whitelist": {
-          "type": "array",
-          "items": {
-            "$ref": "#/definitions/Addr"
-          }
+          "$ref": "#/definitions/Addr"
         }
       },
       "additionalProperties": false,
@@ -588,16 +580,28 @@
           "description": "A fixed-point decimal value with 18 fractional digits, i.e. Decimal(1_000_000_000_000_000_000) == 1.0\n\nThe greatest possible value that can be represented is 340282366920938463463.374607431768211455 (which is (2^128 - 1) / 10^18)",
           "type": "string"
         },
-        "PoolInfo": {
+        "PhaseInfo": {
           "type": "object",
           "required": [
+            "accrued_token_per_share",
             "end_time",
+            "last_reward_time",
+            "reward_balance",
             "reward_per_second",
             "start_time",
-            "total_staked_at_end_time"
+            "total_staked_at_end_time",
+            "whitelist"
           ],
           "properties": {
+            "accrued_token_per_share": {
+              "$ref": "#/definitions/Decimal"
+            },
             "end_time": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "last_reward_time": {
               "type": "integer",
               "format": "uint64",
               "minimum": 0.0
@@ -612,6 +616,9 @@
                 }
               ]
             },
+            "reward_balance": {
+              "$ref": "#/definitions/Uint128"
+            },
             "reward_per_second": {
               "$ref": "#/definitions/Decimal"
             },
@@ -622,6 +629,9 @@
             },
             "total_staked_at_end_time": {
               "$ref": "#/definitions/Uint128"
+            },
+            "whitelist": {
+              "$ref": "#/definitions/Addr"
             }
           },
           "additionalProperties": false
@@ -641,7 +651,7 @@
                   ],
                   "properties": {
                     "contract_addr": {
-                      "type": "string"
+                      "$ref": "#/definitions/Addr"
                     }
                   },
                   "additionalProperties": false
