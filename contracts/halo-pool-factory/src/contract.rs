@@ -178,7 +178,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
     let reply = parse_reply_instantiate_data(msg).unwrap();
 
     let pool_contract = &reply.contract_address;
-    let pool_info = query_pool_info_from_pool(&deps.querier, Addr::unchecked(pool_contract))?;
+    let pool_infos = query_pool_info_from_pool(&deps.querier, Addr::unchecked(pool_contract))?;
 
     let pool_key = NUMBER_OF_POOLS.load(deps.storage)? + 1;
 
@@ -186,12 +186,11 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
         deps.storage,
         pool_key,
         &FactoryPoolInfo {
-            staked_token: pool_info.staked_token.clone(),
-            reward_token: pool_info.reward_token,
-            start_time: pool_info.phases_info[pool_info.current_phase_index as usize].start_time,
-            end_time: pool_info.phases_info[pool_info.current_phase_index as usize].end_time,
-            pool_limit_per_user: pool_info.phases_info[pool_info.current_phase_index as usize]
-                .pool_limit_per_user,
+            staked_token: pool_infos.staked_token.clone(),
+            reward_token: pool_infos.reward_token,
+            start_time: pool_infos.phases_info[pool_infos.current_phase_index as usize].start_time,
+            end_time: pool_infos.phases_info[pool_infos.current_phase_index as usize].end_time,
+            pool_limit_per_user: pool_infos.pool_limit_per_user,
         },
     )?;
 
@@ -202,7 +201,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
         ("action", "reply_on_create_pool_success"),
         ("pool_id", pool_key.to_string().as_str()),
         ("pool_contract_addr", pool_contract),
-        ("staked_token_addr", &pool_info.staked_token.to_string()),
+        ("staked_token_addr", &pool_infos.staked_token.to_string()),
     ]))
 }
 

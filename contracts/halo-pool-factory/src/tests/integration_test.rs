@@ -190,13 +190,13 @@ mod tests {
                         reward_per_second: Decimal::from_str("10000000").unwrap(), // 10_000_000 (10 NATIVE_DENOM_2)
                         start_time: current_block_time,
                         end_time: current_block_time + 100,
-                        pool_limit_per_user: None,
                         whitelist: Addr::unchecked(ADMIN.to_string()),
                         reward_balance: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
                         last_reward_time: current_block_time,
                         accrued_token_per_share: Decimal::zero(),
                         total_staked_at_end_time: Uint128::zero(),
                     }],
+                    pool_limit_per_user: None,
                 }
             );
 
@@ -631,13 +631,13 @@ mod tests {
                         reward_per_second: Decimal::from_str("10000000").unwrap(), // 10_000_000 (10 NATIVE_DENOM_2)
                         start_time: current_block_time,
                         end_time: current_block_time + 100,
-                        pool_limit_per_user: None,
                         whitelist: Addr::unchecked(ADMIN.to_string()),
                         reward_balance: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
                         last_reward_time: current_block_time,
                         accrued_token_per_share: Decimal::zero(),
                         total_staked_at_end_time: Uint128::zero(),
                     }],
+                    pool_limit_per_user: None,
                 }
             );
 
@@ -1557,7 +1557,6 @@ mod tests {
                                 .start_time,
                             end_time: pool_info.phases_info[pool_info.current_phase_index as usize]
                                 .end_time,
-                            pool_limit_per_user: None,
                             whitelist: Addr::unchecked(ADMIN.to_string()),
                             reward_balance: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
                             last_reward_time: pool_info.phases_info[pool_info.current_phase_index as usize].end_time,
@@ -1575,7 +1574,6 @@ mod tests {
                             end_time: pool_info.phases_info[pool_info.current_phase_index as usize]
                                 .end_time
                                 + 90,
-                            pool_limit_per_user: None,
                             whitelist: Addr::unchecked(ADMIN.to_string()),
                             reward_balance: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
                             last_reward_time: pool_info.phases_info[pool_info.current_phase_index as usize].end_time + 10,
@@ -1583,6 +1581,7 @@ mod tests {
                             total_staked_at_end_time: Uint128::zero(),
                         }
                     ],
+                    pool_limit_per_user: None,
                 }
             );
 
@@ -3343,13 +3342,13 @@ mod tests {
                         reward_per_second: Decimal::from_str("100000000").unwrap(), // 100_000_000 (100 NATIVE_DENOM_2)
                         start_time: current_block_time,
                         end_time: current_block_time + 10,
-                        pool_limit_per_user: None,
                         whitelist: Addr::unchecked(ADMIN.to_string()),
                         reward_balance: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
                         last_reward_time: current_block_time,
                         accrued_token_per_share: Decimal::zero(),
                         total_staked_at_end_time: Uint128::zero(),
                     }],
+                    pool_limit_per_user: None,
                 }
             );
 

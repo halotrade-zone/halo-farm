@@ -47,10 +47,10 @@ pub enum ExecuteMsg {
     },
     // Harvest reward tokens
     Harvest {},
-    // Update Pool Limit Per User
-    UpdatePoolLimitPerUser {
-        new_pool_limit_per_user: Uint128,
-    },
+    // // Update Pool Limit Per User
+    // UpdatePoolLimitPerUser {
+    //     new_pool_limit_per_user: Uint128,
+    // },
     // Add a new farming phase
     AddPhase {
         /// New start time

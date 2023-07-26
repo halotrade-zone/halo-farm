@@ -83,7 +83,6 @@ pub struct PhaseInfo {
     pub reward_per_second: Decimal,
     pub start_time: u64,
     pub end_time: u64,
-    pub pool_limit_per_user: Option<Uint128>,
     pub whitelist: Addr, // Whitelisted address to add reward balance
     pub reward_balance: Uint128,
     pub last_reward_time: u64,
@@ -99,4 +98,5 @@ pub struct PoolInfos {
     pub reward_token: TokenInfo,
     pub current_phase_index: u64,
     pub phases_info: Vec<PhaseInfo>,
+    pub pool_limit_per_user: Option<Uint128>,
 }
