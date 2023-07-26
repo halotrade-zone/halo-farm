@@ -99,4 +99,5 @@ pub struct PoolInfos {
     pub current_phase_index: u64,
     pub phases_info: Vec<PhaseInfo>,
     pub pool_limit_per_user: Option<Uint128>,
+    pub staked_token_balance: Uint128, // Total staked token balance in the pool
 }

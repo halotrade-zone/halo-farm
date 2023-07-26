@@ -197,6 +197,7 @@ mod tests {
                         total_staked_at_end_time: Uint128::zero(),
                     }],
                     pool_limit_per_user: None,
+                    staked_token_balance: Uint128::zero(),
                 }
             );
 
@@ -638,6 +639,7 @@ mod tests {
                         total_staked_at_end_time: Uint128::zero(),
                     }],
                     pool_limit_per_user: None,
+                    staked_token_balance: Uint128::zero(),
                 }
             );
 
@@ -1582,6 +1584,9 @@ mod tests {
                         }
                     ],
                     pool_limit_per_user: None,
+                    staked_token_balance: Uint128::from(
+                        MOCK_1000_HALO_LP_TOKEN_AMOUNT + MOCK_150_HALO_LP_TOKEN_AMOUNT
+                    )
                 }
             );
 
@@ -3349,6 +3354,7 @@ mod tests {
                         total_staked_at_end_time: Uint128::zero(),
                     }],
                     pool_limit_per_user: None,
+                    staked_token_balance: Uint128::zero(),
                 }
             );
 
