@@ -6,7 +6,8 @@
     "current_phase_index",
     "phases_info",
     "reward_token",
-    "staked_token"
+    "staked_token",
+    "staked_token_balance"
   ],
   "properties": {
     "current_phase_index": {
@@ -20,11 +21,24 @@
         "$ref": "#/definitions/PhaseInfo"
       }
     },
+    "pool_limit_per_user": {
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Uint128"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "reward_token": {
       "$ref": "#/definitions/TokenInfo"
     },
     "staked_token": {
       "$ref": "#/definitions/Addr"
+    },
+    "staked_token_balance": {
+      "$ref": "#/definitions/Uint128"
     }
   },
   "additionalProperties": false,
@@ -62,16 +76,6 @@
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
-        },
-        "pool_limit_per_user": {
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Uint128"
-            },
-            {
-              "type": "null"
-            }
-          ]
         },
         "reward_balance": {
           "$ref": "#/definitions/Uint128"

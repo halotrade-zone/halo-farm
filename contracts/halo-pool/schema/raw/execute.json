@@ -96,27 +96,6 @@
     {
       "type": "object",
       "required": [
-        "update_pool_limit_per_user"
-      ],
-      "properties": {
-        "update_pool_limit_per_user": {
-          "type": "object",
-          "required": [
-            "new_pool_limit_per_user"
-          ],
-          "properties": {
-            "new_pool_limit_per_user": {
-              "$ref": "#/definitions/Uint128"
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    {
-      "type": "object",
-      "required": [
         "add_phase"
       ],
       "properties": {
