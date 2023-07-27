@@ -33,7 +33,7 @@
       "additionalProperties": false
     },
     {
-      "description": "CreatePool instantiates pair contract",
+      "description": "CreatePool instantiates pool contract",
       "type": "object",
       "required": [
         "create_pool"

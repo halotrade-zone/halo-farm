@@ -8,7 +8,8 @@ use crate::{
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper,
-    QueryRequest, Reply, ReplyOn, Response, StdError, StdResult, SubMsg, Uint128, WasmMsg, WasmQuery,
+    QueryRequest, Reply, ReplyOn, Response, StdError, StdResult, SubMsg, Uint128, WasmMsg,
+    WasmQuery,
 };
 use cw2::set_contract_version;
 use cw_utils::parse_reply_instantiate_data;
@@ -91,7 +92,7 @@ pub fn execute_update_config(
     }
 
     // update owner if provided
-    if let Some(owner) = owner {
+    if let Some(owner) = owner.clone() {
         config.owner = deps.api.addr_validate(&owner)?;
     }
 
@@ -102,7 +103,10 @@ pub fn execute_update_config(
 
     CONFIG.save(deps.storage, &config)?;
 
-    Ok(Response::new().add_attribute("action", "update_config"))
+    Ok(Response::new()
+        .add_attribute("method", "update_config")
+        .add_attribute("owner", owner.unwrap().to_string())
+        .add_attribute("pool_code_id", pool_code_id.unwrap().to_string()))
 }
 
 // Only owner can execute it
@@ -142,12 +146,13 @@ pub fn execute_create_pool(
 
     Ok(Response::new()
         .add_attributes(vec![
-            ("action", "create_pool"),
+            ("method", "create_pool"),
             ("halo_factory_owner", info.sender.as_str()),
             ("staked_token", staked_token.as_str()),
             ("reward_token", &format!("{}", reward_token)),
             ("start_time", start_time.to_string().as_str()),
             ("end_time", end_time.to_string().as_str()),
+            ("pool_limit_per_user", &format!("{:?}", pool_limit_per_user)),
             ("whitelist", &format!("{:?}", whitelist)),
         ])
         .add_submessage(SubMsg {
@@ -157,7 +162,7 @@ pub fn execute_create_pool(
                 code_id: config.pool_code_id,
                 funds: vec![],
                 admin: Some(env.contract.address.to_string()),
-                label: "pair".to_string(),
+                label: "pool".to_string(),
                 msg: to_binary(&PoolInstantiateMsg {
                     staked_token,
                     reward_token,

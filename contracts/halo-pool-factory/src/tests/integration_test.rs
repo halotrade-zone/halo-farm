@@ -21,10 +21,10 @@ mod tests {
         };
         use cw20::{BalanceResponse, Cw20ExecuteMsg};
         use cw_multi_test::Executor;
-        use halo_pool::{state::{
-            PhaseInfo, PoolInfos, RewardTokenAsset, RewardTokenAssetResponse,
-            TokenInfo,
-        }, msg::StakerInfoResponse};
+        use halo_pool::{
+            msg::StakerInfoResponse,
+            state::{PhaseInfo, PoolInfos, RewardTokenAsset, RewardTokenAssetResponse, TokenInfo},
+        };
 
         use crate::{
             msg::QueryMsg,
@@ -1355,7 +1355,8 @@ mod tests {
                 new_start_time: pool_info.phases_info[pool_info.current_phase_index as usize]
                     .end_time
                     + 10,
-                new_end_time: pool_info.phases_info[pool_info.current_phase_index as usize].end_time
+                new_end_time: pool_info.phases_info[pool_info.current_phase_index as usize]
+                    .end_time
                     + 90,
                 whitelist: Addr::unchecked(ADMIN.to_string()),
             };
@@ -1561,8 +1562,11 @@ mod tests {
                                 .end_time,
                             whitelist: Addr::unchecked(ADMIN.to_string()),
                             reward_balance: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
-                            last_reward_time: pool_info.phases_info[pool_info.current_phase_index as usize].end_time,
-                            accrued_token_per_share: Decimal::from_str("0.93043478260869565").unwrap(),
+                            last_reward_time: pool_info.phases_info
+                                [pool_info.current_phase_index as usize]
+                                .end_time,
+                            accrued_token_per_share: Decimal::from_str("0.93043478260869565")
+                                .unwrap(),
                             total_staked_at_end_time: Uint128::from(
                                 MOCK_1000_HALO_LP_TOKEN_AMOUNT + MOCK_150_HALO_LP_TOKEN_AMOUNT
                             ),
@@ -1578,7 +1582,10 @@ mod tests {
                                 + 90,
                             whitelist: Addr::unchecked(ADMIN.to_string()),
                             reward_balance: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
-                            last_reward_time: pool_info.phases_info[pool_info.current_phase_index as usize].end_time + 10,
+                            last_reward_time: pool_info.phases_info
+                                [pool_info.current_phase_index as usize]
+                                .end_time
+                                + 10,
                             accrued_token_per_share: Decimal::zero(),
                             total_staked_at_end_time: Uint128::zero(),
                         }
@@ -2910,7 +2917,7 @@ mod tests {
                 phase_index: 1u64,
                 asset: RewardTokenAsset {
                     info: TokenInfo::Token {
-                        contract_addr: Addr::unchecked(reward_token_contract.clone())
+                        contract_addr: Addr::unchecked(reward_token_contract.clone()),
                     },
                     amount: Uint128::from(MOCK_1000_HALO_REWARD_TOKEN_AMOUNT),
                 },
@@ -3433,7 +3440,8 @@ mod tests {
                 new_start_time: pool_info.phases_info[pool_info.current_phase_index as usize]
                     .end_time
                     + 2,
-                new_end_time: pool_info.phases_info[pool_info.current_phase_index as usize].end_time
+                new_end_time: pool_info.phases_info[pool_info.current_phase_index as usize]
+                    .end_time
                     + 12,
                 whitelist: Addr::unchecked(ADMIN.to_string()),
             };

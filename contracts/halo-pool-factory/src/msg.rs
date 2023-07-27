@@ -17,7 +17,7 @@ pub enum ExecuteMsg {
         owner: Option<String>,
         pool_code_id: Option<u64>,
     },
-    /// CreatePool instantiates pair contract
+    /// CreatePool instantiates pool contract
     CreatePool {
         /// Staked LP Token address
         staked_token: Addr,

@@ -67,7 +67,7 @@ pub fn instantiate(
     CONFIG.save(deps.storage, &config)?;
 
     Ok(Response::new().add_attributes([
-        ("action", "instantiate"),
+        ("method", "instantiate"),
         ("staked_token", &msg.staked_token.to_string()),
         ("reward_token", &msg.reward_token.to_string()),
         ("start_time", &msg.start_time.to_string()),
@@ -369,7 +369,8 @@ pub fn execute_remove_phase(
     // Save pool infos
     POOL_INFOS.save(deps.storage, &pool_infos)?;
 
-    Ok(res.add_attribute("method", "remove_phase"))
+    Ok(res.add_attribute("method", "remove_phase")
+            .add_attribute("phase_index", phase_index.to_string()))
 }
 
 pub fn execute_deposit(
@@ -510,11 +511,10 @@ pub fn execute_deposit(
 
     res = res
         .add_submessage(transfer)
-        .add_attribute("previous_receive_reward_time", last_reward_time.to_string())
         .add_attribute("current_time", current_time.to_string())
         .add_attribute("method", "deposit")
         .add_attribute("deposit_amount", amount.to_string())
-        .add_attribute("reward_amount", reward_amount.to_string());
+        .add_attribute("harvest_reward_amount", reward_amount.to_string());
 
     Ok(res)
 }
@@ -654,11 +654,10 @@ pub fn execute_withdraw(
     res = res
         .add_submessage(transfer_reward)
         .add_submessage(withdraw)
-        .add_attribute("previous_receive_reward_time", last_reward_time.to_string())
         .add_attribute("current_time", current_time.to_string())
         .add_attribute("method", "withdraw")
         .add_attribute("withdraw_amount", amount.to_string())
-        .add_attribute("reward_amount", reward_amount.to_string());
+        .add_attribute("harvest_reward_amount", reward_amount.to_string());
 
     Ok(res)
 }
@@ -777,7 +776,6 @@ pub fn execute_harvest(
     STAKERS_INFO.save(deps.storage, info.sender, &staker_info)?;
     let res = Response::new()
         .add_submessage(transfer)
-        .add_attribute("previous_receive_reward_time", last_reward_time.to_string())
         .add_attribute("current_time", current_time.to_string())
         .add_attribute("method", "harvest")
         .add_attribute("reward_amount", reward_amount.to_string());
@@ -890,7 +888,7 @@ pub fn execute_add_phase(
         reward_per_second: Decimal::zero(),
         start_time: new_start_time,
         end_time: new_end_time,
-        whitelist,
+        whitelist: whitelist.clone(),
         reward_balance: Uint128::zero(),
         last_reward_time: new_start_time,
         accrued_token_per_share: Decimal::zero(),
@@ -903,7 +901,8 @@ pub fn execute_add_phase(
     let res = Response::new()
         .add_attribute("method", "add_phase")
         .add_attribute("new_start_time", new_start_time.to_string())
-        .add_attribute("new_end_time", new_end_time.to_string());
+        .add_attribute("new_end_time", new_end_time.to_string())
+        .add_attribute("whitelist", whitelist.to_string());
 
     Ok(res)
 }
@@ -927,12 +926,20 @@ pub fn execute_activate_phase(
     // Get pool infos
     let mut pool_infos: PoolInfos = POOL_INFOS.load(deps.storage)?;
     // Get current pool index
-    let current_phase_index = pool_infos.current_phase_index as usize;
+    let current_phase_index = pool_infos.current_phase_index as usize ;
+
+    // Not allow active phase when current phase index is equal to pool infos length
+    // If sender want to active new phase, they have to add new phase first
+    if pool_infos.phases_info.len() == current_phase_index{
+        return Err(ContractError::Std(StdError::generic_err(
+            "Phase is already activated",
+        )));
+    }
     // Not allow activating phase when current time is less than end time of the current pool
     // or greater than start time of the phase to be activated
-    if current_time < pool_infos.phases_info[pool_infos.current_phase_index as usize].end_time
+    if current_time < pool_infos.phases_info[current_phase_index].end_time
         || current_time
-            > pool_infos.phases_info[pool_infos.current_phase_index as usize + 1].start_time
+            > pool_infos.phases_info[current_phase_index + 1].start_time
     {
         return Err(ContractError::Std(StdError::generic_err(
             "Current time is not in range of the phase to be activated",
