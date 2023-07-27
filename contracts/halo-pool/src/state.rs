@@ -1,9 +1,7 @@
 use cosmwasm_schema::cw_serde;
-use cosmwasm_std::{Addr, Decimal, MessageInfo, StdError, StdResult, Uint128};
+use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw_storage_plus::{Item, Map};
 use std::fmt;
-
-use crate::msg::StakerInfoResponse;
 
 #[cw_serde]
 pub struct Config {
@@ -16,7 +14,20 @@ pub const CONFIG: Item<Config> = Item::new("config");
 pub const POOL_INFOS: Item<PoolInfos> = Item::new("pool_infos");
 
 /// Mappping from staker address to staker balance.
-pub const STAKERS_INFO: Map<Addr, StakerInfoResponse> = Map::new("stakers_info_response");
+pub const STAKERS_INFO: Map<Addr, StakerInfo> = Map::new("stakers_info_response");
+
+#[cw_serde]
+pub struct StakerInfo {
+    pub amount: Uint128,           // How many staked tokens the user has provided.
+    pub reward_debt: Vec<Uint128>, // Store reward debt in multiple phases.
+    pub joined_phase: u64,
+}
+
+#[cw_serde]
+pub struct StakerInfoResponse {
+    pub amount: Uint128,           // How many staked tokens the user has provided.
+    pub joined_phase: u64,
+}
 
 #[cw_serde]
 pub struct RewardTokenAsset {
@@ -37,30 +48,6 @@ impl fmt::Display for RewardTokenAsset {
     }
 }
 
-impl RewardTokenAsset {
-    pub fn assert_sent_native_token_balance(&self, message_info: &MessageInfo) -> StdResult<()> {
-        if let TokenInfo::NativeToken { denom } = &self.info {
-            match message_info.funds.iter().find(|x| x.denom == *denom) {
-                Some(coin) => {
-                    if self.amount == coin.amount {
-                        Ok(())
-                    } else {
-                        Err(StdError::generic_err("Native token balance mismatch between the argument and the transferred"))
-                    }
-                }
-                None => {
-                    if self.amount.is_zero() {
-                        Ok(())
-                    } else {
-                        Err(StdError::generic_err("Native token balance mismatch between the argument and the transferred"))
-                    }
-                }
-            }
-        } else {
-            Ok(())
-        }
-    }
-}
 // TokenInfo is an enum that can be either a Token or a NativeToken
 #[cw_serde]
 pub enum TokenInfo {

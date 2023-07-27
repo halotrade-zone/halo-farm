@@ -1,14 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint128};
 
-use crate::state::{PoolInfos, RewardTokenAsset, TokenInfo};
-
-#[cw_serde]
-pub struct StakerInfoResponse {
-    pub amount: Uint128,           // How many staked tokens the user has provided.
-    pub reward_debt: Vec<Uint128>, // Store reward debt in multiple phases.
-    pub joined_phase: u64,
-}
+use crate::state::{PoolInfos, RewardTokenAsset, TokenInfo, StakerInfoResponse};
 
 #[cw_serde]
 pub struct InstantiateMsg {

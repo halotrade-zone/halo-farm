@@ -24,7 +24,7 @@ pub fn calc_reward_amount(
         .unwrap_or(Uint128::zero())
 }
 
-pub fn update_pool(
+pub fn get_new_reward_ratio_and_time(
     end_time: u64,
     reward_per_second: Decimal,
     staked_token_balance: Uint128,

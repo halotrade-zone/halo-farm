@@ -21,9 +21,9 @@ mod tests {
         };
         use cw20::{BalanceResponse, Cw20ExecuteMsg};
         use cw_multi_test::Executor;
-        use halo_pool::{
-            msg::StakerInfoResponse,
-            state::{PhaseInfo, PoolInfos, RewardTokenAsset, RewardTokenAssetResponse, TokenInfo},
+        use halo_pool::state::{
+            PhaseInfo, PoolInfos, RewardTokenAsset, RewardTokenAssetResponse, StakerInfoResponse,
+            TokenInfo,
         };
 
         use crate::{
