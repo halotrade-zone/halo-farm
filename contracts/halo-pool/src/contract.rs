@@ -354,7 +354,7 @@ pub fn execute_remove_phase(
             "transfer_reward",
             pool_infos.phases_info[phase_index as usize]
                 .reward_balance
-                .to_string()
+                .to_string(),
         );
     }
     // Remove phase
