@@ -4,8 +4,7 @@
   "type": "object",
   "required": [
     "amount",
-    "joined_phase",
-    "reward_debt"
+    "joined_phase"
   ],
   "properties": {
     "amount": {
@@ -15,12 +14,6 @@
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0
-    },
-    "reward_debt": {
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/Uint128"
-      }
     }
   },
   "additionalProperties": false,
