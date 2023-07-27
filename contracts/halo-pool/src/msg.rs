@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint128};
 
-use crate::state::{PoolInfos, RewardTokenAsset, TokenInfo, StakerInfoResponse};
+use crate::state::{PoolInfos, RewardTokenAsset, StakerInfoResponse, TokenInfo};
 
 #[cw_serde]
 pub struct InstantiateMsg {

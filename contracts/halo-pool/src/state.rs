@@ -25,7 +25,7 @@ pub struct StakerInfo {
 
 #[cw_serde]
 pub struct StakerInfoResponse {
-    pub amount: Uint128,           // How many staked tokens the user has provided.
+    pub amount: Uint128, // How many staked tokens the user has provided.
     pub joined_phase: u64,
 }
 
