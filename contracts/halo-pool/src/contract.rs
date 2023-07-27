@@ -68,7 +68,7 @@ pub fn instantiate(
 
     Ok(Response::new().add_attributes([
         ("method", "instantiate"),
-        ("staked_token", &msg.staked_token.to_string()),
+        ("staked_token", msg.staked_token.as_ref()),
         ("reward_token", &msg.reward_token.to_string()),
         ("start_time", &msg.start_time.to_string()),
         ("end_time", &msg.end_time.to_string()),
@@ -170,7 +170,7 @@ pub fn execute_add_reward_balance(
                 &info.funds,
                 &Coin {
                     denom,
-                    amount: asset.amount.into(),
+                    amount: asset.amount,
                 },
             ) {
                 return Err(ContractError::Std(StdError::generic_err(
@@ -1052,7 +1052,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
 }
 
 fn query_pool_info(deps: Deps) -> StdResult<PoolInfos> {
-    Ok(POOL_INFOS.load(deps.storage)?)
+    POOL_INFOS.load(deps.storage)
 }
 
 fn query_pending_reward(
