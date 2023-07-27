@@ -171,7 +171,8 @@ pub fn execute_add_reward_balance(
                 &Coin {
                     denom,
                     amount: asset.amount.into(),
-                },) {
+                },
+            ) {
                 return Err(ContractError::Std(StdError::generic_err(
                     "Native token balance mismatch between the argument and the transferred",
                 )));
@@ -343,17 +344,17 @@ pub fn execute_remove_phase(
                 to_address: whitelist.to_string(),
                 amount: vec![coin(
                     pool_infos.phases_info[phase_index as usize]
-                    .reward_balance
-                    .into(),
-                denom,
+                        .reward_balance
+                        .into(),
+                    denom,
                 )],
             })),
         };
         res = res.add_submessage(transfer_reward).add_attribute(
             "transfer_reward",
             pool_infos.phases_info[phase_index as usize]
-            .reward_balance
-            .to_string()
+                .reward_balance
+                .to_string()
         );
     }
     // Remove phase
