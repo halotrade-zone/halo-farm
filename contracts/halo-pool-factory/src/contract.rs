@@ -105,7 +105,7 @@ pub fn execute_update_config(
 
     Ok(Response::new()
         .add_attribute("method", "update_config")
-        .add_attribute("owner", owner.unwrap().to_string())
+        .add_attribute("owner", owner.unwrap())
         .add_attribute("pool_code_id", pool_code_id.unwrap().to_string()))
 }
 
@@ -206,7 +206,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
         ("action", "reply_on_create_pool_success"),
         ("pool_id", pool_key.to_string().as_str()),
         ("pool_contract_addr", pool_contract),
-        ("staked_token_addr", &pool_infos.staked_token.to_string()),
+        ("staked_token_addr", pool_infos.staked_token.as_ref()),
     ]))
 }
 
