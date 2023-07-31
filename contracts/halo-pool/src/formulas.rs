@@ -5,12 +5,10 @@ use cosmwasm_std::{Decimal, Uint128};
 /// The multiplier is the _end_ minus _from_ if the _from_ range is after the _end_.
 /// Otherwise, the multiplier is the _to_ minus _from_.
 pub fn get_multiplier(from: u64, to: u64, end: u64) -> u64 {
-    if to < end {
+    if to <= end {
         return to - from;
-    } else if to < from {
-        return 0;
     } else if from >= end {
-        return 1;
+        return 0;
     }
     end - from
 }
@@ -26,10 +24,10 @@ pub fn calc_reward_amount(
         .unwrap_or(Uint128::zero())
 }
 
-pub fn update_pool(
+pub fn get_new_reward_ratio_and_time(
     end_time: u64,
     reward_per_second: Decimal,
-    staked_token_supply: Uint128,
+    staked_token_balance: Uint128,
     accrued_token_per_share: Decimal,
     current_time: u64,
     last_reward_time: u64,
@@ -40,7 +38,7 @@ pub fn update_pool(
     }
 
     // Check if there is any staked token in the pool
-    if staked_token_supply == Uint128::zero() {
+    if staked_token_balance == Uint128::zero() {
         // No staked token in the pool, save last reward time and return
         (Decimal::zero(), last_reward_time)
     } else {
@@ -48,7 +46,7 @@ pub fn update_pool(
 
         let reward = Decimal::new(multiplier.into()) * reward_per_second;
         let new_accrued_token_per_share =
-            accrued_token_per_share + (reward / Decimal::new(staked_token_supply));
+            accrued_token_per_share + (reward / Decimal::new(staked_token_balance));
 
         (new_accrued_token_per_share, current_time)
     }

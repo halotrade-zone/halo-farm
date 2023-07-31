@@ -12,7 +12,8 @@
         "add_reward_balance": {
           "type": "object",
           "required": [
-            "asset"
+            "asset",
+            "phase_index"
           ],
           "properties": {
             "asset": {
@@ -22,6 +23,12 @@
                   "$ref": "#/definitions/RewardTokenAsset"
                 }
               ]
+            },
+            "phase_index": {
+              "description": "Reward phase index",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
             }
           },
           "additionalProperties": false
@@ -89,19 +96,75 @@
     {
       "type": "object",
       "required": [
-        "update_pool_limit_per_user"
+        "add_phase"
       ],
       "properties": {
-        "update_pool_limit_per_user": {
+        "add_phase": {
           "type": "object",
           "required": [
-            "new_pool_limit_per_user"
+            "new_end_time",
+            "new_start_time",
+            "whitelist"
           ],
           "properties": {
-            "new_pool_limit_per_user": {
-              "$ref": "#/definitions/Uint128"
+            "new_end_time": {
+              "description": "New end time",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "new_start_time": {
+              "description": "New start time",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            },
+            "whitelist": {
+              "description": "Whitelisted address",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/Addr"
+                }
+              ]
             }
           },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "remove_phase"
+      ],
+      "properties": {
+        "remove_phase": {
+          "type": "object",
+          "required": [
+            "phase_index"
+          ],
+          "properties": {
+            "phase_index": {
+              "description": "Reward phase index",
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0.0
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "required": [
+        "activate_phase"
+      ],
+      "properties": {
+        "activate_phase": {
+          "type": "object",
           "additionalProperties": false
         }
       },
@@ -109,6 +172,10 @@
     }
   ],
   "definitions": {
+    "Addr": {
+      "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
+      "type": "string"
+    },
     "RewardTokenAsset": {
       "type": "object",
       "required": [
@@ -140,7 +207,7 @@
               ],
               "properties": {
                 "contract_addr": {
-                  "type": "string"
+                  "$ref": "#/definitions/Addr"
                 }
               },
               "additionalProperties": false
