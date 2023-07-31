@@ -451,7 +451,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "halo-pool"
+name = "halo-farm"
 version = "1.0.0"
 dependencies = [
  "cosmwasm-schema",
@@ -469,7 +469,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "halo-pool-factory"
+name = "halo-farm-factory"
 version = "1.0.0"
 dependencies = [
  "cosmwasm-schema",
@@ -482,7 +482,7 @@ dependencies = [
  "cw20",
  "cw20-base",
  "getrandom",
- "halo-pool",
+ "halo-farm",
  "schemars",
  "serde",
  "thiserror",

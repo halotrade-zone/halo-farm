@@ -1,5 +1,5 @@
 [package]
-name = "halo-pool-factory"
+name = "halo-farm-factory"
 authors       = { workspace = true }
 version       = { workspace = true }
 edition       = { workspace = true }
@@ -25,7 +25,7 @@ library = []
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-halo-pool         = { workspace = true }
+halo-farm         = { workspace = true }
 cw-utils          = { workspace = true }
 cw-storage-plus   = { workspace = true }
 cw2               = { workspace = true }
