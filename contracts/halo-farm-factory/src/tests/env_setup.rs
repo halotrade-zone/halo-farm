@@ -15,7 +15,7 @@ pub mod env {
 
     use cw20_base::msg::InstantiateMsg as Cw20InstantiateMsg;
 
-    use halo_pool::contract::{
+    use halo_farm::contract::{
         execute as HaloPoolExecute, instantiate as HaloPoolInstantiate, query as HaloPoolQuery,
     };
 
@@ -57,7 +57,7 @@ pub mod env {
         })
     }
 
-    fn halo_pool_factory_contract_template() -> Box<dyn Contract<Empty>> {
+    fn halo_farm_factory_contract_template() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(
             HaloPoolFactoryExecute,
             HaloPoolFactoryInstantiate,
@@ -67,7 +67,7 @@ pub mod env {
         Box::new(contract)
     }
 
-    fn halo_pool_contract_template() -> Box<dyn Contract<Empty>> {
+    fn halo_farm_contract_template() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(HaloPoolExecute, HaloPoolInstantiate, HaloPoolQuery);
         Box::new(contract)
     }
@@ -86,23 +86,23 @@ pub mod env {
         let mut contract_info_vec: Vec<ContractInfo> = Vec::new();
 
         // store code of all contracts to the app and get the code ids
-        let halo_contract_code_id = app.store_code(halo_pool_factory_contract_template());
+        let halo_contract_code_id = app.store_code(halo_farm_factory_contract_template());
         let halo_lp_token_contract_code_id = app.store_code(halo_lp_token_contract_template());
         let halo_reward_decimal_18_token_contract_code_id =
             app.store_code(halo_lp_token_contract_template());
 
-        // halo pool factory contract
+        // halo farm factory contract
         // create instantiate message for contract
-        let halo_pool_factory_instantiate_msg = HaloPoolFactoryInstantiateMsg {
-            pool_code_id: app.store_code(halo_pool_contract_template()),
+        let halo_farm_factory_instantiate_msg = HaloPoolFactoryInstantiateMsg {
+            pool_code_id: app.store_code(halo_farm_contract_template()),
         };
 
         // instantiate contract
-        let halo_pool_factory_contract_addr = app
+        let halo_farm_factory_contract_addr = app
             .instantiate_contract(
                 halo_contract_code_id,
                 Addr::unchecked(ADMIN),
-                &halo_pool_factory_instantiate_msg,
+                &halo_farm_factory_instantiate_msg,
                 &[],
                 "test instantiate contract",
                 None,
@@ -111,7 +111,7 @@ pub mod env {
 
         // add contract info to vector
         contract_info_vec.push(ContractInfo {
-            contract_addr: halo_pool_factory_contract_addr.to_string(),
+            contract_addr: halo_farm_factory_contract_addr.to_string(),
             contract_code_id: halo_contract_code_id,
         });
 

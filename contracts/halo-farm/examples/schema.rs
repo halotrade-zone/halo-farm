@@ -1,6 +1,6 @@
 use cosmwasm_schema::write_api;
 
-use halo_pool::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
+use halo_farm::msg::{ExecuteMsg, InstantiateMsg, QueryMsg};
 
 fn main() {
     write_api! {

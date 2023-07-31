@@ -10,7 +10,7 @@ use cw2::set_contract_version;
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20ExecuteMsg, Cw20QueryMsg};
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:halo-pool";
+const CONTRACT_NAME: &str = "crates.io:halo-farm";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 use crate::{

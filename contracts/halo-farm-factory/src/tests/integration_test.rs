@@ -21,7 +21,7 @@ mod tests {
         };
         use cw20::{BalanceResponse, Cw20ExecuteMsg};
         use cw_multi_test::Executor;
-        use halo_pool::state::{PoolInfo, RewardTokenAsset, TokenInfo};
+        use halo_farm::state::{PoolInfo, RewardTokenAsset, TokenInfo};
 
         use crate::{
             msg::QueryMsg,
@@ -35,7 +35,7 @@ mod tests {
                 },
             },
         };
-        use halo_pool::msg::{ExecuteMsg as PoolExecuteMsg, QueryMsg as PoolQueryMsg};
+        use halo_farm::msg::{ExecuteMsg as PoolExecuteMsg, QueryMsg as PoolQueryMsg};
 
         #[test]
         fn proper_operation() {

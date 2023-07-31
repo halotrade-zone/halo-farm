@@ -2,7 +2,7 @@ use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint128};
 
 use crate::state::{ConfigResponse, FactoryPoolInfo};
-use halo_pool::state::TokenInfo;
+use halo_farm::state::TokenInfo;
 
 #[cw_serde]
 pub struct InstantiateMsg {
