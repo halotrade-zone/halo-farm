@@ -617,21 +617,24 @@ pub fn execute_withdraw(
         staker_info.reward_debt[current_phase_index as usize],
     );
 
-    // Transfer reward token to the sender
-    let transfer_reward = match pool_infos.reward_token.clone() {
-        TokenInfo::Token { contract_addr } => SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: contract_addr.to_string(),
-            msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                recipient: info.sender.to_string(),
-                amount: reward_amount,
-            })?,
-            funds: vec![],
-        })),
-        TokenInfo::NativeToken { denom } => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: info.sender.to_string(),
-            amount: vec![coin(reward_amount.into(), denom)],
-        })),
-    };
+    // If reward amount is greater than 0, transfer reward token to the sender
+    if reward_amount > Uint128::zero(){
+        let transfer_reward = match pool_infos.reward_token.clone() {
+            TokenInfo::Token { contract_addr } => SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
+                contract_addr: contract_addr.to_string(),
+                msg: to_binary(&Cw20ExecuteMsg::Transfer {
+                    recipient: info.sender.to_string(),
+                    amount: reward_amount,
+                })?,
+                funds: vec![],
+            })),
+            TokenInfo::NativeToken { denom } => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
+                to_address: info.sender.to_string(),
+                amount: vec![coin(reward_amount.into(), denom)],
+            })),
+        };
+        res = res.add_submessage(transfer_reward);
+    }
 
     // Withdraw staked token from the pool by using cw20 transfer message
     let withdraw = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -663,7 +666,6 @@ pub fn execute_withdraw(
     POOL_INFOS.save(deps.storage, &pool_infos)?;
 
     res = res
-        .add_submessage(transfer_reward)
         .add_submessage(withdraw)
         .add_attribute("current_time", current_time.to_string())
         .add_attribute("method", "withdraw")
