@@ -580,7 +580,6 @@
             "end_time",
             "last_reward_time",
             "reward_balance",
-            "reward_per_second",
             "start_time",
             "total_staked_at_end_time",
             "whitelist"
@@ -601,9 +600,6 @@
             },
             "reward_balance": {
               "$ref": "#/definitions/Uint128"
-            },
-            "reward_per_second": {
-              "$ref": "#/definitions/Decimal"
             },
             "start_time": {
               "type": "integer",
