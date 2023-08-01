@@ -161,7 +161,7 @@ pub fn execute_create_pool(
             msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
                 code_id: config.pool_code_id,
                 funds: vec![],
-                admin: Some(env.contract.address.to_string()),
+                admin: Some(config.owner.to_string()),
                 label: "pool".to_string(),
                 msg: to_binary(&PoolInstantiateMsg {
                     staked_token,
