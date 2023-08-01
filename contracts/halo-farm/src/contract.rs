@@ -618,7 +618,7 @@ pub fn execute_withdraw(
     );
 
     // If reward amount is greater than 0, transfer reward token to the sender
-    if reward_amount > Uint128::zero(){
+    if reward_amount > Uint128::zero() {
         let transfer_reward = match pool_infos.reward_token.clone() {
             TokenInfo::Token { contract_addr } => SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: contract_addr.to_string(),
