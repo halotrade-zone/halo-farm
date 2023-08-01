@@ -67,7 +67,6 @@ impl fmt::Display for TokenInfo {
 // We define a custom struct for each query response
 #[cw_serde]
 pub struct PhaseInfo {
-    pub reward_per_second: Decimal,
     pub start_time: u64,
     pub end_time: u64,
     pub whitelist: Addr, // Whitelisted address to add reward balance

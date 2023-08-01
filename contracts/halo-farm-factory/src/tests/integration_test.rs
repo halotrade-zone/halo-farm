@@ -187,7 +187,6 @@ mod tests {
                     reward_token: native_token_info.clone(),
                     current_phase_index: 0u64,
                     phases_info: vec![PhaseInfo {
-                        reward_per_second: Decimal::from_str("10000000").unwrap(), // 10_000_000 (10 NATIVE_DENOM_2)
                         start_time: current_block_time,
                         end_time: current_block_time + 100,
                         whitelist: Addr::unchecked(ADMIN.to_string()),
@@ -337,6 +336,7 @@ mod tests {
                 &[],
             );
 
+            println!("RESPONSEEEE: {:?}", response);
             assert!(response.is_ok());
 
             // query balance of ADMIN in native token
@@ -629,7 +629,6 @@ mod tests {
                     reward_token: native_token_info.clone(),
                     current_phase_index: 0u64,
                     phases_info: vec![PhaseInfo {
-                        reward_per_second: Decimal::from_str("10000000").unwrap(), // 10_000_000 (10 NATIVE_DENOM_2)
                         start_time: current_block_time,
                         end_time: current_block_time + 100,
                         whitelist: Addr::unchecked(ADMIN.to_string()),
@@ -1554,7 +1553,6 @@ mod tests {
                     current_phase_index: 1u64,
                     phases_info: vec![
                         PhaseInfo {
-                            reward_per_second: Decimal::from_str("10000000").unwrap(), // 10_000_000 (10 NATIVE_DENOM_2)
                             start_time: pool_info.phases_info
                                 [pool_info.current_phase_index as usize]
                                 .start_time,
@@ -1572,7 +1570,6 @@ mod tests {
                             ),
                         },
                         PhaseInfo {
-                            reward_per_second: Decimal::from_str("12500000").unwrap(), // 12_500_000 (12.5 NATIVE_DENOM_2)
                             start_time: pool_info.phases_info
                                 [pool_info.current_phase_index as usize]
                                 .end_time
@@ -3351,7 +3348,6 @@ mod tests {
                     reward_token: native_token_info,
                     current_phase_index: 0u64,
                     phases_info: vec![PhaseInfo {
-                        reward_per_second: Decimal::from_str("100000000").unwrap(), // 100_000_000 (100 NATIVE_DENOM_2)
                         start_time: current_block_time,
                         end_time: current_block_time + 10,
                         whitelist: Addr::unchecked(ADMIN.to_string()),
