@@ -1106,7 +1106,8 @@ fn query_pending_reward(
                 pool_info.end_time,
             );
 
-            let reward = Uint128::new(multiplier.into()) * pool_info.reward_balance / Uint128::new((pool_info.end_time - pool_info.start_time).into());
+            let reward = Uint128::new(multiplier.into()) * pool_info.reward_balance
+                / Uint128::new((pool_info.end_time - pool_info.start_time).into());
 
             accrued_token_per_share += Decimal::new(reward) / Decimal::new(staked_token_balance);
             reward_amount += calc_reward_amount(
@@ -1130,8 +1131,8 @@ fn query_pending_reward(
 
     // Get staked token balance
     let staked_token_balance = pool_infos.staked_token_balance;
-
-    let reward = Uint128::new(multiplier.into()) * pool_info.reward_balance / Uint128::new((pool_info.end_time - pool_info.start_time).into());
+    let reward = Uint128::new(multiplier.into()) * pool_info.reward_balance
+        / Uint128::new((pool_info.end_time - pool_info.start_time).into());
     // Get accrued token per share
     let mut accrued_token_per_share =
         pool_infos.phases_info[current_phase_index as usize].accrued_token_per_share;
