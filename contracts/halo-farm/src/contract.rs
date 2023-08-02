@@ -452,7 +452,9 @@ pub fn execute_deposit(
     let mut pool_infos = POOL_INFOS.load(deps.storage)?;
 
     // For the first deposit, set last reward time to current time
-    if current_time >= pool_infos.phases_info[current_phase_index as usize].start_time && staked_token_balance == Uint128::zero(){
+    if current_time >= pool_infos.phases_info[current_phase_index as usize].start_time
+        && staked_token_balance == Uint128::zero()
+    {
         last_reward_time = current_time;
     }
     // Get accrued token per share
