@@ -365,12 +365,24 @@ pub fn execute_deposit(
     info: MessageInfo,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
+    // Not allow depositing 0 amount
+    if amount.is_zero() {
+        return Err(ContractError::Std(StdError::generic_err(
+            "InvalidZeroAmount: Deposit amount is 0",
+        )));
+    }
     // Get pool infos
     let pool_infos = POOL_INFOS.load(deps.storage)?;
     // Get current pool index
     let current_phase_index = pool_infos.current_phase_index;
     // Get current pool info in pool infos
     let pool_info = pool_infos.phases_info[current_phase_index as usize].clone();
+    // Not allow depositing if reward token is not added to the pool yet
+    if pool_info.reward_balance == Uint128::zero() {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Empty reward balance pool",
+        )));
+    }
     // If staker has not joined any phase, save initial staker info
     if STAKERS_INFO
         .may_load(deps.storage, info.sender.clone())?
@@ -390,8 +402,7 @@ pub fn execute_deposit(
     // Get current time
     let current_time = env.block.time.seconds();
     // Not allow depositing when current time is greater than end time of the phase
-    // and less than start time of the phase
-    if current_time > pool_info.end_time || current_time < pool_info.start_time {
+    if current_time > pool_info.end_time {
         return Err(ContractError::Std(StdError::generic_err(
             "Current time is not in the range of the phase",
         )));
@@ -441,7 +452,7 @@ pub fn execute_deposit(
     let mut pool_infos = POOL_INFOS.load(deps.storage)?;
 
     // For the first deposit, set last reward time to current time
-    if staked_token_balance == Uint128::zero() {
+    if current_time >= pool_infos.phases_info[current_phase_index as usize].start_time && staked_token_balance == Uint128::zero(){
         last_reward_time = current_time;
     }
     // Get accrued token per share
@@ -528,6 +539,12 @@ pub fn execute_withdraw(
     info: MessageInfo,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
+    // Not allow withdrawing 0 amount
+    if amount.is_zero() {
+        return Err(ContractError::Std(StdError::generic_err(
+            "InvalidZeroAmount: Withdraw amount is 0",
+        )));
+    }
     // Get pool infos
     let pool_infos = POOL_INFOS.load(deps.storage)?;
     // Get current pool index

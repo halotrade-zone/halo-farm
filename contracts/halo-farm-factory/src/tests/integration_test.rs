@@ -336,7 +336,6 @@ mod tests {
                 &[],
             );
 
-            println!("RESPONSEEEE: {:?}", response);
             assert!(response.is_ok());
 
             // query balance of ADMIN in native token
