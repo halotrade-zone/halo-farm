@@ -1,5 +1,5 @@
 {
-  "contract_name": "halo-pool-factory",
+  "contract_name": "halo-farm-factory",
   "contract_version": "1.0.0",
   "idl_version": "1.0.0",
   "instantiate": {

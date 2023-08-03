@@ -22,8 +22,8 @@ optimize = """docker run --rm -v "$(pwd)":/code \
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [workspace.dependencies]
-halo-pool         = { path = "./contracts/halo-pool", features = ["library"]}
-halo-pool-factory = { path = "./contracts/halo-pool-factory", features = ["library"]}
+halo-farm         = { path = "./contracts/halo-farm", features = ["library"]}
+halo-farm-factory = { path = "./contracts/halo-farm-factory", features = ["library"]}
 bigint            = "4.4.3"
 cosmwasm-schema   = "1.1.8"
 cosmwasm-std      = "1.1.8"
@@ -45,11 +45,11 @@ cw-multi-test     = "0.16.1"
 cosmwasm-schema   = { version = "1.1.8" }
 cosmwasm-storage  = { version = "1.1.8" }
 
-[profile.release.package.halo-pool-factory]
+[profile.release.package.halo-farm-factory]
 codegen-units = 1
 incremental = false
 
-[profile.release.package.halo-pool]
+[profile.release.package.halo-farm]
 codegen-units = 1
 incremental = false
 

@@ -1,5 +1,5 @@
 [package]
-name          = "halo-pool"
+name          = "halo-farm"
 authors       = { workspace = true }
 version       = { workspace = true }
 edition       = { workspace = true }

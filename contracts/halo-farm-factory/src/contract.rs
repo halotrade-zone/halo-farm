@@ -13,12 +13,12 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_utils::parse_reply_instantiate_data;
-use halo_pool::msg::InstantiateMsg as PoolInstantiateMsg;
-use halo_pool::msg::QueryMsg as PoolQueryMsg;
-use halo_pool::state::{PoolInfos, TokenInfo};
+use halo_farm::msg::InstantiateMsg as PoolInstantiateMsg;
+use halo_farm::msg::QueryMsg as PoolQueryMsg;
+use halo_farm::state::{PoolInfos, TokenInfo};
 
 // version info for migration info
-const CONTRACT_NAME: &str = "crates.io:halo-pool-factory";
+const CONTRACT_NAME: &str = "crates.io:halo-farm-factory";
 const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -161,7 +161,7 @@ pub fn execute_create_pool(
             msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
                 code_id: config.pool_code_id,
                 funds: vec![],
-                admin: Some(env.contract.address.to_string()),
+                admin: Some(config.owner.to_string()),
                 label: "pool".to_string(),
                 msg: to_binary(&PoolInstantiateMsg {
                     staked_token,

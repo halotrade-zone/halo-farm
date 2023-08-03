@@ -1,2 +1,2 @@
-# halo-pool
+# halo-farm
 Halo pool smart contract

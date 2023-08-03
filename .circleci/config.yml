@@ -3,17 +3,17 @@ workflows:
   version: 2
   test:
     jobs:
-      - halo-pool
-      - halo-pool-factory
+      - halo-farm
+      - halo-farm-factory
       - lint
       - coverage
       - wasm-build
 
 jobs:
-  halo-pool:
+  halo-farm:
     docker:
       - image: rust:1.66.0
-    working_directory: ~/project/contracts/halo-pool
+    working_directory: ~/project/contracts/halo-farm
     steps:
       - checkout:
           path: ~/project
@@ -22,7 +22,7 @@ jobs:
           command: rustc --version; cargo --version; rustup --version
       - restore_cache:
           keys:
-            - cargocache-halo-pool-rust:1.66.0-{{ checksum "~/project/Cargo.lock" }}
+            - cargocache-halo-farm-rust:1.66.0-{{ checksum "~/project/Cargo.lock" }}
       - run:
           name: Unit Tests
           environment:
@@ -44,12 +44,12 @@ jobs:
           paths:
             - /usr/local/cargo/registry
             - target
-          key: cargocache-halo-pool-rust:1.66.0-{{ checksum "~/project/Cargo.lock" }}
+          key: cargocache-halo-farm-rust:1.66.0-{{ checksum "~/project/Cargo.lock" }}
 
-  halo-pool-factory:
+  halo-farm-factory:
     docker:
       - image: rust:1.66.0
-    working_directory: ~/project/contracts/halo-pool-factory
+    working_directory: ~/project/contracts/halo-farm-factory
     steps:
       - checkout:
           path: ~/project
@@ -58,7 +58,7 @@ jobs:
           command: rustc --version; cargo --version; rustup --version
       - restore_cache:
           keys:
-            - cargocache-halo-pool-factory-rust:1.66.0-{{ checksum "~/project/Cargo.lock" }}
+            - cargocache-halo-farm-factory-rust:1.66.0-{{ checksum "~/project/Cargo.lock" }}
       - run:
           name: Unit Tests
           environment:
@@ -80,7 +80,7 @@ jobs:
           paths:
             - /usr/local/cargo/registry
             - target
-          key: cargocache-halo-pool-factory-rust:1.66.0-{{ checksum "~/project/Cargo.lock" }}
+          key: cargocache-halo-farm-factory-rust:1.66.0-{{ checksum "~/project/Cargo.lock" }}
 
   lint:
     docker:

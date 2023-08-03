@@ -25,8 +25,9 @@ pub fn calc_reward_amount(
 }
 
 pub fn get_new_reward_ratio_and_time(
+    start_time: u64,
     end_time: u64,
-    reward_per_second: Decimal,
+    reward_balance: Uint128,
     staked_token_balance: Uint128,
     accrued_token_per_share: Decimal,
     current_time: u64,
@@ -43,10 +44,11 @@ pub fn get_new_reward_ratio_and_time(
         (Decimal::zero(), last_reward_time)
     } else {
         let multiplier = get_multiplier(last_reward_time, current_time, end_time);
+        let reward = Uint128::new(multiplier.into()) * reward_balance
+            / Uint128::new((end_time - start_time).into());
 
-        let reward = Decimal::new(multiplier.into()) * reward_per_second;
         let new_accrued_token_per_share =
-            accrued_token_per_share + (reward / Decimal::new(staked_token_balance));
+            accrued_token_per_share + (Decimal::new(reward) / Decimal::new(staked_token_balance));
 
         (new_accrued_token_per_share, current_time)
     }
