@@ -295,13 +295,6 @@ pub fn execute_remove_phase(
         )));
     }
 
-    // Check the message sender is the whitelisted address
-    if pool_infos.phases_info[phase_index as usize].whitelist != info.sender {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Unauthorized: Sender is not whitelisted address",
-        )));
-    }
-
     // Get config
     let config: Config = CONFIG.load(deps.storage)?;
 
@@ -986,10 +979,6 @@ pub fn execute_activate_phase(
 
     // Get pool info from pool infos
     let pool_info = pool_infos.phases_info[current_phase_index].clone();
-    // Init new accrued token per share
-    let new_accrued_token_per_share;
-    // Init new last reward time
-    let new_last_reward_time;
     // Get last reward time
     let last_reward_time = pool_infos.phases_info[current_phase_index].last_reward_time;
     // Get accrued token per share
@@ -997,7 +986,7 @@ pub fn execute_activate_phase(
         pool_infos.phases_info[current_phase_index].accrued_token_per_share;
 
     // get new reward ratio and time
-    (new_accrued_token_per_share, new_last_reward_time) = get_new_reward_ratio_and_time(
+    let (new_accrued_token_per_share, _new_last_reward_time) = get_new_reward_ratio_and_time(
         pool_info.start_time,
         pool_info.end_time,
         pool_info.reward_balance,
@@ -1007,7 +996,7 @@ pub fn execute_activate_phase(
         last_reward_time,
     );
 
-    pool_infos.phases_info[current_phase_index].last_reward_time = new_last_reward_time;
+    pool_infos.phases_info[current_phase_index].last_reward_time = pool_info.end_time;
     pool_infos.phases_info[current_phase_index].accrued_token_per_share =
         new_accrued_token_per_share;
 
