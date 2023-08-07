@@ -993,9 +993,7 @@ pub fn execute_activate_phase(
         .reward_balance
         .is_zero()
     {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Empty phase",
-        )));
+        return Err(ContractError::Std(StdError::generic_err("Empty phase")));
     }
 
     // Get staked token balance
