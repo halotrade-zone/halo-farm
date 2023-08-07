@@ -117,7 +117,7 @@ pub fn execute_add_reward_balance(
     let current_phase_index = pool_infos.current_phase_index;
 
     // Not allow to add reward balance to activated phase
-    if phase_index <= current_phase_index {
+    if phase_index < current_phase_index {
         return Err(ContractError::Std(StdError::generic_err(
             "Can not add reward balance to activated phase",
         )));
