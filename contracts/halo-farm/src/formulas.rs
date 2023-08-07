@@ -10,6 +10,7 @@ pub fn get_multiplier(from: u64, to: u64, end: u64) -> u64 {
     } else if from >= end {
         return 0;
     }
+    // If the pool has ended, the multiplier is the end minus from
     end - from
 }
 

@@ -613,7 +613,12 @@ pub fn execute_withdraw(
         last_reward_time,
     );
 
-    pool_infos.phases_info[current_phase_index as usize].last_reward_time = new_last_reward_time;
+    // If an user withdraws lp token after the end time of the phase, set last reward time to end time of this phase
+    if current_time > pool_info.end_time {
+        pool_infos.phases_info[current_phase_index as usize].last_reward_time = pool_info.end_time;
+    } else {
+        pool_infos.phases_info[current_phase_index as usize].last_reward_time = new_last_reward_time;
+    }
     pool_infos.phases_info[current_phase_index as usize].accrued_token_per_share =
         new_accrued_token_per_share;
 
@@ -749,7 +754,12 @@ pub fn execute_harvest(
         last_reward_time,
     );
 
-    pool_infos.phases_info[current_phase_index as usize].last_reward_time = new_last_reward_time;
+    // If an user harvests reward after the end time of the phase, set last reward time to end time of this phase
+    if current_time > pool_info.end_time {
+        pool_infos.phases_info[current_phase_index as usize].last_reward_time = pool_info.end_time;
+    } else {
+        pool_infos.phases_info[current_phase_index as usize].last_reward_time = new_last_reward_time;
+    }
     pool_infos.phases_info[current_phase_index as usize].accrued_token_per_share =
         new_accrued_token_per_share;
 
@@ -1105,12 +1115,11 @@ fn query_pending_reward(
             // Get staked token balance from pool contract previous phases
             let staked_token_balance = pool_info.total_staked_at_end_time;
             // Get accrued token per share
-            let mut accrued_token_per_share =
-                pool_infos.phases_info[i as usize].accrued_token_per_share;
+            let mut accrued_token_per_share = pool_info.accrued_token_per_share;
 
             multiplier = get_multiplier(
-                pool_infos.phases_info[i as usize].last_reward_time,
-                pool_info.end_time,
+                pool_info.last_reward_time,
+                current_time,
                 pool_info.end_time,
             );
 
@@ -1131,7 +1140,7 @@ fn query_pending_reward(
         multiplier = 0u64;
     } else {
         multiplier = get_multiplier(
-            pool_infos.phases_info[current_phase_index as usize].last_reward_time,
+            pool_info.last_reward_time,
             current_time,
             pool_info.end_time,
         );
@@ -1143,7 +1152,7 @@ fn query_pending_reward(
         / Uint128::new((pool_info.end_time - pool_info.start_time).into());
     // Get accrued token per share
     let mut accrued_token_per_share =
-        pool_infos.phases_info[current_phase_index as usize].accrued_token_per_share;
+        pool_info.accrued_token_per_share;
 
     accrued_token_per_share += Decimal::new(reward) / Decimal::new(staked_token_balance);
 

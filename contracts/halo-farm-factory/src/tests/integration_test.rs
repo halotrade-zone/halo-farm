@@ -3499,7 +3499,7 @@ mod tests {
 
             assert!(response.is_ok());
 
-            // increase block time increase 1 seconds to make 11 seconds passed
+            // increase block time 1 seconds to make 11 seconds passed
             app.set_block(BlockInfo {
                 time: app.block_info().time.plus_seconds(1),
                 height: app.block_info().height + 1,
@@ -3519,7 +3519,7 @@ mod tests {
 
             assert!(response.is_ok());
 
-            // increase block time increase 1 seconds to make 12 seconds passed
+            // increase block time 1 seconds to make 12 seconds passed
             app.set_block(BlockInfo {
                 time: app.block_info().time.plus_seconds(1),
                 height: app.block_info().height + 1,
@@ -4038,7 +4038,7 @@ mod tests {
 
             assert_eq!(
                 balance.amount.amount,
-                Uint128::from(998_400_000_000u128 + 240_000_000u128)
+                Uint128::from(998_400_000_000u128 + pending_reward_admin_30s.amount.u128())
             );
 
 
