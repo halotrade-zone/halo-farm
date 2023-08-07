@@ -617,7 +617,8 @@ pub fn execute_withdraw(
     if current_time > phase_info.end_time {
         pool_infos.phases_info[current_phase_index as usize].last_reward_time = phase_info.end_time;
     } else {
-        pool_infos.phases_info[current_phase_index as usize].last_reward_time = new_last_reward_time;
+        pool_infos.phases_info[current_phase_index as usize].last_reward_time =
+            new_last_reward_time;
     }
     pool_infos.phases_info[current_phase_index as usize].accrued_token_per_share =
         new_accrued_token_per_share;
@@ -758,7 +759,8 @@ pub fn execute_harvest(
     if current_time > phase_info.end_time {
         pool_infos.phases_info[current_phase_index as usize].last_reward_time = phase_info.end_time;
     } else {
-        pool_infos.phases_info[current_phase_index as usize].last_reward_time = new_last_reward_time;
+        pool_infos.phases_info[current_phase_index as usize].last_reward_time =
+            new_last_reward_time;
     }
     pool_infos.phases_info[current_phase_index as usize].accrued_token_per_share =
         new_accrued_token_per_share;
@@ -987,7 +989,10 @@ pub fn execute_activate_phase(
     }
 
     // Not allow activating phase when reward balance of this phase is zero
-    if pool_infos.phases_info[current_phase_index + 1].reward_balance.is_zero() {
+    if pool_infos.phases_info[current_phase_index + 1]
+        .reward_balance
+        .is_zero()
+    {
         return Err(ContractError::Std(StdError::generic_err(
             "Empty phase",
         )));
@@ -1165,8 +1170,7 @@ fn query_pending_reward(
     let reward = Uint128::new(multiplier.into()) * phase_info.reward_balance
         / Uint128::new((phase_info.end_time - phase_info.start_time).into());
     // Get accrued token per share
-    let mut accrued_token_per_share =
-    phase_info.accrued_token_per_share;
+    let mut accrued_token_per_share = phase_info.accrued_token_per_share;
 
     accrued_token_per_share += Decimal::new(reward) / Decimal::new(staked_token_balance);
 
