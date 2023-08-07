@@ -3226,7 +3226,7 @@ mod tests {
         // Increase 8 seconds
         // -> ADMIN Reward balance 8s: 800 NATIVE_2 (Not claim yet)
         // ----- Phase 1 -----
-        // Extend end time by ADMIN more 10 seconds with start time = Phase 0's endtime + 2 seconds
+        // Extend end time by ADMIN more 10 seconds with start_time = Phase 0's end_time + 2 seconds
         // Increase 1 second
         // Add 1000 NATIVE_2 reward balance amount to pool contract by ADMIN in phase 1
         // with end time 10 seconds -> 100 NATIVE_2 per second
@@ -3236,8 +3236,34 @@ mod tests {
         // -> ADMIN Reward balance 14s: 200 NATIVE_2 (Not claim yet)
         // Increase 6 second
         // USER_1 Pending reward 6s: (500 / (1000 + 500) * 6 * 100) = 200 NATIVE_2
-        // Harvest reward by ADMIN after 6 seconds
-        // -> Reward balance 19s: 800 + 200 + (1000 / (1000 + 500) * 6 * 100) = 1400 NATIVE_2
+        // Harvest reward by ADMIN after 6 seconds by depositing more 1000 lp token
+        // -> Reward balance 20s: 800 + 200 + (1000 / (1000 + 500) * 6 * 100) = 1400 NATIVE_2
+        // Increase 2 second
+        // USER_1 Harvest reward after 8 seconds
+        // USER_1 Pending reward 6s: 200 NATIVE_2
+        // ->                    2s: (500 / (1000 + 500 + 1000) * 2 * 100) = 40 NATIVE_2
+        // ADMIN pending reward 2s: (2000 / (1000 + 500 + 1000) * 2 * 100) = 160 NATIVE_2
+        // Increase 2 second to make 24 seconds passed out of 2 seconds Phases 1's passed
+        //
+        // USER_1 Harvest reward
+        // -> Reward balance 24s == Reward balance 20s = 240 NATIVE_2
+        // Increase 1s (25 seconds passed)
+        // ADMIN pending reward 2s: (2000 / (1000 + 500 + 1000) * 2 * 100) = 160 NATIVE_2 (Re-check)
+        // ----- Phase 2 -----
+        // Increase 1s (26 seconds passed)
+        // Extend end time by ADMIN more 10 seconds with start_time at 29 seconds
+        // Increase 1s (27 seconds passed)
+        // Add 1000 NATIVE_2 reward balance amount to pool contract by ADMIN in phase 2
+        // Increase 1s (28 seconds passed)
+        // Activate phase 2
+        // Increase 1s (29 seconds passed)
+        // Query pending reward by ADMIN after 29 seconds (Not harvest yet)
+        // -> Reward balance 29s: 160 NATIVE_2
+        // Increase 1s (30 seconds passed)
+        // Query pending reward by ADMIN after 30 seconds (Not harvest yet)
+        // -> Reward balance 29s: 160 NATIVE_2
+        //                    1s: (2000 / (1000 + 500 + 1000) * 1 * 100) = 80 NATIVE_2
+        // -> Reward balance 30s: 240 NATIVE_2
         #[test]
         fn proper_harvest_with_multipe_phases() {
             // get integration test app and contracts
@@ -3455,7 +3481,7 @@ mod tests {
             let add_reward_balance_msg = PoolExecuteMsg::AddRewardBalance {
                 phase_index: 1u64,
                 asset: RewardTokenAsset {
-                    info: reward_asset_info,
+                    info: reward_asset_info.clone(),
                     amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
                 },
             };
@@ -3473,7 +3499,7 @@ mod tests {
 
             assert!(response.is_ok());
 
-            // increase block time increase 1 seconds to make 11 seconds passed
+            // increase block time 1 seconds to make 11 seconds passed
             app.set_block(BlockInfo {
                 time: app.block_info().time.plus_seconds(1),
                 height: app.block_info().height + 1,
@@ -3493,12 +3519,14 @@ mod tests {
 
             assert!(response.is_ok());
 
-            // increase block time increase 1 seconds to make 12 seconds passed
+            // increase block time 1 seconds to make 12 seconds passed
             app.set_block(BlockInfo {
                 time: app.block_info().time.plus_seconds(1),
                 height: app.block_info().height + 1,
                 chain_id: app.block_info().chain_id,
             });
+
+            // PHASE 1 STARTS
 
             // change block time increase 2 seconds to make 14 seconds passed
             app.set_block(BlockInfo {
@@ -3666,6 +3694,30 @@ mod tests {
                 )
             );
 
+            // query pending reward of ADMIN after harvest
+            let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&PoolQueryMsg::PendingReward {
+                    address: ADMIN.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_admin_harvest: RewardTokenAssetResponse = from_binary(&res).unwrap();
+
+            // It should be 0 NATIVE_2 as reward is accrued
+            assert_eq!(
+                pending_reward_admin_harvest,
+                RewardTokenAssetResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::zero(),
+                    time_query: 1571797439,
+                }
+            );
+
             // query pending reward by USER_1 after 6 seconds after ADMIN harvest
             let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
                 contract_addr: "contract3".to_string(),
@@ -3688,6 +3740,301 @@ mod tests {
                     amount: Uint128::from(200_000_000u128),
                     time_query: 1571797439,
                 }
+            );
+
+            // change block time increase 2 seconds to make 22 seconds passed -- END OF PHASE 1 --
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(2),
+                height: app.block_info().height + 2,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // query pending reward by USER_1 after 8 seconds after ADMIN harvest
+            let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&PoolQueryMsg::PendingReward {
+                    address: USER_1.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_user1_8s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+
+            // It should be 200 NATIVE_2 as reward is accrued
+            assert_eq!(
+                pending_reward_user1_8s,
+                RewardTokenAssetResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(240_000_000u128),
+                    time_query: 1571797441,
+                }
+            );
+
+            // query pending reward by ADMIN
+            let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&PoolQueryMsg::PendingReward {
+                    address: ADMIN.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_admin_8s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+
+            // It should be 800 NATIVE_2 as reward is accrued
+            assert_eq!(
+                pending_reward_admin_8s,
+                RewardTokenAssetResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(160_000_000u128),
+                    time_query: 1571797441,
+                }
+            );
+
+            // Increase 2 second to make 24 seconds passed out of 2 seconds Phases 1's passed
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(2),
+                height: app.block_info().height + 2,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // Harvest reward by USER_1
+            let harvest_msg = PoolExecuteMsg::Harvest {};
+
+            // Execute harvest by USER_1
+            let response = app.execute_contract(
+                Addr::unchecked(USER_1.to_string()),
+                Addr::unchecked("contract3"),
+                &harvest_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // query balance of USER_1 in native token
+            let req: QueryRequest<BankQuery> = QueryRequest::Bank(BankQuery::Balance {
+                address: USER_1.to_string(),
+                denom: NATIVE_DENOM_2.to_string(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let balance: BankBalanceResponse = from_binary(&res).unwrap();
+
+            // It should be 240 NATIVE_2 as reward is accrued
+            assert_eq!(
+                balance.amount.amount,
+                Uint128::from(pending_reward_user1_8s.amount.u128())
+            );
+
+            // Increase 1 second to make 25 seconds passed
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // query pending reward by ADMIN after 25 seconds after USER_1 harvest(Re-check)
+            let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&PoolQueryMsg::PendingReward {
+                    address: ADMIN.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_admin_25s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+
+            // It should be 160 NATIVE_2 as reward is accrued
+            assert_eq!(
+                pending_reward_admin_25s,
+                RewardTokenAssetResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(160_000_000u128),
+                    time_query: 1571797444,
+                }
+            );
+
+            // Increase 1 second to make 26 seconds passed
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // ----- Phase 2 -----
+            // Extend end time by ADMIN more 10 seconds with start_time at 29 seconds
+            let extend_end_time_msg = PoolExecuteMsg::AddPhase {
+                new_start_time: 1571797448, // 29 seconds
+                new_end_time: 1571797448 + 10,
+                whitelist: Addr::unchecked(ADMIN.to_string()),
+            };
+
+            // Execute extend end time by ADMIN
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked("contract3"),
+                &extend_end_time_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // Increase 1 second to make 27 seconds passed
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // add reward balance to pool contract
+            let add_reward_balance_msg = PoolExecuteMsg::AddRewardBalance {
+                phase_index: 2u64,
+                asset: RewardTokenAsset {
+                    info: reward_asset_info,
+                    amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
+                },
+            };
+
+            // Execute add reward balance
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked("contract3"),
+                &add_reward_balance_msg,
+                &[Coin {
+                    amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
+                    denom: NATIVE_DENOM_2.to_string(),
+                }],
+            );
+
+            assert!(response.is_ok());
+
+            // query balance of ADMIN in native token
+            let req: QueryRequest<BankQuery> = QueryRequest::Bank(BankQuery::Balance {
+                address: ADMIN.to_string(),
+                denom: NATIVE_DENOM_2.to_string(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let balance: BankBalanceResponse = from_binary(&res).unwrap();
+
+            assert_eq!(balance.amount.amount, Uint128::from(998_400_000_000u128));
+
+            // Increase 1 second to make 28 seconds passed
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // Activate phase 2
+            let activate_phase_msg = PoolExecuteMsg::ActivatePhase {};
+
+            // Execute activate phase by ADMIN
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked("contract3"),
+                &activate_phase_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // Increase 1 second to make 29 seconds passed
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // query pending reward by ADMIN after 29 seconds after USER_1 harvest(Re-check)
+            let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&PoolQueryMsg::PendingReward {
+                    address: ADMIN.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_admin_29s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+
+            // It should be 160 NATIVE_2 as reward is accrued
+            assert_eq!(
+                pending_reward_admin_29s,
+                RewardTokenAssetResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(160_000_000u128),
+                    time_query: 1571797448,
+                }
+            );
+
+            // Increase 1 second to make 30 seconds passed
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // query pending reward by ADMIN after 30 seconds after USER_1 harvest
+            let req: QueryRequest<PoolQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&PoolQueryMsg::PendingReward {
+                    address: ADMIN.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_admin_30s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+
+            // It should be 240 NATIVE_2 as reward is accrued
+            assert_eq!(
+                pending_reward_admin_30s,
+                RewardTokenAssetResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(240_000_000u128),
+                    time_query: 1571797449,
+                }
+            );
+
+            // Harvest reward by ADMIN
+            let harvest_msg = PoolExecuteMsg::Harvest {};
+
+            // Execute harvest by ADMIN
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked("contract3"),
+                &harvest_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // query balance of ADMIN in native token
+            let req: QueryRequest<BankQuery> = QueryRequest::Bank(BankQuery::Balance {
+                address: ADMIN.to_string(),
+                denom: NATIVE_DENOM_2.to_string(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let balance: BankBalanceResponse = from_binary(&res).unwrap();
+
+            assert_eq!(
+                balance.amount.amount,
+                Uint128::from(998_400_000_000u128 + pending_reward_admin_30s.amount.u128())
             );
         }
     }
