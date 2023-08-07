@@ -20,8 +20,8 @@ use crate::{
     formulas::{calc_reward_amount, get_multiplier, get_new_reward_ratio_and_time},
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{
-        Config, PhaseInfo, PoolInfos, RewardTokenAssetResponse, StakerInfo,
-        StakerInfoResponse, TokenInfo, CONFIG, POOL_INFOS, STAKERS_INFO,
+        Config, PhaseInfo, PoolInfos, RewardTokenAssetResponse, StakerInfo, StakerInfoResponse,
+        TokenInfo, CONFIG, POOL_INFOS, STAKERS_INFO,
     },
 };
 
@@ -88,9 +88,10 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AddRewardBalance { phase_index, amount } => {
-            execute_add_reward_balance(deps, env, info, phase_index, amount)
-        }
+        ExecuteMsg::AddRewardBalance {
+            phase_index,
+            amount
+        } => execute_add_reward_balance(deps, env, info, phase_index, amount),
         ExecuteMsg::Deposit { amount } => execute_deposit(deps, env, info, amount),
         ExecuteMsg::Withdraw { amount } => execute_withdraw(deps, env, info, amount),
         ExecuteMsg::Harvest {} => execute_harvest(deps, env, info),
@@ -157,12 +158,7 @@ pub fn execute_add_reward_balance(
         }
         TokenInfo::NativeToken { denom } => {
             // If reward token is native token, check the denom and amount of asset is valid
-            if !has_coins(
-                &info.funds,
-                &Coin {
-                    denom,
-                    amount,
-                },
+            if !has_coins(&info.funds, &Coin { denom, amount },
             ) {
                 return Err(ContractError::Std(StdError::generic_err(
                     "Native token balance mismatch between the argument and the transferred",
@@ -204,7 +200,6 @@ pub fn execute_add_reward_balance(
         .add_attribute("phase_index", phase_index.to_string())
         .add_attribute("reward_token_asset", pool_infos.reward_token.to_string())
         .add_attribute("amount", amount.to_string()))
-
 }
 
 // pub fn execute_remove_reward_balance(
