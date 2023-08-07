@@ -28,7 +28,7 @@ pub enum ExecuteMsg {
         /// Reward phase index
         phase_index: u64,
         /// Reward amount
-        asset: RewardTokenAsset,
+        amount: Uint128,
     },
     /// Deposit staked tokens and collect reward tokens (if any)
     Deposit {

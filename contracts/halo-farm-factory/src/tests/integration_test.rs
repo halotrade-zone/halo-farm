@@ -22,8 +22,7 @@ mod tests {
         use cw20::{BalanceResponse, Cw20ExecuteMsg};
         use cw_multi_test::Executor;
         use halo_farm::state::{
-            PhaseInfo, PoolInfos, RewardTokenAsset, RewardTokenAssetResponse, StakerInfoResponse,
-            TokenInfo,
+            PhaseInfo, PoolInfos, RewardTokenAssetResponse, StakerInfoResponse, TokenInfo,
         };
 
         use crate::{
@@ -147,17 +146,10 @@ mod tests {
                 }
             );
 
-            let reward_asset_info = TokenInfo::NativeToken {
-                denom: NATIVE_DENOM_2.to_string(),
-            };
-
             // add reward balance to pool contract
             let add_reward_balance_msg = PoolExecuteMsg::AddRewardBalance {
                 phase_index: 0u64,
-                asset: RewardTokenAsset {
-                    info: reward_asset_info,
-                    amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
-                },
+                amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
             };
 
             // Execute add reward balance
@@ -588,17 +580,10 @@ mod tests {
 
             assert!(response_create_pool.is_ok());
 
-            let reward_asset_info = TokenInfo::NativeToken {
-                denom: NATIVE_DENOM_2.to_string(),
-            };
-
             // add reward balance to pool contract
             let add_reward_balance_msg = PoolExecuteMsg::AddRewardBalance {
                 phase_index: 0u64,
-                asset: RewardTokenAsset {
-                    info: reward_asset_info,
-                    amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
-                },
+                amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
             };
 
             // Execute add reward balance
@@ -1491,17 +1476,10 @@ mod tests {
             // It should be 32_608_695 as reward is accrued
             assert_eq!(Uint128::from(32_608_695u128), balance.amount.amount);
 
-            let reward_asset_info = TokenInfo::NativeToken {
-                denom: NATIVE_DENOM_2.to_string(),
-            };
-
             // Add 1000 NATIVE_DENOM_2 reward balance amount to pool contract by ADMIN
             let add_reward_balance_msg = PoolExecuteMsg::AddRewardBalance {
                 phase_index: 1u64,
-                asset: RewardTokenAsset {
-                    info: reward_asset_info,
-                    amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
-                },
+                amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
             };
 
             // Execute add reward balance by ADMIN
@@ -2343,10 +2321,7 @@ mod tests {
             // add 1000 reward balance to pool contract
             let add_reward_balance_msg = PoolExecuteMsg::AddRewardBalance {
                 phase_index: 0u64,
-                asset: RewardTokenAsset {
-                    info: reward_token_info,
-                    amount: Uint128::from(MOCK_1000_HALO_REWARD_TOKEN_AMOUNT),
-                },
+                amount: Uint128::from(MOCK_1000_HALO_REWARD_TOKEN_AMOUNT),
             };
 
             // Execute add reward by ADMIN
@@ -2911,12 +2886,7 @@ mod tests {
             // add 1000 reward balance to pool contract
             let add_reward_balance_msg = PoolExecuteMsg::AddRewardBalance {
                 phase_index: 1u64,
-                asset: RewardTokenAsset {
-                    info: TokenInfo::Token {
-                        contract_addr: Addr::unchecked(reward_token_contract.clone()),
-                    },
-                    amount: Uint128::from(MOCK_1000_HALO_REWARD_TOKEN_AMOUNT),
-                },
+                amount: Uint128::from(MOCK_1000_HALO_REWARD_TOKEN_AMOUNT),
             };
 
             // Execute add reward by ADMIN
@@ -3138,12 +3108,7 @@ mod tests {
             // Add 10 HALO reward tokens to pool contract
             let add_reward_balance_msg = PoolExecuteMsg::AddRewardBalance {
                 phase_index: 2u64,
-                asset: RewardTokenAsset {
-                    info: TokenInfo::Token {
-                        contract_addr: Addr::unchecked(reward_token_contract.clone()),
-                    },
-                    amount: Uint128::from(10_000_000_000_000_000_000u128),
-                },
+                amount: Uint128::from(10_000_000_000_000_000_000u128),
             };
 
             // Execute add reward by ADMIN
@@ -3333,17 +3298,10 @@ mod tests {
 
             assert!(response_create_pool.is_ok());
 
-            let reward_asset_info = TokenInfo::NativeToken {
-                denom: NATIVE_DENOM_2.to_string(),
-            };
-
             // add reward balance to pool contract
             let add_reward_balance_msg = PoolExecuteMsg::AddRewardBalance {
                 phase_index: 0u64,
-                asset: RewardTokenAsset {
-                    info: reward_asset_info.clone(),
-                    amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
-                },
+                amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
             };
 
             // Execute add reward balance
@@ -3480,10 +3438,7 @@ mod tests {
             // add reward balance to pool contract
             let add_reward_balance_msg = PoolExecuteMsg::AddRewardBalance {
                 phase_index: 1u64,
-                asset: RewardTokenAsset {
-                    info: reward_asset_info.clone(),
-                    amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
-                },
+                amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
             };
 
             // Execute add reward balance
@@ -3898,10 +3853,7 @@ mod tests {
             // add reward balance to pool contract
             let add_reward_balance_msg = PoolExecuteMsg::AddRewardBalance {
                 phase_index: 2u64,
-                asset: RewardTokenAsset {
-                    info: reward_asset_info,
-                    amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
-                },
+                amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
             };
 
             // Execute add reward balance

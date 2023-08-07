@@ -20,7 +20,7 @@ use crate::{
     formulas::{calc_reward_amount, get_multiplier, get_new_reward_ratio_and_time},
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{
-        Config, PhaseInfo, PoolInfos, RewardTokenAsset, RewardTokenAssetResponse, StakerInfo,
+        Config, PhaseInfo, PoolInfos, RewardTokenAssetResponse, StakerInfo,
         StakerInfoResponse, TokenInfo, CONFIG, POOL_INFOS, STAKERS_INFO,
     },
 };
@@ -88,8 +88,8 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AddRewardBalance { phase_index, asset } => {
-            execute_add_reward_balance(deps, env, info, phase_index, asset)
+        ExecuteMsg::AddRewardBalance { phase_index, amount } => {
+            execute_add_reward_balance(deps, env, info, phase_index, amount)
         }
         ExecuteMsg::Deposit { amount } => execute_deposit(deps, env, info, amount),
         ExecuteMsg::Withdraw { amount } => execute_withdraw(deps, env, info, amount),
@@ -109,7 +109,7 @@ pub fn execute_add_reward_balance(
     env: Env,
     info: MessageInfo,
     phase_index: u64,
-    asset: RewardTokenAsset,
+    amount: Uint128,
 ) -> Result<Response, ContractError> {
     // Get pool infos
     let pool_infos = POOL_INFOS.load(deps.storage)?;
@@ -144,18 +144,12 @@ pub fn execute_add_reward_balance(
     //    to the new pool address by calling cw20 contract transfer_from method.
     match pool_infos.reward_token.clone() {
         TokenInfo::Token { contract_addr } => {
-            // If reward token is cw20 token, check the contract address of asset is valid
-            if contract_addr != pool_infos.reward_token.to_string() {
-                return Err(ContractError::Std(StdError::generic_err(
-                    "Invalid reward token contract address",
-                )));
-            }
             let transfer = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: contract_addr.to_string(),
                 msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
                     owner: info.sender.to_string(),
                     recipient: env.contract.address.to_string(),
-                    amount: asset.amount,
+                    amount,
                 })?,
                 funds: vec![],
             }));
@@ -167,7 +161,7 @@ pub fn execute_add_reward_balance(
                 &info.funds,
                 &Coin {
                     denom,
-                    amount: asset.amount,
+                    amount,
                 },
             ) {
                 return Err(ContractError::Std(StdError::generic_err(
@@ -193,7 +187,7 @@ pub fn execute_add_reward_balance(
     let mut pool_infos = POOL_INFOS.load(deps.storage)?;
 
     // Update reward balance
-    reward_balance += asset.amount;
+    reward_balance += amount;
 
     let new_phase_info = PhaseInfo {
         reward_balance,
@@ -208,7 +202,9 @@ pub fn execute_add_reward_balance(
         .add_attribute("method", "add_reward_balance")
         .add_attribute("sender", info.sender)
         .add_attribute("phase_index", phase_index.to_string())
-        .add_attribute("reward_token_asset", asset.to_string()))
+        .add_attribute("reward_token_asset", pool_infos.reward_token.to_string())
+        .add_attribute("amount", amount.to_string()))
+
 }
 
 // pub fn execute_remove_reward_balance(
