@@ -3704,8 +3704,7 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_harvest: RewardTokenAssetResponse =
-                from_binary(&res).unwrap();
+            let pending_reward_admin_harvest: RewardTokenAssetResponse = from_binary(&res).unwrap();
 
             // It should be 0 NATIVE_2 as reward is accrued
             assert_eq!(
@@ -3927,10 +3926,7 @@ mod tests {
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
             let balance: BankBalanceResponse = from_binary(&res).unwrap();
 
-            assert_eq!(
-                balance.amount.amount,
-                Uint128::from(998_400_000_000u128)
-            );
+            assert_eq!(balance.amount.amount, Uint128::from(998_400_000_000u128));
 
             // Increase 1 second to make 28 seconds passed
             app.set_block(BlockInfo {
@@ -4040,8 +4036,6 @@ mod tests {
                 balance.amount.amount,
                 Uint128::from(998_400_000_000u128 + pending_reward_admin_30s.amount.u128())
             );
-
-
         }
     }
 }

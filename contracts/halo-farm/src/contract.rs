@@ -986,6 +986,13 @@ pub fn execute_activate_phase(
         )));
     }
 
+    // Not allow activating phase when reward balance of this phase is zero
+    if pool_infos.phases_info[current_phase_index + 1].reward_balance.is_zero() {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Empty phase",
+        )));
+    }
+
     // Get staked token balance
     let staked_token_balance = pool_infos.staked_token_balance;
     // Get pool infos
