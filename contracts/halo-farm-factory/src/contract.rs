@@ -2,7 +2,7 @@ use crate::error::ContractError;
 use crate::state::{Config, ConfigResponse, FactoryFarmInfo, CONFIG};
 use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    state::{NUMBER_OF_FARMS, FARMS},
+    state::{FARMS, NUMBER_OF_FARMS},
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -152,7 +152,10 @@ pub fn execute_create_farm(
             ("reward_token", &format!("{}", reward_token)),
             ("start_time", start_time.to_string().as_str()),
             ("end_time", end_time.to_string().as_str()),
-            ("phases_limit_per_user", &format!("{:?}", phases_limit_per_user)),
+            (
+                "phases_limit_per_user",
+                &format!("{:?}", phases_limit_per_user),
+            ),
             ("whitelist", &format!("{:?}", whitelist)),
         ])
         .add_submessage(SubMsg {
@@ -193,7 +196,8 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
         &FactoryFarmInfo {
             staked_token: phases_info.staked_token.clone(),
             reward_token: phases_info.reward_token,
-            start_time: phases_info.phases_info[phases_info.current_phase_index as usize].start_time,
+            start_time: phases_info.phases_info[phases_info.current_phase_index as usize]
+                .start_time,
             end_time: phases_info.phases_info[phases_info.current_phase_index as usize].end_time,
             phases_limit_per_user: phases_info.phases_limit_per_user,
         },
@@ -243,7 +247,6 @@ pub fn query_farms(
     let start_after = start_after.unwrap_or(0);
     let limit = limit.unwrap_or(30) as usize;
     let farm_count = NUMBER_OF_FARMS.load(deps.storage)?;
-
     let farms = (start_after..farm_count)
         .map(|farm_id| FARMS.load(deps.storage, farm_id + 1))
         .take(limit)
@@ -252,10 +255,7 @@ pub fn query_farms(
     Ok(farms)
 }
 
-fn query_phases_info(
-    querier: &QuerierWrapper,
-    farm_contract: Addr,
-) -> StdResult<PhasesInfo> {
+fn query_phases_info(querier: &QuerierWrapper, farm_contract: Addr) -> StdResult<PhasesInfo> {
     let phases_info: PhasesInfo = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: farm_contract.to_string(),
         msg: to_binary(&FarmQueryMsg::Phases {})?,
