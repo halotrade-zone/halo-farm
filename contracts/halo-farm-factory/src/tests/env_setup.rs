@@ -5,8 +5,8 @@ pub mod env {
     use cw_multi_test::{App, AppBuilder, Contract, ContractWrapper, Executor};
 
     use crate::contract::{
-        execute as HaloPoolFactoryExecute, instantiate as HaloPoolFactoryInstantiate,
-        query as HaloPoolFactoryQuery, reply as HaloPoolFactoryReply,
+        execute as HaloFarmFactoryExecute, instantiate as HaloFarmFactoryInstantiate,
+        query as HaloFarmFactoryQuery, reply as HaloFarmFactoryReply,
     };
 
     use cw20_base::contract::{
@@ -16,10 +16,10 @@ pub mod env {
     use cw20_base::msg::InstantiateMsg as Cw20InstantiateMsg;
 
     use halo_farm::contract::{
-        execute as HaloPoolExecute, instantiate as HaloPoolInstantiate, query as HaloPoolQuery,
+        execute as HaloFarmExecute, instantiate as HaloFarmInstantiate, query as HaloFarmQuery,
     };
 
-    use crate::msg::InstantiateMsg as HaloPoolFactoryInstantiateMsg;
+    use crate::msg::InstantiateMsg as HaloFarmFactoryInstantiateMsg;
 
     pub const ADMIN: &str = "aura1000000000000000000000000000000000admin";
     pub const USER_1: &str = "aura1000000000000000000000000000000000user1";
@@ -59,16 +59,16 @@ pub mod env {
 
     fn halo_farm_factory_contract_template() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(
-            HaloPoolFactoryExecute,
-            HaloPoolFactoryInstantiate,
-            HaloPoolFactoryQuery,
+            HaloFarmFactoryExecute,
+            HaloFarmFactoryInstantiate,
+            HaloFarmFactoryQuery,
         )
-        .with_reply(HaloPoolFactoryReply);
+        .with_reply(HaloFarmFactoryReply);
         Box::new(contract)
     }
 
     fn halo_farm_contract_template() -> Box<dyn Contract<Empty>> {
-        let contract = ContractWrapper::new(HaloPoolExecute, HaloPoolInstantiate, HaloPoolQuery);
+        let contract = ContractWrapper::new(HaloFarmExecute, HaloFarmInstantiate, HaloFarmQuery);
         Box::new(contract)
     }
 
@@ -91,10 +91,10 @@ pub mod env {
         let halo_reward_decimal_18_token_contract_code_id =
             app.store_code(halo_lp_token_contract_template());
 
-        // halo pool factory contract
+        // halo farm factory contract
         // create instantiate message for contract
-        let halo_farm_factory_instantiate_msg = HaloPoolFactoryInstantiateMsg {
-            pool_code_id: app.store_code(halo_farm_contract_template()),
+        let halo_farm_factory_instantiate_msg = HaloFarmFactoryInstantiateMsg {
+            farm_code_id: app.store_code(halo_farm_contract_template()),
         };
 
         // instantiate contract

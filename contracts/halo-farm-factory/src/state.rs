@@ -6,26 +6,26 @@ use halo_farm::state::TokenInfo;
 #[cw_serde]
 pub struct Config {
     pub owner: Addr,
-    pub pool_code_id: u64,
+    pub farm_code_id: u64,
 }
 
 // We define a custom struct for each query response
 #[cw_serde]
 pub struct ConfigResponse {
     pub owner: String,
-    pub pool_code_id: u64,
+    pub farm_code_id: u64,
 }
 
-// We define a custom struct for storing pools info
+// We define a custom struct for storing phases info
 #[cw_serde]
-pub struct FactoryPoolInfo {
+pub struct FactoryFarmInfo {
     pub staked_token: Addr,
     pub reward_token: TokenInfo,
     pub start_time: u64,
     pub end_time: u64,
-    pub pool_limit_per_user: Option<Uint128>,
+    pub phases_limit_per_user: Option<Uint128>,
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");
-pub const POOLS: Map<u64, FactoryPoolInfo> = Map::new("pools");
-pub const NUMBER_OF_POOLS: Item<u64> = Item::new("number_of_pools");
+pub const FARMS: Map<u64, FactoryFarmInfo> = Map::new("farms");
+pub const NUMBER_OF_FARMS: Item<u64> = Item::new("NUMBER_OF_FARMS");

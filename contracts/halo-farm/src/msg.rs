@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint128};
 
-use crate::state::{PoolInfos, RewardTokenAsset, StakerInfoResponse, TokenInfo};
+use crate::state::{PendingRewardResponse, PhasesInfo, StakerInfoResponse, TokenInfo};
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -13,36 +13,36 @@ pub struct InstantiateMsg {
     pub start_time: u64,
     /// End time
     pub end_time: u64,
-    // The pool limit of staked tokens per user (0 for unlimited)
-    pub pool_limit_per_user: Option<Uint128>,
-    // Pool Owner
-    pub pool_owner: Addr,
+    // The phases limit of staked tokens per user (0 for unlimited)
+    pub phases_limit_per_user: Option<Uint128>,
+    // Farm Owner
+    pub farm_owner: Addr,
     /// Whitelisted addresses
     pub whitelist: Addr,
 }
 
 #[cw_serde]
 pub enum ExecuteMsg {
-    /// Adding reward balance to pool by whitelisted address
+    /// Adding reward balance to a phase by whitelisted address
     AddRewardBalance {
         /// Reward phase index
         phase_index: u64,
         /// Reward amount
-        asset: RewardTokenAsset,
+        amount: Uint128,
     },
     /// Deposit staked tokens and collect reward tokens (if any)
     Deposit {
         amount: Uint128,
     },
-    /// Withdraw staked tokens and collect reward tokens (if any), if the pool is inactive, collect all reward tokens
+    /// Withdraw staked tokens and collect reward tokens (if any)
     Withdraw {
         amount: Uint128,
     },
     // Harvest reward tokens
     Harvest {},
-    // // Update Pool Limit Per User
-    // UpdatePoolLimitPerUser {
-    //     new_pool_limit_per_user: Uint128,
+    // // Update Phases Limit Per User
+    // UpdatePhasesLimitPerUser {
+    //     new_phases_limit_per_user: Uint128,
     // },
     // Add a new farming phase
     AddPhase {
@@ -60,8 +60,8 @@ pub enum ExecuteMsg {
     },
     // Activate latest farming phase
     ActivatePhase {},
-    // /// Removing reward balance from pool by whitelisted address
-    // /// Only can be called when the pool is inactive
+    // /// Removing reward balance from a phase by whitelisted address
+    // /// Only can be called when the phase is inactive
     // RemoveRewardBalance {
     //     /// Reward phase index
     //     phase_index: u64,
@@ -71,9 +71,9 @@ pub enum ExecuteMsg {
 #[cw_serde]
 #[derive(QueryResponses)]
 pub enum QueryMsg {
-    #[returns(PoolInfos)]
-    Pool {},
-    #[returns(RewardTokenAsset)]
+    #[returns(PhasesInfo)]
+    Phases {},
+    #[returns(PendingRewardResponse)]
     PendingReward { address: String },
     #[returns(Uint128)]
     TotalStaked {},

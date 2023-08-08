@@ -10,7 +10,7 @@ pub fn get_multiplier(from: u64, to: u64, end: u64) -> u64 {
     } else if from >= end {
         return 0;
     }
-    // If the pool has ended, the multiplier is the end minus from
+    // If the phase has ended, the multiplier is the end minus from
     end - from
 }
 
@@ -34,14 +34,14 @@ pub fn get_new_reward_ratio_and_time(
     current_time: u64,
     last_reward_time: u64,
 ) -> (Decimal, u64) {
-    // If current time is before last reward time, return without update pool
+    // If current time is before last reward time, return without updating
     if current_time < last_reward_time {
         return (accrued_token_per_share, last_reward_time);
     }
 
-    // Check if there is any staked token in the pool
+    // Check if there is any staked token in the farming pool
     if staked_token_balance == Uint128::zero() {
-        // No staked token in the pool, save last reward time and return
+        // No staked token in the farming pool, save last reward time and return
         (Decimal::zero(), last_reward_time)
     } else {
         let multiplier = get_multiplier(last_reward_time, current_time, end_time);
