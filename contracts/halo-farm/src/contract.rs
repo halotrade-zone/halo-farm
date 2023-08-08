@@ -300,7 +300,7 @@ pub fn execute_remove_phase(
     let mut phases_info = PHASES_INFO.load(deps.storage)?;
     // Init response
     let mut res = Response::new();
-    // If the pool already added reward balance, transfer back all phase reward balance to the sender
+    // If phase already added reward balance, transfer back all phase reward balance to the sender
     if phases_info.phases_info[phase_index as usize].reward_balance > Uint128::zero() {
         // Get whitelist address
         let whitelist = phases_info.phases_info[phase_index as usize]
@@ -361,10 +361,10 @@ pub fn execute_deposit(
     let current_phase_index = phases_info.current_phase_index;
     // Get current phase info in phases info
     let phase_info = phases_info.phases_info[current_phase_index as usize].clone();
-    // Not allow depositing if reward token is not added to the pool yet
+    // Not allow depositing if reward token is not added to the phase yet
     if phase_info.reward_balance == Uint128::zero() {
         return Err(ContractError::Std(StdError::generic_err(
-            "Empty reward balance pool",
+            "Empty phase",
         )));
     }
     // If staker has not joined any phase, save initial staker info
@@ -394,11 +394,11 @@ pub fn execute_deposit(
 
     // Get staker info
     let staker_info = STAKERS_INFO.load(deps.storage, info.sender.clone())?;
-    // Check pool limit per user
+    // Check phase limit per user
     if let Some(phases_limit_per_user) = phases_info.phases_limit_per_user {
         if staker_info.amount + amount > phases_limit_per_user {
             return Err(ContractError::Std(StdError::generic_err(
-                "Deposit amount exceeds pool limit per user",
+                "Deposit amount exceeds phase limit per user",
             )));
         }
     }
@@ -466,7 +466,7 @@ pub fn execute_deposit(
         staker_info.reward_debt[current_phase_index as usize],
     );
 
-    // If there is any reward token in the pool, transfer reward token to the sender
+    // If reward amount is greater than 0, transfer reward amount to staker
     if reward_amount > Uint128::zero() {
         let transfer_reward = match phases_info.reward_token.clone() {
             TokenInfo::Token { contract_addr } => SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -900,10 +900,10 @@ pub fn execute_add_phase(
     // Get current phase index
     let current_phase_index = phases_info.current_phase_index;
 
-    // Not allow add new phase when new start time is less than end time of the current pool
+    // Not allow add new phase when new start time is less than end time of the current phase
     if new_start_time < phases_info.phases_info[current_phase_index as usize].end_time {
         return Err(ContractError::Std(StdError::generic_err(
-            "New start time is less than end time of the current pool",
+            "New start time is less than end time of the current phase",
         )));
     }
 
@@ -969,7 +969,7 @@ pub fn execute_activate_phase(
     // Get current time
     let current_time = env.block.time.seconds();
 
-    // Not allow activating phase when current time is less than end time of the current pool
+    // Not allow activating phase when current time is less than end time of the current phase
     // or greater than start time of the phase to be activated
     if current_time < phases_info.phases_info[current_phase_index].end_time
         || current_time > phases_info.phases_info[current_phase_index + 1].start_time
@@ -992,7 +992,7 @@ pub fn execute_activate_phase(
     // Get phases info
     let mut phases_info: PhasesInfo = PHASES_INFO.load(deps.storage)?;
 
-    // Update total staked token at end time of the current pool
+    // Update total staked token at end time of the current phase
     phases_info.phases_info[current_phase_index].total_staked_at_end_time = staked_token_balance;
 
     // Get phase info from phases info
@@ -1087,7 +1087,7 @@ fn query_pending_reward(
     let current_time = env.block.time.seconds();
     // Get phases info
     let phases_info = PHASES_INFO.load(deps.storage)?;
-    // Check if staker has staked in the pool
+    // Check if staker has staked in the farming pool
     if STAKERS_INFO
         .may_load(deps.storage, Addr::unchecked(address.clone()))?
         .is_none()
