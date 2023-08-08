@@ -61,9 +61,6 @@ pub struct PhaseInfo {
     pub reward_balance: Uint128,
     pub last_reward_time: u64,
     pub accrued_token_per_share: Decimal,
-    // Total staked token at end time to calculate the reward amount correctly
-    // if the farm has multiple phases.
-    pub total_staked_at_end_time: Uint128,
 }
 
 #[cw_serde]
@@ -73,5 +70,5 @@ pub struct PhasesInfo {
     pub current_phase_index: u64,
     pub phases_info: Vec<PhaseInfo>,
     pub phases_limit_per_user: Option<Uint128>,
-    pub staked_token_balance: Uint128, // Total staked token balance in the farming pool
+    pub staked_token_balance: Uint128, // Total staked token balance in the farm contract
 }

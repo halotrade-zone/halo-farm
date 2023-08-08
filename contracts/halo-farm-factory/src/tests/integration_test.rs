@@ -185,7 +185,6 @@ mod tests {
                         reward_balance: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
                         last_reward_time: current_block_time,
                         accrued_token_per_share: Decimal::zero(),
-                        total_staked_at_end_time: Uint128::zero(),
                     }],
                     phases_limit_per_user: None,
                     staked_token_balance: Uint128::zero(),
@@ -619,7 +618,6 @@ mod tests {
                         reward_balance: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
                         last_reward_time: current_block_time,
                         accrued_token_per_share: Decimal::zero(),
-                        total_staked_at_end_time: Uint128::zero(),
                     }],
                     phases_limit_per_user: None,
                     staked_token_balance: Uint128::zero(),
@@ -1542,9 +1540,6 @@ mod tests {
                                 .end_time,
                             accrued_token_per_share: Decimal::from_str("0.93043478260869565")
                                 .unwrap(),
-                            total_staked_at_end_time: Uint128::from(
-                                MOCK_1000_HALO_LP_TOKEN_AMOUNT + MOCK_150_HALO_LP_TOKEN_AMOUNT
-                            ),
                         },
                         PhaseInfo {
                             start_time: phases_info.phases_info
@@ -1561,7 +1556,6 @@ mod tests {
                                 .end_time
                                 + 10,
                             accrued_token_per_share: Decimal::zero(),
-                            total_staked_at_end_time: Uint128::zero(),
                         }
                     ],
                     phases_limit_per_user: None,
@@ -2178,7 +2172,7 @@ mod tests {
         //
         // Extend end time to 10 more seconds by ADMIN
         // Mint 1000 HALO REWARD token for ADMIN
-        // Add 1000 HALO REWARD token reward balance to pool contract by ADMIN
+        // Add 1000 HALO REWARD token reward balance to farm contract by ADMIN
         // -> 100 HALO REWARD token per second
         // Increase 1 second to make 101 seconds passed
         // -> 1s: HALO REWARD token for ADMIN: 613,33 + 66,66 = 679,99 (Not harvest yet)
@@ -2190,7 +2184,7 @@ mod tests {
         // Phase 2:
         //
         // Extend a new phase with 10 more seconds by ADMIN
-        // Add 10 HALO REWARD token reward balance to pool contract by ADMIN
+        // Add 10 HALO REWARD token reward balance to farm contract by ADMIN
         // Remove this new phase by ADMIN
         #[test]
         fn proper_operation_with_reward_token_decimal_18() {
@@ -2301,7 +2295,7 @@ mod tests {
                 }
             );
 
-            // Increase allowance of reward token to pool contract
+            // Increase allowance of reward token to farm contract
             let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
                 spender: "contract3".to_string(), // Farm Contract
                 amount: Uint128::from(MOCK_1000_HALO_REWARD_TOKEN_AMOUNT),
@@ -2318,7 +2312,7 @@ mod tests {
 
             assert!(response.is_ok());
 
-            // add 1000 reward balance to pool contract
+            // add 1000 reward balance to farm contract
             let add_reward_balance_msg = FarmExecuteMsg::AddRewardBalance {
                 phase_index: 0u64,
                 amount: Uint128::from(MOCK_1000_HALO_REWARD_TOKEN_AMOUNT),
@@ -2334,7 +2328,7 @@ mod tests {
 
             assert!(response.is_ok());
 
-            // Increase allowance of lp token to pool contract
+            // Increase allowance of lp token to farm contract
             let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
                 spender: "contract3".to_string(), // Farm Contract
                 amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT),
@@ -2427,7 +2421,7 @@ mod tests {
                 Uint128::from(20_000_000_000_000_000_000u128)
             );
 
-            // Increase allowance of lp token to pool contract
+            // Increase allowance of lp token to farm contract
             let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
                 spender: "contract3".to_string(), // Farm Contract
                 amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
@@ -2612,7 +2606,7 @@ mod tests {
                 }
             );
 
-            // Increase allowance of lp token to pool contract
+            // Increase allowance of lp token to farm contract
             let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
                 spender: "contract3".to_string(), // Farm Contract
                 amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
@@ -2866,7 +2860,7 @@ mod tests {
 
             assert!(response.is_ok());
 
-            // Increase allowance of reward token to pool contract
+            // Increase allowance of reward token to farm contract
             let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
                 spender: "contract3".to_string(), // Farm Contract
                 amount: Uint128::from(MOCK_1000_HALO_REWARD_TOKEN_AMOUNT),
@@ -2883,7 +2877,7 @@ mod tests {
 
             assert!(response.is_ok());
 
-            // add 1000 reward balance to pool contract
+            // add 1000 reward balance to farm contract
             let add_reward_balance_msg = FarmExecuteMsg::AddRewardBalance {
                 phase_index: 1u64,
                 amount: Uint128::from(MOCK_1000_HALO_REWARD_TOKEN_AMOUNT),
@@ -3020,7 +3014,7 @@ mod tests {
 
             assert!(response.is_ok());
 
-            // Increase allowance of lp token to pool contract
+            // Increase allowance of lp token to farm contract
             let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
                 spender: "contract3".to_string(), // Farm Contract
                 amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
@@ -3088,7 +3082,7 @@ mod tests {
 
             assert!(response.is_ok());
 
-            // Increase allowance of reward token to pool contract
+            // Increase allowance of reward token to farm contract
             let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
                 spender: "contract3".to_string(), // Farm Contract
                 amount: Uint128::from(10_000_000_000_000_000_000u128),
@@ -3105,7 +3099,7 @@ mod tests {
 
             assert!(response.is_ok());
 
-            // Add 10 HALO reward tokens to pool contract
+            // Add 10 HALO reward tokens to farm contract
             let add_reward_balance_msg = FarmExecuteMsg::AddRewardBalance {
                 phase_index: 2u64,
                 amount: Uint128::from(10_000_000_000_000_000_000u128),
@@ -3337,7 +3331,6 @@ mod tests {
                         reward_balance: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
                         last_reward_time: current_block_time,
                         accrued_token_per_share: Decimal::zero(),
-                        total_staked_at_end_time: Uint128::zero(),
                     }],
                     phases_limit_per_user: None,
                     staked_token_balance: Uint128::zero(),

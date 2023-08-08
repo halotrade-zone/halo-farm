@@ -46,7 +46,6 @@ pub fn instantiate(
         reward_balance: Uint128::zero(),
         last_reward_time: msg.start_time,
         accrued_token_per_share: Decimal::zero(),
-        total_staked_at_end_time: Uint128::zero(),
     };
 
     // Init first phase info
@@ -137,12 +136,12 @@ pub fn execute_add_reward_balance(
     let mut res = Response::new();
     // Verify reward token asset
     // Add reward balance to the phase
-    // When creating a new farming pool or adding a new phase, sender must add balance amount of reward_token
+    // When creating a new farm or adding a new phase, sender must add balance amount of reward_token
     // Match reward token type:
     // 1. If reward token is native token, sender must add balance amount of native token
-    //    to the new pool address by sending via funds when calling this msg.
+    //    to the new farm contract address by sending via funds when calling this msg.
     // 2. If reward token is cw20 token, sender must add balance amount of cw20 token
-    //    to the new pool address by calling cw20 contract transfer_from method.
+    //    to the new farm contract address by calling cw20 contract transfer_from method.
     match phases_info.reward_token.clone() {
         TokenInfo::Token { contract_addr } => {
             let transfer = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
@@ -217,19 +216,19 @@ pub fn execute_add_reward_balance(
 //         return Err(ContractError::Unauthorized {});
 //     }
 
-//     // Only can remove reward balance when the pool is inactive
+//     // Only can remove reward balance when the phase is inactive
 //     if current_time.seconds() < phase_info.start_time || current_time.seconds() > phase_info.end_time {
 //         return Err(ContractError::Std(StdError::generic_err(
-//             "Can not remove reward balance when the pool is active",
+//             "Can not remove reward balance when the phase is active",
 //         )));
 //     }
 
 //     // Transfer all remaining reward token balance to the sender
 //     let transfer_reward = match phase_info.reward_token {
 //         TokenInfo::Token { contract_addr } => {
-//             // Query reward token balance of the pool
+//             // Query reward token balance of the phase
 //             reward_token_balance = query_token_balance(&deps.querier, contract_addr.clone(), env.contract.address.clone())?;
-//             // Check if the reward token balance of the pool is greater than 0
+//             // Check if the reward token balance of the phase is greater than 0
 //             if reward_token_balance > Uint128::zero() {
 //                 SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
 //                     contract_addr,
@@ -246,9 +245,9 @@ pub fn execute_add_reward_balance(
 //             }
 //         }
 //         TokenInfo::NativeToken { denom } =>{
-//             // Query reward token balance of the pool
+//             // Query reward token balance of the phase
 //             reward_token_balance = query_balance(&deps.querier, env.contract.address.clone(), denom.clone())?;
-//             // Check if the reward token balance of the pool is greater than 0
+//             // Check if the reward token balance of the phase is greater than 0
 //             if reward_token_balance > Uint128::zero() {
 //                 SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
 //                     to_address: info.sender.to_string(),
@@ -485,7 +484,7 @@ pub fn execute_deposit(
         res = res.add_submessage(transfer_reward);
     }
 
-    // Deposit staked token to the pool
+    // Deposit staked token to the farm contract
     let transfer = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: phases_info.staked_token.to_string(),
         msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
@@ -639,7 +638,7 @@ pub fn execute_withdraw(
         res = res.add_submessage(transfer_reward);
     }
 
-    // Withdraw staked token from the pool by using cw20 transfer message
+    // Withdraw staked token from the farm contract by using cw20 transfer message
     let withdraw = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: phases_info.staked_token.to_string(),
         msg: to_binary(&Cw20ExecuteMsg::Transfer {
@@ -678,7 +677,7 @@ pub fn execute_withdraw(
     Ok(res)
 }
 
-// Harvest reward token from the pool to the sender
+// Harvest reward token from the farm contract to the sender
 pub fn execute_harvest(
     deps: DepsMut,
     env: Env,
@@ -816,7 +815,7 @@ pub fn execute_harvest(
 //     // Check if the message sender is the owner of the contract
 //     if config.halo_factory_owner != info.sender {
 //         return Err(ContractError::Std(StdError::generic_err(
-//             "Unauthorized: Only owner can update pool limit per user",
+//             "Unauthorized: Only owner can update phases limit per user",
 //         )));
 //     }
 
@@ -827,25 +826,25 @@ pub fn execute_harvest(
 //     // Get current phase index
 //     let current_phase_index = phases_info.current_phase_index;
 
-//     // Not allow updating pool limit per user when current time is greater than start time of the phase
+//     // Not allow updating phases limit per user when current time is greater than start time of the phase
 //     if current_time > phases_info.phases_info[current_phase_index as usize].start_time {
 //         return Err(ContractError::Std(StdError::generic_err(
 //             "Current time is greater than start time of the phase",
 //         )));
 //     }
 
-//     // Not allow new pool limit per user is less than previous pool limit per user
+//     // Not allow new phases limit per user is less than previous phases limit per user
 //     if new_phases_limit_per_user
 //         < phases_info.phases_info[current_phase_index as usize]
 //             .phases_limit_per_user
 //             .unwrap_or(Uint128::zero())
 //     {
 //         return Err(ContractError::Std(StdError::generic_err(
-//             "New pool limit per user is less than previous pool limit per user",
+//             "New phases limit per user is less than previous phases limit per user",
 //         )));
 //     }
 
-//     // Update pool limit per user
+//     // Update phases limit per user
 //     phases_info.phases_info[current_phase_index as usize].phases_limit_per_user =
 //         Some(new_phases_limit_per_user);
 //     // Save phases info
@@ -924,7 +923,6 @@ pub fn execute_add_phase(
         reward_balance: Uint128::zero(),
         last_reward_time: new_start_time,
         accrued_token_per_share: Decimal::zero(),
-        total_staked_at_end_time: Uint128::zero(),
     });
 
     // Save phases info
@@ -991,9 +989,6 @@ pub fn execute_activate_phase(
     let staked_token_balance = phases_info.staked_token_balance;
     // Get phases info
     let mut phases_info: PhasesInfo = PHASES_INFO.load(deps.storage)?;
-
-    // Update total staked token at end time of the current phase
-    phases_info.phases_info[current_phase_index].total_staked_at_end_time = staked_token_balance;
 
     // Get phase info from phases info
     let phase_info = phases_info.phases_info[current_phase_index].clone();
@@ -1087,7 +1082,7 @@ fn query_pending_reward(
     let current_time = env.block.time.seconds();
     // Get phases info
     let phases_info = PHASES_INFO.load(deps.storage)?;
-    // Check if staker has staked in the farming pool
+    // Check if staker has staked in the farm contract
     if STAKERS_INFO
         .may_load(deps.storage, Addr::unchecked(address.clone()))?
         .is_none()
