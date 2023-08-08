@@ -59,7 +59,6 @@
         "last_reward_time",
         "reward_balance",
         "start_time",
-        "total_staked_at_end_time",
         "whitelist"
       ],
       "properties": {
@@ -83,9 +82,6 @@
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
-        },
-        "total_staked_at_end_time": {
-          "$ref": "#/definitions/Uint128"
         },
         "whitelist": {
           "$ref": "#/definitions/Addr"
