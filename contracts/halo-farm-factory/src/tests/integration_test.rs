@@ -22,7 +22,7 @@ mod tests {
         use cw20::{BalanceResponse, Cw20ExecuteMsg};
         use cw_multi_test::Executor;
         use halo_farm::state::{
-            PendingRewardResponse, PhaseInfo, PhasesInfo, StakerInfoResponse, TokenInfo,
+            PendingRewardResponse, PhaseInfo, FarmInfo, StakerInfoResponse, TokenInfo,
         };
 
         use crate::{
@@ -166,15 +166,15 @@ mod tests {
             assert!(response.is_ok());
 
             // query phases info after adding reward balance
-            let phases_info: PhasesInfo = app
+            let farm_info: FarmInfo = app
                 .wrap()
-                .query_wasm_smart("contract3", &FarmQueryMsg::Phases {})
+                .query_wasm_smart("contract3", &FarmQueryMsg::Farm {})
                 .unwrap();
 
             // assert phases info
             assert_eq!(
-                phases_info,
-                PhasesInfo {
+                farm_info,
+                FarmInfo {
                     staked_token: Addr::unchecked(lp_token_contract.clone()),
                     reward_token: native_token_info.clone(),
                     current_phase_index: 0u64,
@@ -599,15 +599,15 @@ mod tests {
             assert!(response.is_ok());
 
             // query phases info after adding reward balance
-            let phases_info: PhasesInfo = app
+            let farm_info: FarmInfo = app
                 .wrap()
-                .query_wasm_smart("contract3", &FarmQueryMsg::Phases {})
+                .query_wasm_smart("contract3", &FarmQueryMsg::Farm {})
                 .unwrap();
 
             // assert phases info
             assert_eq!(
-                phases_info,
-                PhasesInfo {
+                farm_info,
+                FarmInfo {
                     staked_token: Addr::unchecked(lp_token_contract),
                     reward_token: native_token_info.clone(),
                     current_phase_index: 0u64,
@@ -1333,10 +1333,10 @@ mod tests {
 
             // Extend end time by ADMIN more 80 seconds
             let extend_end_time_msg = FarmExecuteMsg::AddPhase {
-                new_start_time: phases_info.phases_info[phases_info.current_phase_index as usize]
+                new_start_time: farm_info.phases_info[farm_info.current_phase_index as usize]
                     .end_time
                     + 10,
-                new_end_time: phases_info.phases_info[phases_info.current_phase_index as usize]
+                new_end_time: farm_info.phases_info[farm_info.current_phase_index as usize]
                     .end_time
                     + 90,
                 whitelist: Addr::unchecked(ADMIN.to_string()),
@@ -1514,47 +1514,47 @@ mod tests {
             assert!(response.is_ok());
 
             // Query phases info after add reward balance
-            let phases_info_phase_1: PhasesInfo = app
+            let farm_info_1: FarmInfo = app
                 .wrap()
-                .query_wasm_smart("contract3", &FarmQueryMsg::Phases {})
+                .query_wasm_smart("contract3", &FarmQueryMsg::Farm {})
                 .unwrap();
 
             // assert phases info
             assert_eq!(
-                phases_info_phase_1,
-                PhasesInfo {
+                farm_info_1,
+                FarmInfo {
                     staked_token: Addr::unchecked(lp_token_contract),
                     reward_token: native_token_info,
                     current_phase_index: 1u64,
                     phases_info: vec![
                         PhaseInfo {
-                            start_time: phases_info.phases_info
-                                [phases_info.current_phase_index as usize]
+                            start_time: farm_info.phases_info
+                                [farm_info.current_phase_index as usize]
                                 .start_time,
-                            end_time: phases_info.phases_info
-                                [phases_info.current_phase_index as usize]
+                            end_time: farm_info.phases_info
+                                [farm_info.current_phase_index as usize]
                                 .end_time,
                             whitelist: Addr::unchecked(ADMIN.to_string()),
                             reward_balance: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
-                            last_reward_time: phases_info.phases_info
-                                [phases_info.current_phase_index as usize]
+                            last_reward_time: farm_info.phases_info
+                                [farm_info.current_phase_index as usize]
                                 .end_time,
                             accrued_token_per_share: Decimal::from_str("0.93043478260869565")
                                 .unwrap(),
                         },
                         PhaseInfo {
-                            start_time: phases_info.phases_info
-                                [phases_info.current_phase_index as usize]
+                            start_time: farm_info.phases_info
+                                [farm_info.current_phase_index as usize]
                                 .end_time
                                 + 10,
-                            end_time: phases_info.phases_info
-                                [phases_info.current_phase_index as usize]
+                            end_time: farm_info.phases_info
+                                [farm_info.current_phase_index as usize]
                                 .end_time
                                 + 90,
                             whitelist: Addr::unchecked(ADMIN.to_string()),
                             reward_balance: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
-                            last_reward_time: phases_info.phases_info
-                                [phases_info.current_phase_index as usize]
+                            last_reward_time: farm_info.phases_info
+                                [farm_info.current_phase_index as usize]
                                 .end_time
                                 + 10,
                             accrued_token_per_share: Decimal::zero(),
@@ -3314,15 +3314,15 @@ mod tests {
             assert!(response.is_ok());
 
             // query phases info after adding reward balance
-            let phases_info: PhasesInfo = app
+            let farm_info: FarmInfo = app
                 .wrap()
-                .query_wasm_smart("contract3", &FarmQueryMsg::Phases {})
+                .query_wasm_smart("contract3", &FarmQueryMsg::Farm {})
                 .unwrap();
 
             // assert phases info
             assert_eq!(
-                phases_info,
-                PhasesInfo {
+                farm_info,
+                FarmInfo {
                     staked_token: Addr::unchecked(lp_token_contract),
                     reward_token: native_token_info,
                     current_phase_index: 0u64,
@@ -3411,10 +3411,10 @@ mod tests {
             // ----- Phase 1 -----
             // Extend end time by ADMIN more 10 seconds
             let extend_end_time_msg = FarmExecuteMsg::AddPhase {
-                new_start_time: phases_info.phases_info[phases_info.current_phase_index as usize]
+                new_start_time: farm_info.phases_info[farm_info.current_phase_index as usize]
                     .end_time
                     + 2,
-                new_end_time: phases_info.phases_info[phases_info.current_phase_index as usize]
+                new_end_time: farm_info.phases_info[farm_info.current_phase_index as usize]
                     .end_time
                     + 12,
                 whitelist: Addr::unchecked(ADMIN.to_string()),

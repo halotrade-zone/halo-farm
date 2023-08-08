@@ -15,7 +15,7 @@ use cw2::set_contract_version;
 use cw_utils::parse_reply_instantiate_data;
 use halo_farm::msg::InstantiateMsg as FarmInstantiateMsg;
 use halo_farm::msg::QueryMsg as FarmQueryMsg;
-use halo_farm::state::{PhasesInfo, TokenInfo};
+use halo_farm::state::{FarmInfo, TokenInfo};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:halo-farm-factory";
@@ -255,10 +255,10 @@ pub fn query_farms(
     Ok(farms)
 }
 
-fn query_phases_info(querier: &QuerierWrapper, farm_contract: Addr) -> StdResult<PhasesInfo> {
-    let phases_info: PhasesInfo = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+fn query_phases_info(querier: &QuerierWrapper, farm_contract: Addr) -> StdResult<FarmInfo> {
+    let phases_info: FarmInfo = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: farm_contract.to_string(),
-        msg: to_binary(&FarmQueryMsg::Phases {})?,
+        msg: to_binary(&FarmQueryMsg::Farm {})?,
     }))?;
     Ok(phases_info)
 }

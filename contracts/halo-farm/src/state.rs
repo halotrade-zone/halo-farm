@@ -11,7 +11,7 @@ pub struct Config {
 pub const CONFIG: Item<Config> = Item::new("config");
 
 /// Stores info of multiple phases info
-pub const PHASES_INFO: Item<PhasesInfo> = Item::new("phases_info");
+pub const PHASES_INFO: Item<FarmInfo> = Item::new("phases_info");
 
 /// Mappping from staker address to staker balance.
 pub const STAKERS_INFO: Map<Addr, StakerInfo> = Map::new("stakers_info_response");
@@ -64,7 +64,7 @@ pub struct PhaseInfo {
 }
 
 #[cw_serde]
-pub struct PhasesInfo {
+pub struct FarmInfo {
     pub staked_token: Addr,
     pub reward_token: TokenInfo,
     pub current_phase_index: u64,

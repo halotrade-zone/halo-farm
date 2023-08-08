@@ -20,7 +20,7 @@ use crate::{
     formulas::{calc_reward_amount, get_multiplier, get_new_reward_ratio_and_time},
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{
-        Config, PendingRewardResponse, PhaseInfo, PhasesInfo, StakerInfo, StakerInfoResponse,
+        Config, PendingRewardResponse, PhaseInfo, FarmInfo, StakerInfo, StakerInfoResponse,
         TokenInfo, CONFIG, PHASES_INFO, STAKERS_INFO,
     },
 };
@@ -51,7 +51,7 @@ pub fn instantiate(
     // Init first phase info
     PHASES_INFO.save(
         deps.storage,
-        &PhasesInfo {
+        &FarmInfo {
             staked_token: msg.staked_token.clone(),
             reward_token: msg.reward_token.clone(),
             current_phase_index: 0u64,
@@ -891,15 +891,15 @@ pub fn execute_add_phase(
         )));
     }
 
-    // Get phases info
-    let phases_info: PhasesInfo = PHASES_INFO.load(deps.storage)?;
+    // Get farm info
+    let farm_info: FarmInfo = PHASES_INFO.load(deps.storage)?;
     // Get current phases info length
-    let phases_length = phases_info.phases_info.len();
+    let phases_length = farm_info.phases_info.len();
     // Get current phase index
-    let current_phase_index = phases_info.current_phase_index;
+    let current_phase_index = farm_info.current_phase_index;
 
     // Not allow add new phase when new start time is less than end time of the current phase
-    if new_start_time < phases_info.phases_info[current_phase_index as usize].end_time {
+    if new_start_time < farm_info.phases_info[current_phase_index as usize].end_time {
         return Err(ContractError::Std(StdError::generic_err(
             "New start time is less than end time of the current phase",
         )));
@@ -912,10 +912,10 @@ pub fn execute_add_phase(
         )));
     }
     // Get phases info
-    let mut phases_info: PhasesInfo = PHASES_INFO.load(deps.storage)?;
+    let mut farm_info: FarmInfo = PHASES_INFO.load(deps.storage)?;
 
     // Increase length of phases info
-    phases_info.phases_info.push(PhaseInfo {
+    farm_info.phases_info.push(PhaseInfo {
         start_time: new_start_time,
         end_time: new_end_time,
         whitelist: whitelist.clone(),
@@ -925,7 +925,7 @@ pub fn execute_add_phase(
     });
 
     // Save phases info
-    PHASES_INFO.save(deps.storage, &phases_info)?;
+    PHASES_INFO.save(deps.storage, &farm_info)?;
 
     let res = Response::new()
         .add_attribute("method", "add_phase")
@@ -951,13 +951,13 @@ pub fn execute_activate_phase(
         )));
     }
     // Get phases info
-    let phases_info: PhasesInfo = PHASES_INFO.load(deps.storage)?;
+    let farm_info: FarmInfo = PHASES_INFO.load(deps.storage)?;
     // Get current phase index
-    let current_phase_index = phases_info.current_phase_index as usize;
+    let current_phase_index = farm_info.current_phase_index as usize;
 
     // Not allow active phase when current phase index is equal to phases info length
     // If sender want to active new phase, they have to add new phase first
-    if phases_info.phases_info.len() == current_phase_index {
+    if farm_info.phases_info.len() == current_phase_index {
         return Err(ContractError::Std(StdError::generic_err(
             "Phase is already activated",
         )));
@@ -968,8 +968,8 @@ pub fn execute_activate_phase(
 
     // Not allow activating phase when current time is less than end time of the current phase
     // or greater than start time of the phase to be activated
-    if current_time < phases_info.phases_info[current_phase_index].end_time
-        || current_time > phases_info.phases_info[current_phase_index + 1].start_time
+    if current_time < farm_info.phases_info[current_phase_index].end_time
+        || current_time > farm_info.phases_info[current_phase_index + 1].start_time
     {
         return Err(ContractError::Std(StdError::generic_err(
             "Current time is not in range of the phase to be activated",
@@ -977,7 +977,7 @@ pub fn execute_activate_phase(
     }
 
     // Not allow activating phase when reward balance of this phase is zero
-    if phases_info.phases_info[current_phase_index + 1]
+    if farm_info.phases_info[current_phase_index + 1]
         .reward_balance
         .is_zero()
     {
@@ -985,17 +985,17 @@ pub fn execute_activate_phase(
     }
 
     // Get staked token balance
-    let staked_token_balance = phases_info.staked_token_balance;
+    let staked_token_balance = farm_info.staked_token_balance;
     // Get phases info
-    let mut phases_info: PhasesInfo = PHASES_INFO.load(deps.storage)?;
+    let mut farm_info: FarmInfo = PHASES_INFO.load(deps.storage)?;
 
     // Get phase info from phases info
-    let phase_info = phases_info.phases_info[current_phase_index].clone();
+    let phase_info = farm_info.phases_info[current_phase_index].clone();
     // Get last reward time
-    let last_reward_time = phases_info.phases_info[current_phase_index].last_reward_time;
+    let last_reward_time = farm_info.phases_info[current_phase_index].last_reward_time;
     // Get accrued token per share
     let accrued_token_per_share =
-        phases_info.phases_info[current_phase_index].accrued_token_per_share;
+    farm_info.phases_info[current_phase_index].accrued_token_per_share;
 
     // get new reward ratio and time
     let (new_accrued_token_per_share, _new_last_reward_time) = get_new_reward_ratio_and_time(
@@ -1008,21 +1008,21 @@ pub fn execute_activate_phase(
         last_reward_time,
     );
 
-    phases_info.phases_info[current_phase_index].last_reward_time = phase_info.end_time;
-    phases_info.phases_info[current_phase_index].accrued_token_per_share =
+    farm_info.phases_info[current_phase_index].last_reward_time = phase_info.end_time;
+    farm_info.phases_info[current_phase_index].accrued_token_per_share =
         new_accrued_token_per_share;
 
     // Increase current phase index to activate new phase
-    phases_info.current_phase_index += 1;
+    farm_info.current_phase_index += 1;
 
     // Save phases info
-    PHASES_INFO.save(deps.storage, &phases_info)?;
+    PHASES_INFO.save(deps.storage, &farm_info)?;
 
     Ok(Response::new().add_attributes([
         ("method", "activate_phase"),
         (
             "activated_phase",
-            &phases_info.current_phase_index.to_string(),
+            &farm_info.current_phase_index.to_string(),
         ),
     ]))
 }
@@ -1059,7 +1059,7 @@ pub fn query_balance(
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
-        QueryMsg::Phases {} => Ok(to_binary(&query_phases_info(deps)?)?),
+        QueryMsg::Farm {} => Ok(to_binary(&query_phases_info(deps)?)?),
         QueryMsg::PendingReward { address } => {
             Ok(to_binary(&query_pending_reward(deps, env, address)?)?)
         }
@@ -1068,7 +1068,7 @@ pub fn query(deps: Deps, env: Env, msg: QueryMsg) -> StdResult<Binary> {
     }
 }
 
-fn query_phases_info(deps: Deps) -> StdResult<PhasesInfo> {
+fn query_phases_info(deps: Deps) -> StdResult<FarmInfo> {
     PHASES_INFO.load(deps.storage)
 }
 
