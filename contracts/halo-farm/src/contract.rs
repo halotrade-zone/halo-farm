@@ -1093,8 +1093,6 @@ fn query_pending_reward(deps: Deps, env: Env, address: String) -> StdResult<Pend
     // Get phase info in phases info
     let phase_info =
         PHASES_INFO.load(deps.storage)?.phases_info[current_phase_index as usize].clone();
-    // Multiply factor
-    let multiplier: u64;
 
     // Get staker info
     let staker_info = STAKERS_INFO
@@ -1122,16 +1120,16 @@ fn query_pending_reward(deps: Deps, env: Env, address: String) -> StdResult<Pend
         }
     }
 
-    // If phase not started yet
-    if current_time < phase_info.start_time {
-        multiplier = 0u64;
+    // Get multiplier
+    let multiplier: u64 = if current_time < phase_info.start_time {
+        0u64
     } else {
-        multiplier = get_multiplier(
+        get_multiplier(
             phase_info.last_reward_time,
             current_time,
             phase_info.end_time,
-        );
-    }
+        )
+    };
 
     // Get staked token balance
     let staked_token_balance = phases_info.staked_token_balance;
