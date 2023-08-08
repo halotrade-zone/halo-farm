@@ -94,7 +94,7 @@ pub mod env {
         // halo pool factory contract
         // create instantiate message for contract
         let halo_farm_factory_instantiate_msg = HaloPoolFactoryInstantiateMsg {
-            pool_code_id: app.store_code(halo_farm_contract_template()),
+            farm_code_id: app.store_code(halo_farm_contract_template()),
         };
 
         // instantiate contract

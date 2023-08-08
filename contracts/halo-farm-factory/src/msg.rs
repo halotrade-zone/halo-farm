@@ -6,8 +6,8 @@ use halo_farm::state::TokenInfo;
 
 #[cw_serde]
 pub struct InstantiateMsg {
-    /// Pool code ID
-    pub pool_code_id: u64,
+    /// Farm code ID
+    pub farm_code_id: u64,
 }
 
 #[cw_serde]
@@ -15,10 +15,10 @@ pub enum ExecuteMsg {
     /// UpdateConfig update relevant code IDs
     UpdateConfig {
         owner: Option<String>,
-        pool_code_id: Option<u64>,
+        farm_code_id: Option<u64>,
     },
-    /// CreatePool instantiates pool contract
-    CreatePool {
+    /// CreateFarm instantiates pool contract
+    CreateFarm {
         /// Staked LP Token address
         staked_token: Addr,
         /// Reward Token address (CW20 or Native)
@@ -28,7 +28,7 @@ pub enum ExecuteMsg {
         /// End time
         end_time: u64,
         /// The pool limit of staked tokens per user (0 for unlimited)
-        pool_limit_per_user: Option<Uint128>,
+        phases_limit_per_user: Option<Uint128>,
         /// Whitelisted addresses
         whitelist: Addr,
     },

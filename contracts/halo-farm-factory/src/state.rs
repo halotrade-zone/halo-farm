@@ -6,14 +6,14 @@ use halo_farm::state::TokenInfo;
 #[cw_serde]
 pub struct Config {
     pub owner: Addr,
-    pub pool_code_id: u64,
+    pub farm_code_id: u64,
 }
 
 // We define a custom struct for each query response
 #[cw_serde]
 pub struct ConfigResponse {
     pub owner: String,
-    pub pool_code_id: u64,
+    pub farm_code_id: u64,
 }
 
 // We define a custom struct for storing pools info
@@ -23,7 +23,7 @@ pub struct FactoryPoolInfo {
     pub reward_token: TokenInfo,
     pub start_time: u64,
     pub end_time: u64,
-    pub pool_limit_per_user: Option<Uint128>,
+    pub phases_limit_per_user: Option<Uint128>,
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");

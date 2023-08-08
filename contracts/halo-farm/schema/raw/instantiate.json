@@ -4,7 +4,7 @@
   "type": "object",
   "required": [
     "end_time",
-    "pool_owner",
+    "farm_owner",
     "reward_token",
     "staked_token",
     "start_time",
@@ -17,7 +17,10 @@
       "format": "uint64",
       "minimum": 0.0
     },
-    "pool_limit_per_user": {
+    "farm_owner": {
+      "$ref": "#/definitions/Addr"
+    },
+    "phases_limit_per_user": {
       "anyOf": [
         {
           "$ref": "#/definitions/Uint128"
@@ -26,9 +29,6 @@
           "type": "null"
         }
       ]
-    },
-    "pool_owner": {
-      "$ref": "#/definitions/Addr"
     },
     "reward_token": {
       "description": "Reward Token address (CW20 or Native)",

@@ -22,7 +22,7 @@ mod tests {
         use cw20::{BalanceResponse, Cw20ExecuteMsg};
         use cw_multi_test::Executor;
         use halo_farm::state::{
-            PhaseInfo, PoolInfos, RewardTokenAssetResponse, StakerInfoResponse, TokenInfo,
+            PhaseInfo, PhasesInfo, PendingRewardResponse, StakerInfoResponse, TokenInfo,
         };
 
         use crate::{
@@ -106,12 +106,12 @@ mod tests {
             let current_block_time = app.block_info().time.seconds();
 
             // create pool contract by factory contract
-            let create_pool_msg = crate::msg::ExecuteMsg::CreatePool {
+            let create_pool_msg = crate::msg::ExecuteMsg::CreateFarm {
                 staked_token: Addr::unchecked(lp_token_contract.clone()),
                 reward_token: native_token_info.clone(),
                 start_time: current_block_time,
                 end_time: current_block_time + 100,
-                pool_limit_per_user: None,
+                phases_limit_per_user: None,
                 whitelist: Addr::unchecked(ADMIN.to_string()),
             };
 
@@ -142,7 +142,7 @@ mod tests {
                     reward_token: native_token_info.clone(),
                     start_time: current_block_time,
                     end_time: current_block_time + 100,
-                    pool_limit_per_user: None,
+                    phases_limit_per_user: None,
                 }
             );
 
@@ -166,15 +166,15 @@ mod tests {
             assert!(response.is_ok());
 
             // query pool info after adding reward balance
-            let pool_info: PoolInfos = app
+            let pool_info: PhasesInfo = app
                 .wrap()
-                .query_wasm_smart("contract3", &PoolQueryMsg::Pool {})
+                .query_wasm_smart("contract3", &PoolQueryMsg::Phases {})
                 .unwrap();
 
             // assert pool info
             assert_eq!(
                 pool_info,
-                PoolInfos {
+                PhasesInfo {
                     staked_token: Addr::unchecked(lp_token_contract.clone()),
                     reward_token: native_token_info.clone(),
                     current_phase_index: 0u64,
@@ -187,7 +187,7 @@ mod tests {
                         accrued_token_per_share: Decimal::zero(),
                         total_staked_at_end_time: Uint128::zero(),
                     }],
-                    pool_limit_per_user: None,
+                    phases_limit_per_user: None,
                     staked_token_balance: Uint128::zero(),
                 }
             );
@@ -212,7 +212,7 @@ mod tests {
                     reward_token: native_token_info,
                     start_time: current_block_time,
                     end_time: current_block_time + 100,
-                    pool_limit_per_user: None,
+                    phases_limit_per_user: None,
                 }]
             );
 
@@ -303,12 +303,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 60_000_000 as reward is accrued
             assert_eq!(
                 pending_reward,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -368,12 +368,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 20_000_000 as reward is accrued
             assert_eq!(
                 pending_reward,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -561,12 +561,12 @@ mod tests {
             };
 
             // create pool contract by factory contract
-            let create_pool_msg = crate::msg::ExecuteMsg::CreatePool {
+            let create_pool_msg = crate::msg::ExecuteMsg::CreateFarm {
                 staked_token: Addr::unchecked(lp_token_contract.clone()),
                 reward_token: native_token_info.clone(),
                 start_time: current_block_time,
                 end_time: current_block_time + 100,
-                pool_limit_per_user: None,
+                phases_limit_per_user: None,
                 whitelist: Addr::unchecked(ADMIN.to_string()),
             };
 
@@ -600,15 +600,15 @@ mod tests {
             assert!(response.is_ok());
 
             // query pool info after adding reward balance
-            let pool_info: PoolInfos = app
+            let pool_info: PhasesInfo = app
                 .wrap()
-                .query_wasm_smart("contract3", &PoolQueryMsg::Pool {})
+                .query_wasm_smart("contract3", &PoolQueryMsg::Phases {})
                 .unwrap();
 
             // assert pool info
             assert_eq!(
                 pool_info,
-                PoolInfos {
+                PhasesInfo {
                     staked_token: Addr::unchecked(lp_token_contract),
                     reward_token: native_token_info.clone(),
                     current_phase_index: 0u64,
@@ -621,7 +621,7 @@ mod tests {
                         accrued_token_per_share: Decimal::zero(),
                         total_staked_at_end_time: Uint128::zero(),
                     }],
-                    pool_limit_per_user: None,
+                    phases_limit_per_user: None,
                     staked_token_balance: Uint128::zero(),
                 }
             );
@@ -699,12 +699,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_2s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_2s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 13333333 as reward is accrued
             assert_eq!(
                 pending_reward_admin_2s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -723,12 +723,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user1_2s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_user1_2s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 6666666 as reward is accrued
             assert_eq!(
                 pending_reward_user1_2s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -810,12 +810,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_6s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_6s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 26666666 as reward is accrued
             assert_eq!(
                 pending_reward_admin_6s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -891,12 +891,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user1_8s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_user1_8s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 23333333 as reward is accrued
             assert_eq!(
                 pending_reward_user1_8s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -970,12 +970,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_10s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_10s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 30000000 as reward is accrued
             assert_eq!(
                 pending_reward_admin_10s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -1033,12 +1033,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user_1_10s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_user_1_10s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 0 as all lp token is withdrawn
             assert_eq!(
                 pending_reward_user_1_10s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -1113,12 +1113,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_14s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_14s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 40000000 as reward is accrued
             assert_eq!(
                 pending_reward_admin_14s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -1194,12 +1194,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_16s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_16s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 20000000 as reward is accrued
             assert_eq!(
                 pending_reward_admin_16s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -1225,12 +1225,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_18s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_18s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 37391305 as reward is accrued
             assert_eq!(
                 pending_reward_admin_18s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -1286,12 +1286,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user_1_18s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_user_1_18s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 2608696 as reward is accrued
             assert_eq!(
                 pending_reward_user_1_18s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -1388,12 +1388,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_100s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_100s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 713_043_478 as reward is accrued
             assert_eq!(
                 pending_reward_admin_100s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -1450,12 +1450,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user_1_100s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_user_1_100s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 106_956_522 as reward is accrued
             assert_eq!(
                 pending_reward_user_1_100s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -1516,15 +1516,15 @@ mod tests {
             assert!(response.is_ok());
 
             // Query pool info after add reward balance
-            let pool_info_phase1: PoolInfos = app
+            let pool_info_phase1: PhasesInfo = app
                 .wrap()
-                .query_wasm_smart("contract3", &PoolQueryMsg::Pool {})
+                .query_wasm_smart("contract3", &PoolQueryMsg::Phases {})
                 .unwrap();
 
             // assert pool info
             assert_eq!(
                 pool_info_phase1,
-                PoolInfos {
+                PhasesInfo {
                     staked_token: Addr::unchecked(lp_token_contract),
                     reward_token: native_token_info,
                     current_phase_index: 1u64,
@@ -1564,7 +1564,7 @@ mod tests {
                             total_staked_at_end_time: Uint128::zero(),
                         }
                     ],
-                    pool_limit_per_user: None,
+                    phases_limit_per_user: None,
                     staked_token_balance: Uint128::from(
                         MOCK_1000_HALO_LP_TOKEN_AMOUNT + MOCK_150_HALO_LP_TOKEN_AMOUNT
                     )
@@ -1588,12 +1588,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_135s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_135s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 217_391_304 as reward is accrued
             assert_eq!(
                 pending_reward_admin_135s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -1669,12 +1669,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user_1_135s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_user_1_135s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 106_956_522 + 32_608_695 = 139_565_217 as reward is accrued
             assert_eq!(
                 pending_reward_user_1_135s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -1735,12 +1735,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_150s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_150s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 163_043_478 as reward is accrued
             assert_eq!(
                 pending_reward_admin_150s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -1800,12 +1800,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user_1_150s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_user_1_150s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 24_456_522 as reward is accrued
             assert_eq!(
                 pending_reward_user_1_150s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -1867,12 +1867,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_155s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_155s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 54_347_826 as reward is accrued
             assert_eq!(
                 pending_reward_admin_155s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -1958,12 +1958,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user_1_160s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_user_1_160s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 22_575_251 as reward is accrued
             assert_eq!(
                 pending_reward_user_1_160s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -2024,12 +2024,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_165s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_165s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 96_153_846 as reward is accrued
             assert_eq!(
                 pending_reward_admin_165s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -2087,12 +2087,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_170s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_170s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 54_347_826 as reward is accrued
             assert_eq!(
                 pending_reward_admin_170s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -2261,12 +2261,12 @@ mod tests {
             };
 
             // create pool contract by factory contract
-            let create_pool_msg = crate::msg::ExecuteMsg::CreatePool {
+            let create_pool_msg = crate::msg::ExecuteMsg::CreateFarm {
                 staked_token: Addr::unchecked(lp_token_contract.clone()),
                 reward_token: reward_token_info.clone(),
                 start_time: current_block_time,
                 end_time: current_block_time + 100,
-                pool_limit_per_user: None,
+                phases_limit_per_user: None,
                 whitelist: Addr::unchecked(ADMIN.to_string()),
             };
 
@@ -2297,7 +2297,7 @@ mod tests {
                     reward_token: reward_token_info.clone(),
                     start_time: current_block_time,
                     end_time: current_block_time + 100,
-                    pool_limit_per_user: None,
+                    phases_limit_per_user: None,
                 }
             );
 
@@ -2383,12 +2383,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_2s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_2s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 20x10^18 as reward is accrued
             assert_eq!(
                 pending_reward_admin_2s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::Token {
                         contract_addr: Addr::unchecked(reward_token_contract.clone()),
                     },
@@ -2476,12 +2476,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user1_4s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_user1_4s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 6,6666x10^18 as reward is accrued
             assert_eq!(
                 pending_reward_user1_4s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::Token {
                         contract_addr: Addr::unchecked(reward_token_contract.clone()),
                     },
@@ -2534,12 +2534,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_6s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_6s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 26,666x10^18 as reward is accrued
             assert_eq!(
                 pending_reward_admin_6s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::Token {
                         contract_addr: Addr::unchecked(reward_token_contract.clone()),
                     },
@@ -2598,12 +2598,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_7s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_7s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 5x10^18 as reward is accrued
             assert_eq!(
                 pending_reward_admin_7s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::Token {
                         contract_addr: Addr::unchecked(reward_token_contract.clone()),
                     },
@@ -2661,12 +2661,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_8s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_8s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 6,66x10^18 as reward is accrued
             assert_eq!(
                 pending_reward_admin_8s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::Token {
                         contract_addr: Addr::unchecked(reward_token_contract.clone())
                     },
@@ -2718,12 +2718,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user1_8s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_user1_8s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 15x10^18 as reward is accrued
             assert_eq!(
                 pending_reward_user1_8s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::Token {
                         contract_addr: Addr::unchecked(reward_token_contract.clone())
                     },
@@ -2811,12 +2811,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_100s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_100s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 920x10^18 as reward is accrued
             assert_eq!(
                 pending_reward_admin_100s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::Token {
                         contract_addr: Addr::unchecked(reward_token_contract.clone())
                     },
@@ -2835,13 +2835,13 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user_1_100s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_user_1_100s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 306,666x10^18 as reward is accrued
 
             assert_eq!(
                 pending_reward_user_1_100s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::Token {
                         contract_addr: Addr::unchecked(reward_token_contract.clone())
                     },
@@ -2929,12 +2929,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_101s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_101s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 679,999^18 as reward is accrued
             assert_eq!(
                 pending_reward_admin_101s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::Token {
                         contract_addr: Addr::unchecked(reward_token_contract.clone())
                     },
@@ -2953,12 +2953,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user_1_101s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_user_1_101s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 340,000^18 as reward is accrued
             assert_eq!(
                 pending_reward_user_1_101s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::Token {
                         contract_addr: Addr::unchecked(reward_token_contract.clone())
                     },
@@ -3279,12 +3279,12 @@ mod tests {
             };
 
             // create pool contract by factory contract
-            let create_pool_msg = crate::msg::ExecuteMsg::CreatePool {
+            let create_pool_msg = crate::msg::ExecuteMsg::CreateFarm {
                 staked_token: Addr::unchecked(lp_token_contract.clone()),
                 reward_token: native_token_info.clone(),
                 start_time: current_block_time,
                 end_time: current_block_time + 10,
-                pool_limit_per_user: None,
+                phases_limit_per_user: None,
                 whitelist: Addr::unchecked(ADMIN.to_string()),
             };
 
@@ -3318,15 +3318,15 @@ mod tests {
             assert!(response.is_ok());
 
             // query pool info after adding reward balance
-            let pool_info: PoolInfos = app
+            let pool_info: PhasesInfo = app
                 .wrap()
-                .query_wasm_smart("contract3", &PoolQueryMsg::Pool {})
+                .query_wasm_smart("contract3", &PoolQueryMsg::Phases {})
                 .unwrap();
 
             // assert pool info
             assert_eq!(
                 pool_info,
-                PoolInfos {
+                PhasesInfo {
                     staked_token: Addr::unchecked(lp_token_contract),
                     reward_token: native_token_info,
                     current_phase_index: 0u64,
@@ -3339,7 +3339,7 @@ mod tests {
                         accrued_token_per_share: Decimal::zero(),
                         total_staked_at_end_time: Uint128::zero(),
                     }],
-                    pool_limit_per_user: None,
+                    phases_limit_per_user: None,
                     staked_token_balance: Uint128::zero(),
                 }
             );
@@ -3399,12 +3399,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_8s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_8s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 800 NATIVE_2 as reward is accrued
             assert_eq!(
                 pending_reward_admin_8s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -3500,12 +3500,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_14s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_14s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 1000 NATIVE_2 as reward is accrued
             assert_eq!(
                 pending_reward_admin_14s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -3563,12 +3563,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_20s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_20s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 1400 NATIVE_2 as reward is accrued
             assert_eq!(
                 pending_reward_admin_20s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -3587,12 +3587,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user1_6s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_user1_6s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 200 NATIVE_2 as reward is accrued
             assert_eq!(
                 pending_reward_user1_6s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -3659,12 +3659,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_harvest: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_harvest: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 0 NATIVE_2 as reward is accrued
             assert_eq!(
                 pending_reward_admin_harvest,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -3683,12 +3683,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user1_6s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_user1_6s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 200 NATIVE_2 as reward is accrued
             assert_eq!(
                 pending_reward_user1_6s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -3714,12 +3714,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_user1_8s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_user1_8s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 200 NATIVE_2 as reward is accrued
             assert_eq!(
                 pending_reward_user1_8s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -3738,12 +3738,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_8s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_8s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 800 NATIVE_2 as reward is accrued
             assert_eq!(
                 pending_reward_admin_8s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -3804,12 +3804,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_25s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_25s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 160 NATIVE_2 as reward is accrued
             assert_eq!(
                 pending_reward_admin_25s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -3917,12 +3917,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_29s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_29s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 160 NATIVE_2 as reward is accrued
             assert_eq!(
                 pending_reward_admin_29s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },
@@ -3948,12 +3948,12 @@ mod tests {
             });
 
             let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
-            let pending_reward_admin_30s: RewardTokenAssetResponse = from_binary(&res).unwrap();
+            let pending_reward_admin_30s: PendingRewardResponse = from_binary(&res).unwrap();
 
             // It should be 240 NATIVE_2 as reward is accrued
             assert_eq!(
                 pending_reward_admin_30s,
-                RewardTokenAssetResponse {
+                PendingRewardResponse {
                     info: TokenInfo::NativeToken {
                         denom: NATIVE_DENOM_2.to_string()
                     },

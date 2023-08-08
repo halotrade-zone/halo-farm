@@ -1,10 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "RewardTokenAsset",
+  "title": "PendingRewardResponse",
   "type": "object",
   "required": [
     "amount",
-    "info"
+    "info",
+    "time_query"
   ],
   "properties": {
     "amount": {
@@ -12,6 +13,11 @@
     },
     "info": {
       "$ref": "#/definitions/TokenInfo"
+    },
+    "time_query": {
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
     }
   },
   "additionalProperties": false,

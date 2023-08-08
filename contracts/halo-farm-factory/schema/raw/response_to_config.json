@@ -4,13 +4,13 @@
   "type": "object",
   "required": [
     "owner",
-    "pool_code_id"
+    "farm_code_id"
   ],
   "properties": {
     "owner": {
       "type": "string"
     },
-    "pool_code_id": {
+    "farm_code_id": {
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0

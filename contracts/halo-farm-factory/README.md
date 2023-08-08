@@ -1,2 +1,2 @@
 # halo-farm-factory
-Halo pool factory smart contract
+Halo farm factory smart contract

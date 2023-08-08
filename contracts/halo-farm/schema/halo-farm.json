@@ -8,7 +8,7 @@
     "type": "object",
     "required": [
       "end_time",
-      "pool_owner",
+      "farm_owner",
       "reward_token",
       "staked_token",
       "start_time",
@@ -21,7 +21,10 @@
         "format": "uint64",
         "minimum": 0.0
       },
-      "pool_limit_per_user": {
+      "farm_owner": {
+        "$ref": "#/definitions/Addr"
+      },
+      "phases_limit_per_user": {
         "anyOf": [
           {
             "$ref": "#/definitions/Uint128"
@@ -30,9 +33,6 @@
             "type": "null"
           }
         ]
-      },
-      "pool_owner": {
-        "$ref": "#/definitions/Addr"
       },
       "reward_token": {
         "description": "Reward Token address (CW20 or Native)",
@@ -128,7 +128,7 @@
     "title": "ExecuteMsg",
     "oneOf": [
       {
-        "description": "Adding reward balance to pool by whitelisted address",
+        "description": "Adding reward balance to a phase by whitelisted address",
         "type": "object",
         "required": [
           "add_reward_balance"
@@ -137,15 +137,15 @@
           "add_reward_balance": {
             "type": "object",
             "required": [
-              "asset",
+              "amount",
               "phase_index"
             ],
             "properties": {
-              "asset": {
+              "amount": {
                 "description": "Reward amount",
                 "allOf": [
                   {
-                    "$ref": "#/definitions/RewardTokenAsset"
+                    "$ref": "#/definitions/Uint128"
                   }
                 ]
               },
@@ -184,7 +184,7 @@
         "additionalProperties": false
       },
       {
-        "description": "Withdraw staked tokens and collect reward tokens (if any), if the pool is inactive, collect all reward tokens",
+        "description": "Withdraw staked tokens and collect reward tokens (if any)",
         "type": "object",
         "required": [
           "withdraw"
@@ -301,68 +301,6 @@
         "description": "A human readable address.\n\nIn Cosmos, this is typically bech32 encoded. But for multi-chain smart contracts no assumptions should be made other than being UTF-8 encoded and of reasonable length.\n\nThis type represents a validated address. It can be created in the following ways 1. Use `Addr::unchecked(input)` 2. Use `let checked: Addr = deps.api.addr_validate(input)?` 3. Use `let checked: Addr = deps.api.addr_humanize(canonical_addr)?` 4. Deserialize from JSON. This must only be done from JSON that was validated before such as a contract's state. `Addr` must not be used in messages sent by the user because this would result in unvalidated instances.\n\nThis type is immutable. If you really need to mutate it (Really? Are you sure?), create a mutable copy using `let mut mutable = Addr::to_string()` and operate on that `String` instance.",
         "type": "string"
       },
-      "RewardTokenAsset": {
-        "type": "object",
-        "required": [
-          "amount",
-          "info"
-        ],
-        "properties": {
-          "amount": {
-            "$ref": "#/definitions/Uint128"
-          },
-          "info": {
-            "$ref": "#/definitions/TokenInfo"
-          }
-        },
-        "additionalProperties": false
-      },
-      "TokenInfo": {
-        "oneOf": [
-          {
-            "type": "object",
-            "required": [
-              "token"
-            ],
-            "properties": {
-              "token": {
-                "type": "object",
-                "required": [
-                  "contract_addr"
-                ],
-                "properties": {
-                  "contract_addr": {
-                    "$ref": "#/definitions/Addr"
-                  }
-                },
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          },
-          {
-            "type": "object",
-            "required": [
-              "native_token"
-            ],
-            "properties": {
-              "native_token": {
-                "type": "object",
-                "required": [
-                  "denom"
-                ],
-                "properties": {
-                  "denom": {
-                    "type": "string"
-                  }
-                },
-                "additionalProperties": false
-              }
-            },
-            "additionalProperties": false
-          }
-        ]
-      },
       "Uint128": {
         "description": "A thin wrapper around u128 that is using strings for JSON encoding/decoding, such that the full u128 range can be used for clients that convert JSON numbers to floats, like JavaScript and jq.\n\n# Examples\n\nUse `from` to create instances of this and `u128` to get the value out:\n\n``` # use cosmwasm_std::Uint128; let a = Uint128::from(123u128); assert_eq!(a.u128(), 123);\n\nlet b = Uint128::from(42u64); assert_eq!(b.u128(), 42);\n\nlet c = Uint128::from(70u32); assert_eq!(c.u128(), 70); ```",
         "type": "string"
@@ -448,11 +386,12 @@
   "responses": {
     "pending_reward": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "RewardTokenAsset",
+      "title": "PendingRewardResponse",
       "type": "object",
       "required": [
         "amount",
-        "info"
+        "info",
+        "time_query"
       ],
       "properties": {
         "amount": {
@@ -460,6 +399,11 @@
         },
         "info": {
           "$ref": "#/definitions/TokenInfo"
+        },
+        "time_query": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
         }
       },
       "additionalProperties": false,
@@ -522,7 +466,7 @@
     },
     "pool": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "PoolInfos",
+      "title": "PhasesInfo",
       "type": "object",
       "required": [
         "current_phase_index",
@@ -543,7 +487,7 @@
             "$ref": "#/definitions/PhaseInfo"
           }
         },
-        "pool_limit_per_user": {
+        "phases_limit_per_user": {
           "anyOf": [
             {
               "$ref": "#/definitions/Uint128"

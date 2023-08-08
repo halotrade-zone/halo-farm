@@ -15,7 +15,7 @@ use cw2::set_contract_version;
 use cw_utils::parse_reply_instantiate_data;
 use halo_farm::msg::InstantiateMsg as PoolInstantiateMsg;
 use halo_farm::msg::QueryMsg as PoolQueryMsg;
-use halo_farm::state::{PoolInfos, TokenInfo};
+use halo_farm::state::{PhasesInfo, TokenInfo};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:halo-farm-factory";
@@ -32,7 +32,7 @@ pub fn instantiate(
 
     let config = Config {
         owner: info.sender,
-        pool_code_id: msg.pool_code_id,
+        farm_code_id: msg.farm_code_id,
     };
 
     // init NUMBER_OF_POOLS to 0
@@ -53,16 +53,16 @@ pub fn execute(
     match msg {
         ExecuteMsg::UpdateConfig {
             owner,
-            pool_code_id,
-        } => execute_update_config(deps, env, info, owner, pool_code_id),
-        ExecuteMsg::CreatePool {
+            farm_code_id,
+        } => execute_update_config(deps, env, info, owner, farm_code_id),
+        ExecuteMsg::CreateFarm {
             staked_token,
             reward_token,
             start_time,
             end_time,
-            pool_limit_per_user,
+            phases_limit_per_user,
             whitelist,
-        } => execute_create_pool(
+        } => execute_create_farm(
             deps,
             env,
             info,
@@ -70,7 +70,7 @@ pub fn execute(
             reward_token,
             start_time,
             end_time,
-            pool_limit_per_user,
+            phases_limit_per_user,
             whitelist,
         ),
     }
@@ -82,7 +82,7 @@ pub fn execute_update_config(
     _env: Env,
     info: MessageInfo,
     owner: Option<String>,
-    pool_code_id: Option<u64>,
+    farm_code_id: Option<u64>,
 ) -> Result<Response, ContractError> {
     let mut config: Config = CONFIG.load(deps.storage)?;
 
@@ -96,9 +96,9 @@ pub fn execute_update_config(
         config.owner = deps.api.addr_validate(&owner)?;
     }
 
-    // update pool_code_id if provided
-    if let Some(pool_code_id) = pool_code_id {
-        config.pool_code_id = pool_code_id;
+    // update farm_code_id if provided
+    if let Some(farm_code_id) = farm_code_id {
+        config.farm_code_id = farm_code_id;
     }
 
     CONFIG.save(deps.storage, &config)?;
@@ -106,12 +106,12 @@ pub fn execute_update_config(
     Ok(Response::new()
         .add_attribute("method", "update_config")
         .add_attribute("owner", owner.unwrap())
-        .add_attribute("pool_code_id", pool_code_id.unwrap().to_string()))
+        .add_attribute("farm_code_id", farm_code_id.unwrap().to_string()))
 }
 
 // Only owner can execute it
 #[allow(clippy::too_many_arguments)]
-pub fn execute_create_pool(
+pub fn execute_create_farm(
     deps: DepsMut,
     env: Env,
     info: MessageInfo,
@@ -119,7 +119,7 @@ pub fn execute_create_pool(
     reward_token: TokenInfo,
     start_time: u64,
     end_time: u64,
-    pool_limit_per_user: Option<Uint128>,
+    phases_limit_per_user: Option<Uint128>,
     whitelist: Addr,
 ) -> Result<Response, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
@@ -152,14 +152,14 @@ pub fn execute_create_pool(
             ("reward_token", &format!("{}", reward_token)),
             ("start_time", start_time.to_string().as_str()),
             ("end_time", end_time.to_string().as_str()),
-            ("pool_limit_per_user", &format!("{:?}", pool_limit_per_user)),
+            ("phases_limit_per_user", &format!("{:?}", phases_limit_per_user)),
             ("whitelist", &format!("{:?}", whitelist)),
         ])
         .add_submessage(SubMsg {
             id: 1,
             gas_limit: None,
             msg: CosmosMsg::Wasm(WasmMsg::Instantiate {
-                code_id: config.pool_code_id,
+                code_id: config.farm_code_id,
                 funds: vec![],
                 admin: Some(config.owner.to_string()),
                 label: "pool".to_string(),
@@ -168,8 +168,8 @@ pub fn execute_create_pool(
                     reward_token,
                     start_time,
                     end_time,
-                    pool_limit_per_user,
-                    pool_owner: info.sender,
+                    phases_limit_per_user,
+                    farm_owner: info.sender,
                     whitelist,
                 })?,
             }),
@@ -183,7 +183,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
     let reply = parse_reply_instantiate_data(msg).unwrap();
 
     let pool_contract = &reply.contract_address;
-    let pool_infos = query_pool_info_from_pool(&deps.querier, Addr::unchecked(pool_contract))?;
+    let phases_info = query_phases_info(&deps.querier, Addr::unchecked(pool_contract))?;
 
     let pool_key = NUMBER_OF_POOLS.load(deps.storage)? + 1;
 
@@ -191,11 +191,11 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
         deps.storage,
         pool_key,
         &FactoryPoolInfo {
-            staked_token: pool_infos.staked_token.clone(),
-            reward_token: pool_infos.reward_token,
-            start_time: pool_infos.phases_info[pool_infos.current_phase_index as usize].start_time,
-            end_time: pool_infos.phases_info[pool_infos.current_phase_index as usize].end_time,
-            pool_limit_per_user: pool_infos.pool_limit_per_user,
+            staked_token: phases_info.staked_token.clone(),
+            reward_token: phases_info.reward_token,
+            start_time: phases_info.phases_info[phases_info.current_phase_index as usize].start_time,
+            end_time: phases_info.phases_info[phases_info.current_phase_index as usize].end_time,
+            phases_limit_per_user: phases_info.phases_limit_per_user,
         },
     )?;
 
@@ -206,7 +206,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
         ("action", "reply_on_create_pool_success"),
         ("pool_id", pool_key.to_string().as_str()),
         ("pool_contract_addr", pool_contract),
-        ("staked_token_addr", pool_infos.staked_token.as_ref()),
+        ("staked_token_addr", phases_info.staked_token.as_ref()),
     ]))
 }
 
@@ -225,7 +225,7 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     let state: Config = CONFIG.load(deps.storage)?;
     let resp = ConfigResponse {
         owner: state.owner.to_string(),
-        pool_code_id: state.pool_code_id,
+        farm_code_id: state.farm_code_id,
     };
 
     Ok(resp)
@@ -252,13 +252,13 @@ pub fn query_pools(
     Ok(pools)
 }
 
-fn query_pool_info_from_pool(
+fn query_phases_info(
     querier: &QuerierWrapper,
     pool_contract: Addr,
-) -> StdResult<PoolInfos> {
-    let pool_info: PoolInfos = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+) -> StdResult<PhasesInfo> {
+    let pool_info: PhasesInfo = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
         contract_addr: pool_contract.to_string(),
-        msg: to_binary(&PoolQueryMsg::Pool {})?,
+        msg: to_binary(&PoolQueryMsg::Phases {})?,
     }))?;
     Ok(pool_info)
 }

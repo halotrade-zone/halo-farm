@@ -7,10 +7,10 @@
     "title": "InstantiateMsg",
     "type": "object",
     "required": [
-      "pool_code_id"
+      "farm_code_id"
     ],
     "properties": {
-      "pool_code_id": {
+      "farm_code_id": {
         "description": "Pool code ID",
         "type": "integer",
         "format": "uint64",
@@ -39,7 +39,7 @@
                   "null"
                 ]
               },
-              "pool_code_id": {
+              "farm_code_id": {
                 "type": [
                   "integer",
                   "null"
@@ -54,7 +54,7 @@
         "additionalProperties": false
       },
       {
-        "description": "CreatePool instantiates pool contract",
+        "description": "CreateFarm instantiates pool contract",
         "type": "object",
         "required": [
           "create_pool"
@@ -76,7 +76,7 @@
                 "format": "uint64",
                 "minimum": 0.0
               },
-              "pool_limit_per_user": {
+              "phases_limit_per_user": {
                 "description": "The pool limit of staked tokens per user (0 for unlimited)",
                 "anyOf": [
                   {
@@ -263,13 +263,13 @@
       "type": "object",
       "required": [
         "owner",
-        "pool_code_id"
+        "farm_code_id"
       ],
       "properties": {
         "owner": {
           "type": "string"
         },
-        "pool_code_id": {
+        "farm_code_id": {
           "type": "integer",
           "format": "uint64",
           "minimum": 0.0
@@ -293,7 +293,7 @@
           "format": "uint64",
           "minimum": 0.0
         },
-        "pool_limit_per_user": {
+        "phases_limit_per_user": {
           "anyOf": [
             {
               "$ref": "#/definitions/Uint128"
@@ -399,7 +399,7 @@
               "format": "uint64",
               "minimum": 0.0
             },
-            "pool_limit_per_user": {
+            "phases_limit_per_user": {
               "anyOf": [
                 {
                   "$ref": "#/definitions/Uint128"
