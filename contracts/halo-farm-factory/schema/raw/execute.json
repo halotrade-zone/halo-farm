@@ -12,12 +12,6 @@
         "update_config": {
           "type": "object",
           "properties": {
-            "owner": {
-              "type": [
-                "string",
-                "null"
-              ]
-            },
             "farm_code_id": {
               "type": [
                 "integer",
@@ -25,6 +19,12 @@
               ],
               "format": "uint64",
               "minimum": 0.0
+            },
+            "owner": {
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "additionalProperties": false
@@ -33,13 +33,13 @@
       "additionalProperties": false
     },
     {
-      "description": "CreateFarm instantiates pool contract",
+      "description": "CreateFarm instantiates farm contract",
       "type": "object",
       "required": [
-        "create_pool"
+        "create_farm"
       ],
       "properties": {
-        "create_pool": {
+        "create_farm": {
           "type": "object",
           "required": [
             "end_time",
@@ -56,7 +56,7 @@
               "minimum": 0.0
             },
             "phases_limit_per_user": {
-              "description": "The pool limit of staked tokens per user (0 for unlimited)",
+              "description": "The phases limit of staked tokens per user (0 for unlimited)",
               "anyOf": [
                 {
                   "$ref": "#/definitions/Uint128"

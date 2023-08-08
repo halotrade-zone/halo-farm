@@ -1,7 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
 use cosmwasm_std::{Addr, Uint128};
 
-use crate::state::{ConfigResponse, FactoryPoolInfo};
+use crate::state::{ConfigResponse, FactoryFarmInfo};
 use halo_farm::state::TokenInfo;
 
 #[cw_serde]
@@ -17,7 +17,7 @@ pub enum ExecuteMsg {
         owner: Option<String>,
         farm_code_id: Option<u64>,
     },
-    /// CreateFarm instantiates pool contract
+    /// CreateFarm instantiates farm contract
     CreateFarm {
         /// Staked LP Token address
         staked_token: Addr,
@@ -27,7 +27,7 @@ pub enum ExecuteMsg {
         start_time: u64,
         /// End time
         end_time: u64,
-        /// The pool limit of staked tokens per user (0 for unlimited)
+        /// The phases limit of staked tokens per user (0 for unlimited)
         phases_limit_per_user: Option<Uint128>,
         /// Whitelisted addresses
         whitelist: Addr,
@@ -39,10 +39,10 @@ pub enum ExecuteMsg {
 pub enum QueryMsg {
     #[returns(ConfigResponse)]
     Config {},
-    #[returns(FactoryPoolInfo)]
-    Pool { pool_id: u64 },
-    #[returns(Vec<FactoryPoolInfo>)]
-    Pools {
+    #[returns(FactoryFarmInfo)]
+    Farm { farm_id: u64 },
+    #[returns(Vec<FactoryFarmInfo>)]
+    Farms {
         start_after: Option<u64>,
         limit: Option<u32>,
     },

@@ -1,8 +1,8 @@
 use crate::error::ContractError;
-use crate::state::{Config, ConfigResponse, FactoryPoolInfo, CONFIG};
+use crate::state::{Config, ConfigResponse, FactoryFarmInfo, CONFIG};
 use crate::{
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    state::{NUMBER_OF_POOLS, POOLS},
+    state::{NUMBER_OF_FARMS, FARMS},
 };
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
@@ -13,8 +13,8 @@ use cosmwasm_std::{
 };
 use cw2::set_contract_version;
 use cw_utils::parse_reply_instantiate_data;
-use halo_farm::msg::InstantiateMsg as PoolInstantiateMsg;
-use halo_farm::msg::QueryMsg as PoolQueryMsg;
+use halo_farm::msg::InstantiateMsg as FarmInstantiateMsg;
+use halo_farm::msg::QueryMsg as FarmQueryMsg;
 use halo_farm::state::{PhasesInfo, TokenInfo};
 
 // version info for migration info
@@ -35,8 +35,8 @@ pub fn instantiate(
         farm_code_id: msg.farm_code_id,
     };
 
-    // init NUMBER_OF_POOLS to 0
-    NUMBER_OF_POOLS.save(deps.storage, &0u64)?;
+    // init NUMBER_OF_FARMS to 0
+    NUMBER_OF_FARMS.save(deps.storage, &0u64)?;
 
     CONFIG.save(deps.storage, &config)?;
 
@@ -137,7 +137,7 @@ pub fn execute_create_farm(
         )));
     }
 
-    // Not allow to create a pool when current time is greater than start time
+    // Not allow to create a farm when current time is greater than start time
     if current_time > start_time {
         return Err(ContractError::Std(StdError::generic_err(
             "Current time is greater than start time",
@@ -146,7 +146,7 @@ pub fn execute_create_farm(
 
     Ok(Response::new()
         .add_attributes(vec![
-            ("method", "create_pool"),
+            ("method", "create_farm"),
             ("halo_factory_owner", info.sender.as_str()),
             ("staked_token", staked_token.as_str()),
             ("reward_token", &format!("{}", reward_token)),
@@ -162,8 +162,8 @@ pub fn execute_create_farm(
                 code_id: config.farm_code_id,
                 funds: vec![],
                 admin: Some(config.owner.to_string()),
-                label: "pool".to_string(),
-                msg: to_binary(&PoolInstantiateMsg {
+                label: "farm".to_string(),
+                msg: to_binary(&FarmInstantiateMsg {
                     staked_token,
                     reward_token,
                     start_time,
@@ -182,15 +182,15 @@ pub fn execute_create_farm(
 pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
     let reply = parse_reply_instantiate_data(msg).unwrap();
 
-    let pool_contract = &reply.contract_address;
-    let phases_info = query_phases_info(&deps.querier, Addr::unchecked(pool_contract))?;
+    let farm_contract = &reply.contract_address;
+    let phases_info = query_phases_info(&deps.querier, Addr::unchecked(farm_contract))?;
 
-    let pool_key = NUMBER_OF_POOLS.load(deps.storage)? + 1;
+    let farm_key = NUMBER_OF_FARMS.load(deps.storage)? + 1;
 
-    POOLS.save(
+    FARMS.save(
         deps.storage,
-        pool_key,
-        &FactoryPoolInfo {
+        farm_key,
+        &FactoryFarmInfo {
             staked_token: phases_info.staked_token.clone(),
             reward_token: phases_info.reward_token,
             start_time: phases_info.phases_info[phases_info.current_phase_index as usize].start_time,
@@ -199,13 +199,13 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
         },
     )?;
 
-    // increase pool count
-    NUMBER_OF_POOLS.save(deps.storage, &(pool_key))?;
+    // increase farm count
+    NUMBER_OF_FARMS.save(deps.storage, &(farm_key))?;
 
     Ok(Response::new().add_attributes(vec![
-        ("action", "reply_on_create_pool_success"),
-        ("pool_id", pool_key.to_string().as_str()),
-        ("pool_contract_addr", pool_contract),
+        ("action", "reply_on_create_farm_success"),
+        ("farm_id", farm_key.to_string().as_str()),
+        ("farm_contract_addr", farm_contract),
         ("staked_token_addr", phases_info.staked_token.as_ref()),
     ]))
 }
@@ -214,9 +214,9 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::Config {} => to_binary(&query_config(deps)?),
-        QueryMsg::Pool { pool_id } => to_binary(&query_pool_info(deps, pool_id)?),
-        QueryMsg::Pools { start_after, limit } => {
-            to_binary(&query_pools(deps, start_after, limit)?)
+        QueryMsg::Farm { farm_id } => to_binary(&query_farm_info(deps, farm_id)?),
+        QueryMsg::Farms { start_after, limit } => {
+            to_binary(&query_farms(deps, start_after, limit)?)
         }
     }
 }
@@ -231,34 +231,34 @@ pub fn query_config(deps: Deps) -> StdResult<ConfigResponse> {
     Ok(resp)
 }
 
-pub fn query_pool_info(deps: Deps, pool_id: u64) -> StdResult<FactoryPoolInfo> {
-    POOLS.load(deps.storage, pool_id)
+pub fn query_farm_info(deps: Deps, farm_id: u64) -> StdResult<FactoryFarmInfo> {
+    FARMS.load(deps.storage, farm_id)
 }
 
-pub fn query_pools(
+pub fn query_farms(
     deps: Deps,
     start_after: Option<u64>,
     limit: Option<u32>,
-) -> StdResult<Vec<FactoryPoolInfo>> {
+) -> StdResult<Vec<FactoryFarmInfo>> {
     let start_after = start_after.unwrap_or(0);
     let limit = limit.unwrap_or(30) as usize;
-    let pool_count = NUMBER_OF_POOLS.load(deps.storage)?;
+    let farm_count = NUMBER_OF_FARMS.load(deps.storage)?;
 
-    let pools = (start_after..pool_count)
-        .map(|pool_id| POOLS.load(deps.storage, pool_id + 1))
+    let farms = (start_after..farm_count)
+        .map(|farm_id| FARMS.load(deps.storage, farm_id + 1))
         .take(limit)
         .collect::<StdResult<Vec<_>>>()?;
 
-    Ok(pools)
+    Ok(farms)
 }
 
 fn query_phases_info(
     querier: &QuerierWrapper,
-    pool_contract: Addr,
+    farm_contract: Addr,
 ) -> StdResult<PhasesInfo> {
-    let pool_info: PhasesInfo = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: pool_contract.to_string(),
-        msg: to_binary(&PoolQueryMsg::Phases {})?,
+    let phases_info: PhasesInfo = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
+        contract_addr: farm_contract.to_string(),
+        msg: to_binary(&FarmQueryMsg::Phases {})?,
     }))?;
-    Ok(pool_info)
+    Ok(phases_info)
 }

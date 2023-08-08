@@ -3,17 +3,17 @@
   "title": "ConfigResponse",
   "type": "object",
   "required": [
-    "owner",
-    "farm_code_id"
+    "farm_code_id",
+    "owner"
   ],
   "properties": {
-    "owner": {
-      "type": "string"
-    },
     "farm_code_id": {
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0
+    },
+    "owner": {
+      "type": "string"
     }
   },
   "additionalProperties": false

@@ -314,10 +314,10 @@
       {
         "type": "object",
         "required": [
-          "pool"
+          "phases"
         ],
         "properties": {
-          "pool": {
+          "phases": {
             "type": "object",
             "additionalProperties": false
           }
@@ -464,7 +464,7 @@
         }
       }
     },
-    "pool": {
+    "phases": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "PhasesInfo",
       "type": "object",

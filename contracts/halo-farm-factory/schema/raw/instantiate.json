@@ -7,7 +7,7 @@
   ],
   "properties": {
     "farm_code_id": {
-      "description": "Pool code ID",
+      "description": "Farm code ID",
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0

@@ -27,7 +27,7 @@ mod tests {
 
         use crate::{
             msg::QueryMsg,
-            state::FactoryPoolInfo,
+            state::FactoryFarmInfo,
             tests::{
                 env_setup::env::{
                     instantiate_contracts, ADMIN, NATIVE_BALANCE_2, NATIVE_DENOM_2, USER_1,
@@ -126,18 +126,18 @@ mod tests {
             assert!(response_create_pool.is_ok());
 
             // query pool contract address
-            let pool_info: FactoryPoolInfo = app
+            let pool_info: FactoryFarmInfo = app
                 .wrap()
                 .query_wasm_smart(
                     factory_contract.clone(),
-                    &crate::msg::QueryMsg::Pool { pool_id: 1u64 },
+                    &crate::msg::QueryMsg::Farm { farm_id: 1u64 },
                 )
                 .unwrap();
 
             // assert pool info
             assert_eq!(
                 pool_info,
-                FactoryPoolInfo {
+                FactoryFarmInfo {
                     staked_token: Addr::unchecked(lp_token_contract),
                     reward_token: native_token_info.clone(),
                     start_time: current_block_time,
@@ -193,11 +193,11 @@ mod tests {
             );
 
             // query all pools
-            let pools: Vec<FactoryPoolInfo> = app
+            let pools: Vec<FactoryFarmInfo> = app
                 .wrap()
                 .query_wasm_smart(
                     Addr::unchecked(factory_contract.clone()),
-                    &QueryMsg::Pools {
+                    &QueryMsg::Farms {
                         start_after: None,
                         limit: None,
                     },
@@ -207,7 +207,7 @@ mod tests {
             // assert pool info
             assert_eq!(
                 pools,
-                vec![FactoryPoolInfo {
+                vec![FactoryFarmInfo {
                     staked_token: Addr::unchecked(lp_token_contract),
                     reward_token: native_token_info,
                     start_time: current_block_time,
@@ -2281,18 +2281,18 @@ mod tests {
             assert!(response.is_ok());
 
             // query pool contract address
-            let pool_info: FactoryPoolInfo = app
+            let pool_info: FactoryFarmInfo = app
                 .wrap()
                 .query_wasm_smart(
                     factory_contract.clone(),
-                    &crate::msg::QueryMsg::Pool { pool_id: 1u64 },
+                    &crate::msg::QueryMsg::Farm { farm_id: 1u64 },
                 )
                 .unwrap();
 
             // assert pool info
             assert_eq!(
                 pool_info,
-                FactoryPoolInfo {
+                FactoryFarmInfo {
                     staked_token: Addr::unchecked(lp_token_contract),
                     reward_token: reward_token_info.clone(),
                     start_time: current_block_time,
