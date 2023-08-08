@@ -1130,7 +1130,6 @@ fn query_pending_reward(deps: Deps, env: Env, address: String) -> StdResult<Pend
             phase_info.end_time,
         )
     };
-
     // Get staked token balance
     let staked_token_balance = phases_info.staked_token_balance;
     let reward = Uint128::new(multiplier.into()) * phase_info.reward_balance

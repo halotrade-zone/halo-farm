@@ -2290,7 +2290,7 @@ mod tests {
                 factory_farm_info,
                 FactoryFarmInfo {
                     staked_token: Addr::unchecked(lp_token_contract),
-                    reward_token: reward_token_info.clone(),
+                    reward_token: reward_token_info,
                     start_time: current_block_time,
                     end_time: current_block_time + 100,
                     phases_limit_per_user: None,
