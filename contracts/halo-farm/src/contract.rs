@@ -20,7 +20,7 @@ use crate::{
     formulas::{calc_reward_amount, get_multiplier, get_new_reward_ratio_and_time},
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{
-        Config, PhaseInfo, PhasesInfo, PendingRewardResponse, StakerInfo, StakerInfoResponse,
+        Config, PendingRewardResponse, PhaseInfo, PhasesInfo, StakerInfo, StakerInfoResponse,
         TokenInfo, CONFIG, PHASES_INFO, STAKERS_INFO,
     },
 };
@@ -89,7 +89,7 @@ pub fn execute(
     match msg {
         ExecuteMsg::AddRewardBalance {
             phase_index,
-            amount
+            amount,
         } => execute_add_reward_balance(deps, env, info, phase_index, amount),
         ExecuteMsg::Deposit { amount } => execute_deposit(deps, env, info, amount),
         ExecuteMsg::Withdraw { amount } => execute_withdraw(deps, env, info, amount),
@@ -157,8 +157,7 @@ pub fn execute_add_reward_balance(
         }
         TokenInfo::NativeToken { denom } => {
             // If reward token is native token, check the denom and amount of asset is valid
-            if !has_coins(&info.funds, &Coin { denom, amount },
-            ) {
+            if !has_coins(&info.funds, &Coin { denom, amount }) {
                 return Err(ContractError::Std(StdError::generic_err(
                     "Native token balance mismatch between the argument and the transferred",
                 )));
@@ -362,9 +361,7 @@ pub fn execute_deposit(
     let phase_info = phases_info.phases_info[current_phase_index as usize].clone();
     // Not allow depositing if reward token is not added to the phase yet
     if phase_info.reward_balance == Uint128::zero() {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Empty phase",
-        )));
+        return Err(ContractError::Std(StdError::generic_err("Empty phase")));
     }
     // If staker has not joined any phase, save initial staker info
     if STAKERS_INFO
@@ -605,7 +602,8 @@ pub fn execute_withdraw(
 
     // If an user withdraws lp token after the end time of the phase, set last reward time to end time of this phase
     if current_time > phase_info.end_time {
-        phases_info.phases_info[current_phase_index as usize].last_reward_time = phase_info.end_time;
+        phases_info.phases_info[current_phase_index as usize].last_reward_time =
+            phase_info.end_time;
     } else {
         phases_info.phases_info[current_phase_index as usize].last_reward_time =
             new_last_reward_time;
@@ -747,7 +745,8 @@ pub fn execute_harvest(
 
     // If an user harvests reward after the end time of the phase, set last reward time to end time of this phase
     if current_time > phase_info.end_time {
-        phases_info.phases_info[current_phase_index as usize].last_reward_time = phase_info.end_time;
+        phases_info.phases_info[current_phase_index as usize].last_reward_time =
+            phase_info.end_time;
     } else {
         phases_info.phases_info[current_phase_index as usize].last_reward_time =
             new_last_reward_time;
@@ -1073,11 +1072,7 @@ fn query_phases_info(deps: Deps) -> StdResult<PhasesInfo> {
     PHASES_INFO.load(deps.storage)
 }
 
-fn query_pending_reward(
-    deps: Deps,
-    env: Env,
-    address: String,
-) -> StdResult<PendingRewardResponse> {
+fn query_pending_reward(deps: Deps, env: Env, address: String) -> StdResult<PendingRewardResponse> {
     // Get current time
     let current_time = env.block.time.seconds();
     // Get phases info
