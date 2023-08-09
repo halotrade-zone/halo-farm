@@ -5,13 +5,13 @@ use std::fmt;
 
 #[cw_serde]
 pub struct Config {
-    pub halo_factory_owner: Addr,
+    pub farm_owner: Addr,
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");
 
-/// Stores info of multiple phases info
-pub const PHASES_INFO: Item<PhasesInfo> = Item::new("phases_info");
+/// Stores info of a farm.
+pub const FARM_INFO: Item<FarmInfo> = Item::new("farm_info");
 
 /// Mappping from staker address to staker balance.
 pub const STAKERS_INFO: Map<Addr, StakerInfo> = Map::new("stakers_info_response");
@@ -64,7 +64,7 @@ pub struct PhaseInfo {
 }
 
 #[cw_serde]
-pub struct PhasesInfo {
+pub struct FarmInfo {
     pub staked_token: Addr,
     pub reward_token: TokenInfo,
     pub current_phase_index: u64,
