@@ -369,18 +369,15 @@ fn claim_all_reward(
     // Get staked token balance
     let staked_token_balance = farm_info.staked_token_balance;
     // For the first deposit, set last reward time to current time
-    if current_time >= phase_info.start_time
-        && staked_token_balance == Uint128::zero()
+    if current_time >= phase_info.start_time && staked_token_balance == Uint128::zero()
     {
         phase_info.last_reward_time = current_time;
         println!("first deposit");
     }
 
     // get new reward ratio and time
-    let (new_accrued_token_per_share, new_last_reward_time) = phase_info.get_new_reward_ratio_and_time(
-        current_time,
-        staked_token_balance,
-    );
+    let (new_accrued_token_per_share, new_last_reward_time) =
+        phase_info.get_new_reward_ratio_and_time(current_time, staked_token_balance);
 
     // If an user withdraws or harvest lp token after the end time of the phase, set last reward time to end time of this phase
     if current_time > phase_info.end_time {
@@ -647,7 +644,7 @@ pub fn execute_harvest(
 
     // Get all reward info
     let (reward_amount, new_accrued_token_per_share) =
-        claim_all_reward(&mut farm_info,&mut staker_info, current_time);
+        claim_all_reward(&mut farm_info, &mut staker_info, current_time);
 
     // Update staker reward debt
     staker_info.reward_debt[current_phase_index as usize] =
@@ -881,10 +878,8 @@ pub fn execute_activate_phase(
     let phase_info = farm_info.phases_info[current_phase_index].clone();
 
     // get new reward ratio and time
-    let (new_accrued_token_per_share, _new_last_reward_time) = phase_info.get_new_reward_ratio_and_time(
-        phase_info.end_time,
-        staked_token_balance,
-    );
+    let (new_accrued_token_per_share, _new_last_reward_time) =
+        phase_info.get_new_reward_ratio_and_time(phase_info.end_time, staked_token_balance);
 
     farm_info.phases_info[current_phase_index].last_reward_time = phase_info.end_time;
     farm_info.phases_info[current_phase_index].accrued_token_per_share =

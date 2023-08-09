@@ -47,11 +47,10 @@ impl PhaseInfo {
             let reward = Uint128::new(multiplier.into()) * self.reward_balance
                 / Uint128::new((self.end_time - self.start_time).into());
 
-            let new_accrued_token_per_share =
-            self.accrued_token_per_share + (Decimal::new(reward) / Decimal::new(staked_token_balance));
+            let new_accrued_token_per_share = self.accrued_token_per_share
+                + (Decimal::new(reward) / Decimal::new(staked_token_balance));
 
             (new_accrued_token_per_share, current_time)
         }
     }
-
 }
