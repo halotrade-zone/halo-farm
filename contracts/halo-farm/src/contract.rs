@@ -369,10 +369,8 @@ fn claim_all_reward(
     // Get staked token balance
     let staked_token_balance = farm_info.staked_token_balance;
     // For the first deposit, set last reward time to current time
-    if current_time >= phase_info.start_time && staked_token_balance == Uint128::zero()
-    {
+    if current_time >= phase_info.start_time && staked_token_balance == Uint128::zero() {
         phase_info.last_reward_time = current_time;
-        println!("first deposit");
     }
 
     // get new reward ratio and time
