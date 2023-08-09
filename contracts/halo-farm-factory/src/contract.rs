@@ -147,7 +147,7 @@ pub fn execute_create_farm(
     Ok(Response::new()
         .add_attributes(vec![
             ("method", "create_farm"),
-            ("farm_factory_owner", info.sender.as_str()),
+            ("farm_owner", info.sender.as_str()),
             ("staked_token", staked_token.as_str()),
             ("reward_token", &format!("{}", reward_token)),
             ("start_time", start_time.to_string().as_str()),

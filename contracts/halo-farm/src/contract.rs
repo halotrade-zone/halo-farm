@@ -35,7 +35,7 @@ pub fn instantiate(
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
 
     let config = Config {
-        farm_factory_owner: msg.farm_owner,
+        farm_owner: msg.farm_owner,
     };
 
     // Init phase info
@@ -286,7 +286,7 @@ pub fn execute_remove_phase(
     let config: Config = CONFIG.load(deps.storage)?;
 
     // Check if the message sender is the owner of the contract
-    if config.farm_factory_owner != info.sender {
+    if config.farm_owner != info.sender {
         return Err(ContractError::Std(StdError::generic_err(
             "Unauthorized: Only owner can remove phase",
         )));
@@ -337,70 +337,18 @@ pub fn execute_remove_phase(
         .add_attribute("phase_index", phase_index.to_string()))
 }
 
-pub fn execute_deposit(
-    deps: DepsMut,
-    env: Env,
-    info: MessageInfo,
-    amount: Uint128,
-) -> Result<Response, ContractError> {
-    // Not allow depositing 0 amount
-    if amount.is_zero() {
-        return Err(ContractError::Std(StdError::generic_err(
-            "InvalidZeroAmount: Deposit amount is 0",
-        )));
-    }
-    // Get farm info
-    let mut farm_info = FARM_INFO.load(deps.storage)?;
+
+fn get_all_reward_info(
+    mut farm_info: FarmInfo,
+    mut staker_info: StakerInfo,
+    current_time: u64,
+) -> (Uint128, Decimal, StakerInfo, FarmInfo) { // reward_amount, accrued_token_per_share, StakerInfo, FarmInfo
+    // Init reward amount
+    let mut reward_amount = Uint128::zero();
     // Get current phase index
     let current_phase_index = farm_info.current_phase_index;
     // Get current phase info in farm info
     let phase_info = farm_info.phases_info[current_phase_index as usize].clone();
-    // Not allow depositing if reward token is not added to the phase yet
-    if phase_info.reward_balance == Uint128::zero() {
-        return Err(ContractError::Std(StdError::generic_err("Empty phase")));
-    }
-    // If staker has not joined any phase, save initial staker info
-    if STAKERS_INFO
-        .may_load(deps.storage, info.sender.clone())?
-        .is_none()
-    {
-        STAKERS_INFO.save(
-            deps.storage,
-            info.sender.clone(),
-            &StakerInfo {
-                amount: Uint128::zero(),
-                reward_debt: vec![Uint128::zero(); current_phase_index as usize + 1],
-                joined_phase: current_phase_index,
-            },
-        )?;
-    }
-
-    // Get current time
-    let current_time = env.block.time.seconds();
-    // Not allow depositing when current time is greater than end time of the phase
-    if current_time > phase_info.end_time {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Current time is not in the range of the phase",
-        )));
-    }
-
-    // Get staker info
-    let staker_info = STAKERS_INFO.load(deps.storage, info.sender.clone())?;
-    // Check phase limit per user
-    if let Some(phases_limit_per_user) = farm_info.phases_limit_per_user {
-        if staker_info.amount + amount > phases_limit_per_user {
-            return Err(ContractError::Std(StdError::generic_err(
-                "Deposit amount exceeds phase limit per user",
-            )));
-        }
-    }
-
-    // Init reward amount
-    let mut reward_amount = Uint128::zero();
-    // Get staker info
-    let mut staker_info = STAKERS_INFO.load(deps.storage, info.sender.clone())?;
-    // Init response
-    let mut res = Response::new();
 
     // If staker has joined previous phases, loops all farm info to get reward per second from current phase index to staker joined phases
     for i in staker_info.joined_phase..current_phase_index {
@@ -446,7 +394,14 @@ pub fn execute_deposit(
         last_reward_time,
     );
 
-    farm_info.phases_info[current_phase_index as usize].last_reward_time = new_last_reward_time;
+    // If an user withdraws or harvest lp token after the end time of the phase, set last reward time to end time of this phase
+    if current_time > phase_info.end_time {
+        farm_info.phases_info[current_phase_index as usize].last_reward_time =
+            phase_info.end_time;
+    } else {
+        farm_info.phases_info[current_phase_index as usize].last_reward_time =
+            new_last_reward_time;
+    }
     farm_info.phases_info[current_phase_index as usize].accrued_token_per_share =
         new_accrued_token_per_share;
 
@@ -455,6 +410,73 @@ pub fn execute_deposit(
         new_accrued_token_per_share,
         staker_info.reward_debt[current_phase_index as usize],
     );
+
+    (reward_amount, new_accrued_token_per_share, staker_info, farm_info)
+}
+
+pub fn execute_deposit(
+    deps: DepsMut,
+    env: Env,
+    info: MessageInfo,
+    amount: Uint128,
+) -> Result<Response, ContractError> {
+    // Not allow depositing 0 amount
+    if amount.is_zero() {
+        return Err(ContractError::Std(StdError::generic_err(
+            "InvalidZeroAmount: Deposit amount is 0",
+        )));
+    }
+    // Get farm info
+    let farm_info = FARM_INFO.load(deps.storage)?;
+    // Get current phase index
+    let current_phase_index = farm_info.current_phase_index;
+    // Get current phase info in farm info
+    let phase_info = farm_info.phases_info[current_phase_index as usize].clone();
+    // Not allow depositing if reward token is not added to the phase yet
+    if phase_info.reward_balance == Uint128::zero() {
+        return Err(ContractError::Std(StdError::generic_err("Empty phase")));
+    }
+    // If staker has not joined any phase, save initial staker info
+    if STAKERS_INFO
+        .may_load(deps.storage, info.sender.clone())?
+        .is_none()
+    {
+        STAKERS_INFO.save(
+            deps.storage,
+            info.sender.clone(),
+            &StakerInfo {
+                amount: Uint128::zero(),
+                reward_debt: vec![Uint128::zero(); current_phase_index as usize + 1],
+                joined_phase: current_phase_index,
+            },
+        )?;
+    }
+
+    // Get current time
+    let current_time = env.block.time.seconds();
+    // Not allow depositing when current time is greater than end time of the phase
+    if current_time > phase_info.end_time {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Current time is not in the range of the phase",
+        )));
+    }
+
+    // Get staker info
+    let staker_info = STAKERS_INFO.load(deps.storage, info.sender.clone())?;
+
+    // Check phase limit per user
+    if let Some(phases_limit_per_user) = farm_info.phases_limit_per_user {
+        if staker_info.amount + amount > phases_limit_per_user {
+            return Err(ContractError::Std(StdError::generic_err(
+                "Deposit amount exceeds phase limit per user",
+            )));
+        }
+    }
+
+    // Init response
+    let mut res = Response::new();
+    let (reward_amount, new_accrued_token_per_share, mut staker_info, mut farm_info)
+        = get_all_reward_info(farm_info, staker_info, current_time);
 
     // If reward amount is greater than 0, transfer reward amount to staker
     if reward_amount > Uint128::zero() {
@@ -522,7 +544,7 @@ pub fn execute_withdraw(
         )));
     }
     // Get farm info
-    let mut farm_info = FARM_INFO.load(deps.storage)?;
+    let farm_info = FARM_INFO.load(deps.storage)?;
     // Get current phase index
     let current_phase_index = farm_info.current_phase_index;
     // Only staker can withdraw
@@ -545,69 +567,14 @@ pub fn execute_withdraw(
         )));
     }
 
-    // Get current phase info in farm info
-    let phase_info =
-        FARM_INFO.load(deps.storage)?.phases_info[current_phase_index as usize].clone();
-    // Init reward amount
-    let mut reward_amount = Uint128::zero();
-    // Get staker info
-    let mut staker_info = STAKERS_INFO.load(deps.storage, info.sender.clone())?;
     // Init response
     let mut res = Response::new();
-
-    // If staker has joined previous phases, loops all farm info to get reward per second from current phase index to staker joined phases
-    for i in staker_info.joined_phase..current_phase_index {
-        // Get accrued token per share
-        let accrued_token_per_share = farm_info.phases_info[i as usize].accrued_token_per_share;
-
-        // Calculate reward amount
-        reward_amount += calc_reward_amount(
-            staker_info.amount,
-            accrued_token_per_share,
-            staker_info.reward_debt[i as usize],
-        );
-        // Update staker info
-        staker_info.reward_debt[i as usize] = staker_info.amount * accrued_token_per_share;
-        // Increase length of user reward debt to current phase index
-        staker_info.reward_debt.push(Uint128::zero());
-    }
-
-    // Get staked token balance
-    let staked_token_balance = farm_info.staked_token_balance;
-    // Get last reward time
-    let last_reward_time = farm_info.phases_info[current_phase_index as usize].last_reward_time;
-    // Get accrued token per share
-    let accrued_token_per_share =
-    farm_info.phases_info[current_phase_index as usize].accrued_token_per_share;
     // Get current time
     let current_time = env.block.time.seconds();
-    // get new reward ratio and time
-    let (new_accrued_token_per_share, new_last_reward_time) = get_new_reward_ratio_and_time(
-        phase_info.start_time,
-        phase_info.end_time,
-        phase_info.reward_balance,
-        staked_token_balance,
-        accrued_token_per_share,
-        current_time,
-        last_reward_time,
-    );
 
-    // If an user withdraws lp token after the end time of the phase, set last reward time to end time of this phase
-    if current_time > phase_info.end_time {
-        farm_info.phases_info[current_phase_index as usize].last_reward_time =
-            phase_info.end_time;
-    } else {
-        farm_info.phases_info[current_phase_index as usize].last_reward_time =
-            new_last_reward_time;
-    }
-    farm_info.phases_info[current_phase_index as usize].accrued_token_per_share =
-        new_accrued_token_per_share;
-
-    reward_amount += calc_reward_amount(
-        staker_info.amount,
-        new_accrued_token_per_share,
-        staker_info.reward_debt[current_phase_index as usize],
-    );
+    // Get all reward info
+    let (reward_amount, new_accrued_token_per_share, mut staker_info, mut farm_info)
+        = get_all_reward_info(farm_info, staker_info, current_time);
 
     // If reward amount is greater than 0, transfer reward token to the sender
     if reward_amount > Uint128::zero() {
@@ -686,77 +653,23 @@ pub fn execute_harvest(
     // Get current time
     let current_time = env.block.time.seconds();
     // Get farm info
-    let mut farm_info = FARM_INFO.load(deps.storage)?;
+    let farm_info = FARM_INFO.load(deps.storage)?;
     // Get current phase index
     let current_phase_index = farm_info.current_phase_index;
     // Get staker info
-    let mut staker_info = STAKERS_INFO.load(deps.storage, info.sender.clone())?;
-    // Get phase info in farm info
-    let phase_info = farm_info.phases_info[current_phase_index as usize].clone();
-    // Init reward amount
-    let mut reward_amount = Uint128::zero();
-    // get staker joined phases
-    let staker_joined_phase = staker_info.joined_phase;
+    let staker_info = STAKERS_INFO.load(deps.storage, info.sender.clone())?;
 
-    // If staker has joined previous phases, loops all farm info to get reward per second from current phase index to staker joined phases
-    for i in staker_joined_phase..current_phase_index {
-        // Get accrued token per share
-        let accrued_token_per_share = farm_info.phases_info[i as usize].accrued_token_per_share;
+    // Get all reward info
+    let (reward_amount, new_accrued_token_per_share, mut staker_info, farm_info)
+        = get_all_reward_info(farm_info, staker_info, current_time);
 
-        // Calculate reward amount
-        reward_amount += calc_reward_amount(
-            staker_info.amount,
-            accrued_token_per_share,
-            staker_info.reward_debt[i as usize],
-        );
-        // Update staker info
-        staker_info.reward_debt[i as usize] = staker_info.amount * accrued_token_per_share;
-        // Increase length of user reward debt
-        staker_info.reward_debt.push(Uint128::zero());
-    }
-
-    // Get last reward time
-    let last_reward_time = farm_info.phases_info[current_phase_index as usize].last_reward_time;
-    // Get accrued token per share
-    let accrued_token_per_share =
-        farm_info.phases_info[current_phase_index as usize].accrued_token_per_share;
-    // Get staked token balance
-    let staked_token_balance = farm_info.staked_token_balance;
-    // get new reward ratio and time
-    let (new_accrued_token_per_share, new_last_reward_time) = get_new_reward_ratio_and_time(
-        phase_info.start_time,
-        phase_info.end_time,
-        phase_info.reward_balance,
-        staked_token_balance,
-        accrued_token_per_share,
-        current_time,
-        last_reward_time,
-    );
-
-    // If an user harvests reward after the end time of the phase, set last reward time to end time of this phase
-    if current_time > phase_info.end_time {
-        farm_info.phases_info[current_phase_index as usize].last_reward_time =
-            phase_info.end_time;
-    } else {
-        farm_info.phases_info[current_phase_index as usize].last_reward_time =
-            new_last_reward_time;
-    }
-    farm_info.phases_info[current_phase_index as usize].accrued_token_per_share =
-        new_accrued_token_per_share;
-
-    // Save farm info
-    FARM_INFO.save(deps.storage, &farm_info)?;
-
-    reward_amount += calc_reward_amount(
-        staker_info.amount,
-        new_accrued_token_per_share,
-        staker_info.reward_debt[current_phase_index as usize],
-    );
     // Update staker reward debt
     staker_info.reward_debt[current_phase_index as usize] =
         staker_info.amount * new_accrued_token_per_share;
     // Update staker info
     STAKERS_INFO.save(deps.storage, info.sender.clone(), &staker_info)?;
+    // Save farm info
+    FARM_INFO.save(deps.storage, &farm_info)?;
 
     // Check if there is any reward to harvest
     if reward_amount == Uint128::zero() {
@@ -784,6 +697,7 @@ pub fn execute_harvest(
     staker_info.joined_phase = current_phase_index;
     // Update staker info
     STAKERS_INFO.save(deps.storage, info.sender, &staker_info)?;
+
     let res = Response::new()
         .add_submessage(transfer)
         .add_attribute("current_time", current_time.to_string())
@@ -802,7 +716,7 @@ pub fn execute_harvest(
 //     // Get config
 //     let config: Config = CONFIG.load(deps.storage)?;
 //     // Check if the message sender is the owner of the contract
-//     if config.farm_factory_owner != info.sender {
+//     if config.farm_owner != info.sender {
 //         return Err(ContractError::Std(StdError::generic_err(
 //             "Unauthorized: Only owner can update phases limit per user",
 //         )));
@@ -861,7 +775,7 @@ pub fn execute_add_phase(
     let config: Config = CONFIG.load(deps.storage)?;
 
     // Check if the message sender is the owner of the contract
-    if config.farm_factory_owner != info.sender {
+    if config.farm_owner != info.sender {
         return Err(ContractError::Std(StdError::generic_err(
             "Unauthorized: Only owner can add new phase",
         )));
@@ -933,7 +847,7 @@ pub fn execute_activate_phase(
     let config: Config = CONFIG.load(deps.storage)?;
 
     // Check if the message sender is the owner of the contract
-    if config.farm_factory_owner != info.sender {
+    if config.farm_owner != info.sender {
         return Err(ContractError::Std(StdError::generic_err(
             "Unauthorized: Only owner can active new phase",
         )));

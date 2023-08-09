@@ -5,7 +5,7 @@ use std::fmt;
 
 #[cw_serde]
 pub struct Config {
-    pub farm_factory_owner: Addr,
+    pub farm_owner: Addr,
 }
 
 pub const CONFIG: Item<Config> = Item::new("config");
