@@ -22,7 +22,7 @@ mod tests {
         use cw20::{BalanceResponse, Cw20ExecuteMsg};
         use cw_multi_test::Executor;
         use halo_farm::state::{
-            PendingRewardResponse, PhaseInfo, FarmInfo, StakerInfoResponse, TokenInfo,
+            FarmInfo, PendingRewardResponse, PhaseInfo, StakerInfoResponse, TokenInfo,
         };
 
         use crate::{
@@ -1531,8 +1531,7 @@ mod tests {
                             start_time: farm_info.phases_info
                                 [farm_info.current_phase_index as usize]
                                 .start_time,
-                            end_time: farm_info.phases_info
-                                [farm_info.current_phase_index as usize]
+                            end_time: farm_info.phases_info[farm_info.current_phase_index as usize]
                                 .end_time,
                             whitelist: Addr::unchecked(ADMIN.to_string()),
                             reward_balance: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
@@ -1547,8 +1546,7 @@ mod tests {
                                 [farm_info.current_phase_index as usize]
                                 .end_time
                                 + 10,
-                            end_time: farm_info.phases_info
-                                [farm_info.current_phase_index as usize]
+                            end_time: farm_info.phases_info[farm_info.current_phase_index as usize]
                                 .end_time
                                 + 90,
                             whitelist: Addr::unchecked(ADMIN.to_string()),

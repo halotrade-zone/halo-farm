@@ -196,8 +196,7 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
         &FactoryFarmInfo {
             staked_token: farm_info.staked_token.clone(),
             reward_token: farm_info.reward_token,
-            start_time: farm_info.phases_info[farm_info.current_phase_index as usize]
-                .start_time,
+            start_time: farm_info.phases_info[farm_info.current_phase_index as usize].start_time,
             end_time: farm_info.phases_info[farm_info.current_phase_index as usize].end_time,
             phases_limit_per_user: farm_info.phases_limit_per_user,
         },

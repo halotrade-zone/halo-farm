@@ -338,11 +338,11 @@ pub fn execute_remove_phase(
 }
 
 
-fn get_all_reward_info(
-    mut farm_info: FarmInfo,
-    mut staker_info: StakerInfo,
+fn claim_all_reward(
+    farm_info: &mut FarmInfo,
+    staker_info: &mut StakerInfo,
     current_time: u64,
-) -> (Uint128, Decimal, StakerInfo, FarmInfo) { // reward_amount, accrued_token_per_share, StakerInfo, FarmInfo
+) -> (Uint128, Decimal) { // reward_amount, accrued_token_per_share
     // Init reward amount
     let mut reward_amount = Uint128::zero();
     // Get current phase index
@@ -411,7 +411,7 @@ fn get_all_reward_info(
         staker_info.reward_debt[current_phase_index as usize],
     );
 
-    (reward_amount, new_accrued_token_per_share, staker_info, farm_info)
+    (reward_amount, new_accrued_token_per_share)
 }
 
 pub fn execute_deposit(
@@ -427,7 +427,7 @@ pub fn execute_deposit(
         )));
     }
     // Get farm info
-    let farm_info = FARM_INFO.load(deps.storage)?;
+    let mut farm_info = FARM_INFO.load(deps.storage)?;
     // Get current phase index
     let current_phase_index = farm_info.current_phase_index;
     // Get current phase info in farm info
@@ -462,7 +462,7 @@ pub fn execute_deposit(
     }
 
     // Get staker info
-    let staker_info = STAKERS_INFO.load(deps.storage, info.sender.clone())?;
+    let mut staker_info = STAKERS_INFO.load(deps.storage, info.sender.clone())?;
 
     // Check phase limit per user
     if let Some(phases_limit_per_user) = farm_info.phases_limit_per_user {
@@ -475,8 +475,8 @@ pub fn execute_deposit(
 
     // Init response
     let mut res = Response::new();
-    let (reward_amount, new_accrued_token_per_share, mut staker_info, mut farm_info)
-        = get_all_reward_info(farm_info, staker_info, current_time);
+    let (reward_amount, new_accrued_token_per_share)
+        = claim_all_reward(&mut farm_info, &mut staker_info, current_time);
 
     // If reward amount is greater than 0, transfer reward amount to staker
     if reward_amount > Uint128::zero() {
@@ -544,7 +544,7 @@ pub fn execute_withdraw(
         )));
     }
     // Get farm info
-    let farm_info = FARM_INFO.load(deps.storage)?;
+    let mut farm_info = FARM_INFO.load(deps.storage)?;
     // Get current phase index
     let current_phase_index = farm_info.current_phase_index;
     // Only staker can withdraw
@@ -558,7 +558,7 @@ pub fn execute_withdraw(
     }
 
     // Get staker info
-    let staker_info = STAKERS_INFO.load(deps.storage, info.sender.clone())?;
+    let mut staker_info = STAKERS_INFO.load(deps.storage, info.sender.clone())?;
 
     // Check staker amount is greater than withdraw amount
     if staker_info.amount < amount {
@@ -573,8 +573,8 @@ pub fn execute_withdraw(
     let current_time = env.block.time.seconds();
 
     // Get all reward info
-    let (reward_amount, new_accrued_token_per_share, mut staker_info, mut farm_info)
-        = get_all_reward_info(farm_info, staker_info, current_time);
+    let (reward_amount, new_accrued_token_per_share)
+        = claim_all_reward(&mut farm_info, &mut staker_info, current_time);
 
     // If reward amount is greater than 0, transfer reward token to the sender
     if reward_amount > Uint128::zero() {
@@ -653,15 +653,15 @@ pub fn execute_harvest(
     // Get current time
     let current_time = env.block.time.seconds();
     // Get farm info
-    let farm_info = FARM_INFO.load(deps.storage)?;
+    let mut farm_info = FARM_INFO.load(deps.storage)?;
     // Get current phase index
     let current_phase_index = farm_info.current_phase_index;
     // Get staker info
-    let staker_info = STAKERS_INFO.load(deps.storage, info.sender.clone())?;
+    let mut staker_info = STAKERS_INFO.load(deps.storage, info.sender.clone())?;
 
     // Get all reward info
-    let (reward_amount, new_accrued_token_per_share, mut staker_info, farm_info)
-        = get_all_reward_info(farm_info, staker_info, current_time);
+    let (reward_amount, new_accrued_token_per_share)
+        = claim_all_reward(&mut farm_info,&mut staker_info, current_time);
 
     // Update staker reward debt
     staker_info.reward_debt[current_phase_index as usize] =
