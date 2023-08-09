@@ -20,7 +20,7 @@ use crate::{
     formulas::{calc_reward_amount, get_multiplier, get_new_reward_ratio_and_time},
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{
-        Config, PendingRewardResponse, PhaseInfo, FarmInfo, StakerInfo, StakerInfoResponse,
+        Config, FarmInfo, PendingRewardResponse, PhaseInfo, StakerInfo, StakerInfoResponse,
         TokenInfo, CONFIG, FARM_INFO, STAKERS_INFO,
     },
 };
@@ -337,12 +337,11 @@ pub fn execute_remove_phase(
         .add_attribute("phase_index", phase_index.to_string()))
 }
 
-
 fn claim_all_reward(
     farm_info: &mut FarmInfo,
     staker_info: &mut StakerInfo,
     current_time: u64,
-) -> (Uint128, Decimal) { // reward_amount, accrued_token_per_share
+) -> (Uint128, Decimal) {
     // Init reward amount
     let mut reward_amount = Uint128::zero();
     // Get current phase index
@@ -370,8 +369,7 @@ fn claim_all_reward(
     // Get staked token balance
     let staked_token_balance = farm_info.staked_token_balance;
     // Get last reward time
-    let mut last_reward_time =
-        farm_info.phases_info[current_phase_index as usize].last_reward_time;
+    let mut last_reward_time = farm_info.phases_info[current_phase_index as usize].last_reward_time;
 
     // For the first deposit, set last reward time to current time
     if current_time >= farm_info.phases_info[current_phase_index as usize].start_time
@@ -396,11 +394,9 @@ fn claim_all_reward(
 
     // If an user withdraws or harvest lp token after the end time of the phase, set last reward time to end time of this phase
     if current_time > phase_info.end_time {
-        farm_info.phases_info[current_phase_index as usize].last_reward_time =
-            phase_info.end_time;
+        farm_info.phases_info[current_phase_index as usize].last_reward_time = phase_info.end_time;
     } else {
-        farm_info.phases_info[current_phase_index as usize].last_reward_time =
-            new_last_reward_time;
+        farm_info.phases_info[current_phase_index as usize].last_reward_time = new_last_reward_time;
     }
     farm_info.phases_info[current_phase_index as usize].accrued_token_per_share =
         new_accrued_token_per_share;
@@ -475,8 +471,8 @@ pub fn execute_deposit(
 
     // Init response
     let mut res = Response::new();
-    let (reward_amount, new_accrued_token_per_share)
-        = claim_all_reward(&mut farm_info, &mut staker_info, current_time);
+    let (reward_amount, new_accrued_token_per_share) =
+        claim_all_reward(&mut farm_info, &mut staker_info, current_time);
 
     // If reward amount is greater than 0, transfer reward amount to staker
     if reward_amount > Uint128::zero() {
@@ -573,8 +569,8 @@ pub fn execute_withdraw(
     let current_time = env.block.time.seconds();
 
     // Get all reward info
-    let (reward_amount, new_accrued_token_per_share)
-        = claim_all_reward(&mut farm_info, &mut staker_info, current_time);
+    let (reward_amount, new_accrued_token_per_share) =
+        claim_all_reward(&mut farm_info, &mut staker_info, current_time);
 
     // If reward amount is greater than 0, transfer reward token to the sender
     if reward_amount > Uint128::zero() {
@@ -660,8 +656,8 @@ pub fn execute_harvest(
     let mut staker_info = STAKERS_INFO.load(deps.storage, info.sender.clone())?;
 
     // Get all reward info
-    let (reward_amount, new_accrued_token_per_share)
-        = claim_all_reward(&mut farm_info,&mut staker_info, current_time);
+    let (reward_amount, new_accrued_token_per_share) =
+        claim_all_reward(&mut farm_info,&mut staker_info, current_time);
 
     // Update staker reward debt
     staker_info.reward_debt[current_phase_index as usize] =
@@ -897,7 +893,7 @@ pub fn execute_activate_phase(
     let last_reward_time = farm_info.phases_info[current_phase_index].last_reward_time;
     // Get accrued token per share
     let accrued_token_per_share =
-    farm_info.phases_info[current_phase_index].accrued_token_per_share;
+        farm_info.phases_info[current_phase_index].accrued_token_per_share;
 
     // get new reward ratio and time
     let (new_accrued_token_per_share, _new_last_reward_time) = get_new_reward_ratio_and_time(
