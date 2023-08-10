@@ -54,3 +54,43 @@ impl PhaseInfo {
         }
     }
 }
+
+#[cfg(test)]
+#[test]
+fn test_get_new_reward_ratio_and_time() {
+    use cosmwasm_std::Addr;
+
+    let phase_info = PhaseInfo {
+        start_time: 100,
+        end_time: 200,
+        whitelist: Addr::unchecked("addr0000"),
+        reward_balance: Uint128::new(1000),
+        last_reward_time: 100,
+        accrued_token_per_share: Decimal::zero(),
+    };
+
+    // No staked token in the farming pool
+    let (new_accrued_token_per_share, new_last_reward_time) =
+        phase_info.get_new_reward_ratio_and_time(150, Uint128::zero());
+    assert_eq!(new_accrued_token_per_share, Decimal::zero());
+    assert_eq!(new_last_reward_time, 100);
+
+    // Staked token in the farming pool but current time is before last reward time
+    let (new_accrued_token_per_share, new_last_reward_time) =
+        phase_info.get_new_reward_ratio_and_time(50, Uint128::new(100));
+
+    assert_eq!(new_accrued_token_per_share, Decimal::zero());
+    assert_eq!(new_last_reward_time, 100);
+
+    // Staked token in the farming pool
+    let (new_accrued_token_per_share, new_last_reward_time) =
+        phase_info.get_new_reward_ratio_and_time(150, Uint128::new(100));
+    assert_eq!(new_accrued_token_per_share, Decimal::percent(500));
+    assert_eq!(new_last_reward_time, 150);
+
+    // Staked token in the farming pool
+    let (new_accrued_token_per_share, new_last_reward_time) =
+        phase_info.get_new_reward_ratio_and_time(250, Uint128::new(100));
+    assert_eq!(new_accrued_token_per_share, Decimal::percent(1000));
+    assert_eq!(new_last_reward_time, 250);
+}
