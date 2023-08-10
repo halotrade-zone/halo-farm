@@ -959,33 +959,10 @@ fn query_pending_reward(deps: Deps, env: Env, address: String) -> StdResult<Pend
             time_query: current_time,
         });
     }
-    // Get current phase index
-    let current_phase_index = farm_info.current_phase_index;
     // Get staker info
     let mut staker_info = STAKERS_INFO
         .load(deps.storage, Addr::unchecked(address))
         .unwrap();
-
-    // get staker joined phases
-    let staker_joined_phase = staker_info.joined_phase;
-    // Init reward amount
-    let mut reward_amount = Uint128::zero();
-
-    if staker_joined_phase < current_phase_index {
-        for i in staker_joined_phase..current_phase_index {
-            // Get phase info from farm info
-            let phase_info = FARM_INFO.load(deps.storage)?.phases_info[i as usize].clone();
-            // Get accrued token per share
-            let accrued_token_per_share = phase_info.accrued_token_per_share;
-
-            // Calculate reward amount
-            reward_amount += calc_reward_amount(
-                staker_info.amount,
-                accrued_token_per_share,
-                staker_info.reward_debt[i as usize],
-            );
-        }
-    }
 
     let (reward_amount, _new_accrued_token_per_share) =
         claim_all_reward(&mut farm_info, &mut staker_info, current_time);
