@@ -17,7 +17,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 use crate::{
     error::ContractError,
-    formulas::{calc_reward_amount, get_multiplier},
+    formulas::calc_reward_amount,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{
         Config, FarmInfo, PendingRewardResponse, PhaseInfo, StakerInfo, StakerInfoResponse,
