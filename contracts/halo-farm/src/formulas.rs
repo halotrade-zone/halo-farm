@@ -82,13 +82,13 @@ fn test_get_new_reward_ratio_and_time() {
     assert_eq!(new_accrued_token_per_share, Decimal::zero());
     assert_eq!(new_last_reward_time, 100);
 
-    // Staked token in the farming pool
+    // Staked token in the farming pool and current time is after start time
     let (new_accrued_token_per_share, new_last_reward_time) =
         phase_info.get_new_reward_ratio_and_time(150, Uint128::new(100));
     assert_eq!(new_accrued_token_per_share, Decimal::percent(500));
     assert_eq!(new_last_reward_time, 150);
 
-    // Staked token in the farming pool
+    // Staked token in the farming pool and current time is after end time
     let (new_accrued_token_per_share, new_last_reward_time) =
         phase_info.get_new_reward_ratio_and_time(250, Uint128::new(100));
     assert_eq!(new_accrued_token_per_share, Decimal::percent(1000));
