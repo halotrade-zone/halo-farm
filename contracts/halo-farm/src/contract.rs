@@ -17,7 +17,7 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 use crate::{
     error::ContractError,
-    formulas::{calc_reward_amount, get_multiplier},
+    formulas::calc_reward_amount,
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     state::{
         Config, FarmInfo, PendingRewardResponse, PhaseInfo, StakerInfo, StakerInfoResponse,
@@ -947,7 +947,7 @@ fn query_pending_reward(deps: Deps, env: Env, address: String) -> StdResult<Pend
     // Get current time
     let current_time = env.block.time.seconds();
     // Get farm info
-    let farm_info = FARM_INFO.load(deps.storage)?;
+    let mut farm_info = FARM_INFO.load(deps.storage)?;
     // Check if staker has staked in the farm contract
     if STAKERS_INFO
         .may_load(deps.storage, Addr::unchecked(address.clone()))?
@@ -961,12 +961,8 @@ fn query_pending_reward(deps: Deps, env: Env, address: String) -> StdResult<Pend
     }
     // Get current phase index
     let current_phase_index = farm_info.current_phase_index;
-    // Get phase info in farm info
-    let phase_info =
-        FARM_INFO.load(deps.storage)?.phases_info[current_phase_index as usize].clone();
-
     // Get staker info
-    let staker_info = STAKERS_INFO
+    let mut staker_info = STAKERS_INFO
         .load(deps.storage, Addr::unchecked(address))
         .unwrap();
 
@@ -991,34 +987,8 @@ fn query_pending_reward(deps: Deps, env: Env, address: String) -> StdResult<Pend
         }
     }
 
-    // Get multiplier
-    let multiplier: u64 = if current_time < phase_info.start_time {
-        0u64
-    } else {
-        get_multiplier(
-            phase_info.last_reward_time,
-            current_time,
-            phase_info.end_time,
-        )
-    };
-    // Get staked token balance
-    let staked_token_balance = farm_info.staked_token_balance;
-    let reward = Uint128::new(multiplier.into()) * phase_info.reward_balance
-        / Uint128::new((phase_info.end_time - phase_info.start_time).into());
-    // Get accrued token per share
-    let mut accrued_token_per_share = phase_info.accrued_token_per_share;
-
-    accrued_token_per_share += Decimal::new(reward) / Decimal::new(staked_token_balance);
-
-    // Init new reward debt for current phase
-    let mut reward_debt = Uint128::zero();
-
-    // If staker has joined current phase update reward debt
-    if staker_info.joined_phase == current_phase_index {
-        reward_debt = staker_info.reward_debt[current_phase_index as usize];
-    }
-
-    reward_amount += calc_reward_amount(staker_info.amount, accrued_token_per_share, reward_debt);
+    let (reward_amount, _new_accrued_token_per_share) =
+        claim_all_reward(&mut farm_info, &mut staker_info, current_time);
 
     Ok(PendingRewardResponse {
         info: farm_info.reward_token,

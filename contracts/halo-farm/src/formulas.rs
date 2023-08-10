@@ -54,3 +54,66 @@ impl PhaseInfo {
         }
     }
 }
+
+#[cfg(test)]
+mod test_get_new_reward_ratio_and_time {
+    use cosmwasm_std::{Addr, Decimal, Uint128};
+
+    use crate::state::PhaseInfo;
+
+    fn get_phase_info() -> PhaseInfo {
+        PhaseInfo {
+            start_time: 100,
+            end_time: 200,
+            whitelist: Addr::unchecked("whitelist"),
+            reward_balance: Uint128::new(1000),
+            last_reward_time: 100,
+            accrued_token_per_share: Decimal::zero(),
+        }
+    }
+
+    #[test]
+    fn test_no_staked_token_balance() {
+        let phase_info = get_phase_info();
+
+        // No staked token in the farming pool
+        let (new_accrued_token_per_share, new_last_reward_time) =
+            phase_info.get_new_reward_ratio_and_time(150, Uint128::zero());
+        assert_eq!(new_accrued_token_per_share, Decimal::zero());
+        assert_eq!(new_last_reward_time, 100);
+    }
+
+    #[test]
+    fn test_current_time_before_last_reward_time() {
+        let phase_info = get_phase_info();
+
+        // Staked token in the farming pool but current time is before last reward time
+        let (new_accrued_token_per_share, new_last_reward_time) =
+            phase_info.get_new_reward_ratio_and_time(50, Uint128::new(100));
+
+        assert_eq!(new_accrued_token_per_share, Decimal::zero());
+        assert_eq!(new_last_reward_time, 100);
+    }
+
+    #[test]
+    fn test_current_time_after_start_time() {
+        let phase_info = get_phase_info();
+
+        // Staked token in the farming pool and current time is after start time
+        let (new_accrued_token_per_share, new_last_reward_time) =
+            phase_info.get_new_reward_ratio_and_time(150, Uint128::new(100));
+        assert_eq!(new_accrued_token_per_share, Decimal::percent(500));
+        assert_eq!(new_last_reward_time, 150);
+    }
+
+    #[test]
+    fn test_current_time_after_end_time() {
+        let phase_info = get_phase_info();
+
+        // Staked token in the farming pool and current time is after end time
+        let (new_accrued_token_per_share, new_last_reward_time) =
+            phase_info.get_new_reward_ratio_and_time(250, Uint128::new(100));
+        assert_eq!(new_accrued_token_per_share, Decimal::percent(1000));
+        assert_eq!(new_last_reward_time, 250);
+    }
+}
