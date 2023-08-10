@@ -342,12 +342,8 @@ fn claim_all_reward(
     staker_info: &mut StakerInfo,
     current_time: u64,
 ) -> (Uint128, Decimal) {
-    // Init reward amount
     let mut reward_amount = Uint128::zero();
-    // Get current phase index
     let current_phase_index = farm_info.current_phase_index;
-    // Get current phase info in farm info
-    let mut phase_info = farm_info.phases_info[current_phase_index as usize].clone();
 
     // If staker has joined previous phases, loops all farm info to get reward per second from current phase index to staker joined phases
     for i in staker_info.joined_phase..current_phase_index {
@@ -366,26 +362,18 @@ fn claim_all_reward(
         staker_info.reward_debt.push(Uint128::zero());
     }
 
+    let mut phase_info = farm_info.phases_info[current_phase_index as usize].clone();
+
     // Get staked token balance
     let staked_token_balance = farm_info.staked_token_balance;
-    // For the first deposit, set last reward time to current time
-    if current_time >= phase_info.start_time && staked_token_balance == Uint128::zero() {
-        phase_info.last_reward_time = current_time;
-    }
 
-    // get new reward ratio and time
-    let (new_accrued_token_per_share, new_last_reward_time) =
-        phase_info.get_new_reward_ratio_and_time(current_time, staked_token_balance);
+    let(new_accrued_token_per_share, new_last_reward_time) =
+        phase_info.update_reward_ratio_and_time(current_time, staked_token_balance);
 
-    // If an user withdraws or harvest lp token after the end time of the phase, set last reward time to end time of this phase
-    if current_time > phase_info.end_time {
-        farm_info.phases_info[current_phase_index as usize].last_reward_time = phase_info.end_time;
-    } else {
-        farm_info.phases_info[current_phase_index as usize].last_reward_time = new_last_reward_time;
-    }
-    farm_info.phases_info[current_phase_index as usize].accrued_token_per_share =
-        new_accrued_token_per_share;
+    phase_info.last_reward_time = new_last_reward_time;
+    phase_info.accrued_token_per_share = new_accrued_token_per_share;
 
+    farm_info.phases_info[current_phase_index as usize] = phase_info;
     reward_amount += calc_reward_amount(
         staker_info.amount,
         new_accrued_token_per_share,
@@ -877,7 +865,7 @@ pub fn execute_activate_phase(
 
     // get new reward ratio and time
     let (new_accrued_token_per_share, _new_last_reward_time) =
-        phase_info.get_new_reward_ratio_and_time(phase_info.end_time, staked_token_balance);
+        phase_info.update_reward_ratio_and_time(phase_info.end_time, staked_token_balance);
 
     farm_info.phases_info[current_phase_index].last_reward_time = phase_info.end_time;
     farm_info.phases_info[current_phase_index].accrued_token_per_share =
