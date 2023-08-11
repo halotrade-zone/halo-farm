@@ -407,33 +407,24 @@ pub fn execute_deposit(
             "InvalidZeroAmount: Deposit amount is 0",
         )));
     }
-    // Get farm info
+
     let mut farm_info = FARM_INFO.load(deps.storage)?;
-    // Get current phase index
-    let current_phase_index = farm_info.current_phase_index;
-    // Get current phase info in farm info
-    let phase_info = farm_info.phases_info[current_phase_index as usize].clone();
+    let current_phase_index: usize = farm_info.current_phase_index as usize;
+    let phase_info = farm_info.phases_info[current_phase_index].clone();
+
     // Not allow depositing if reward token is not added to the phase yet
     if phase_info.reward_balance == Uint128::zero() {
         return Err(ContractError::Std(StdError::generic_err("Empty phase")));
     }
-    // If staker has not joined any phase, save initial staker info
-    if STAKERS_INFO
-        .may_load(deps.storage, info.sender.clone())?
-        .is_none()
-    {
-        STAKERS_INFO.save(
-            deps.storage,
-            info.sender.clone(),
-            &StakerInfo {
-                amount: Uint128::zero(),
-                reward_debt: vec![Uint128::zero(); current_phase_index as usize + 1],
-                joined_phase: current_phase_index,
-            },
-        )?;
-    }
 
-    // Get current time
+    let mut staker_info = STAKERS_INFO
+        .load(deps.storage, info.sender.clone())
+        .unwrap_or(StakerInfo {
+            amount: Uint128::zero(),
+            reward_debt: vec![Uint128::zero(); current_phase_index + 1],
+            joined_phase: current_phase_index as u64,
+        });
+
     let current_time = env.block.time.seconds();
     // Not allow depositing when current time is greater than end time of the phase
     if current_time > phase_info.end_time {
@@ -441,9 +432,6 @@ pub fn execute_deposit(
             "Current time is not in the range of the phase",
         )));
     }
-
-    // Get staker info
-    let mut staker_info = STAKERS_INFO.load(deps.storage, info.sender.clone())?;
 
     // Check phase limit per user
     if let Some(phases_limit_per_user) = farm_info.phases_limit_per_user {
@@ -454,7 +442,6 @@ pub fn execute_deposit(
         }
     }
 
-    // Init response
     let mut res = Response::new();
     let (reward_amount, new_accrued_token_per_share) =
         claim_all_reward(&mut farm_info, &mut staker_info, current_time);
@@ -489,18 +476,14 @@ pub fn execute_deposit(
         funds: vec![],
     }));
 
-    // Increase staked token balance
     farm_info.staked_token_balance += amount;
 
-    // Update staker info
     staker_info.amount += amount;
-    staker_info.reward_debt[current_phase_index as usize] =
-        staker_info.amount * new_accrued_token_per_share;
-    staker_info.joined_phase = current_phase_index;
+    staker_info.reward_debt[current_phase_index] = staker_info.amount * new_accrued_token_per_share;
+    staker_info.joined_phase = current_phase_index as u64;
 
-    STAKERS_INFO.save(deps.storage, info.sender, &staker_info)?;
-    // Save farm info
     FARM_INFO.save(deps.storage, &farm_info)?;
+    STAKERS_INFO.save(deps.storage, info.sender, &staker_info)?;
 
     res = res
         .add_submessage(transfer)
@@ -518,42 +501,32 @@ pub fn execute_withdraw(
     info: MessageInfo,
     amount: Uint128,
 ) -> Result<Response, ContractError> {
-    // Not allow withdrawing 0 amount
     if amount.is_zero() {
         return Err(ContractError::Std(StdError::generic_err(
             "InvalidZeroAmount: Withdraw amount is 0",
         )));
     }
-    // Get farm info
+
     let mut farm_info = FARM_INFO.load(deps.storage)?;
-    // Get current phase index
-    let current_phase_index = farm_info.current_phase_index;
-    // Only staker can withdraw
-    if STAKERS_INFO
-        .may_load(deps.storage, info.sender.clone())?
-        .is_none()
-    {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Unauthorized: Only staker can withdraw",
-        )));
-    }
+    let current_phase_index: usize = farm_info.current_phase_index as usize;
+    let mut staker_info =
+        if let Some(staker_info) = STAKERS_INFO.may_load(deps.storage, info.sender.clone())? {
+            staker_info
+        } else {
+            return Err(ContractError::Std(StdError::generic_err(
+                "Unauthorized: Sender is not staker",
+            )));
+        };
 
-    // Get staker info
-    let mut staker_info = STAKERS_INFO.load(deps.storage, info.sender.clone())?;
-
-    // Check staker amount is greater than withdraw amount
     if staker_info.amount < amount {
         return Err(ContractError::Std(StdError::generic_err(
             "InsufficientFunds: Withdraw amount exceeds staked amount",
         )));
     }
 
-    // Init response
     let mut res = Response::new();
-    // Get current time
     let current_time = env.block.time.seconds();
 
-    // Get all reward info
     let (reward_amount, new_accrued_token_per_share) =
         claim_all_reward(&mut farm_info, &mut staker_info, current_time);
 
@@ -591,9 +564,8 @@ pub fn execute_withdraw(
 
     // Update staker amount
     staker_info.amount -= amount;
-    staker_info.reward_debt[current_phase_index as usize] =
-        staker_info.amount * new_accrued_token_per_share;
-    staker_info.joined_phase = current_phase_index;
+    staker_info.reward_debt[current_phase_index] = staker_info.amount * new_accrued_token_per_share;
+    staker_info.joined_phase = current_phase_index as u64;
 
     // Check if staker amount is zero, remove staker info from storage
     if staker_info.amount == Uint128::zero() {
@@ -607,10 +579,10 @@ pub fn execute_withdraw(
 
     res = res
         .add_submessage(withdraw)
-        .add_attribute("current_time", current_time.to_string())
         .add_attribute("method", "withdraw")
         .add_attribute("withdraw_amount", amount.to_string())
-        .add_attribute("harvest_reward_amount", reward_amount.to_string());
+        .add_attribute("harvest_reward_amount", reward_amount.to_string())
+        .add_attribute("current_time", current_time.to_string());
 
     Ok(res)
 }
@@ -621,36 +593,21 @@ pub fn execute_harvest(
     env: Env,
     info: MessageInfo,
 ) -> Result<Response, ContractError> {
-    // Only staker can harvest reward
-    if STAKERS_INFO
-        .may_load(deps.storage, info.sender.clone())?
-        .is_none()
-    {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Unauthorized: Only staker can harvest reward",
-        )));
-    }
-
-    // Get current time
-    let current_time = env.block.time.seconds();
-    // Get farm info
+    let mut staker_info =
+        if let Some(staker_info) = STAKERS_INFO.may_load(deps.storage, info.sender.clone())? {
+            staker_info
+        } else {
+            return Err(ContractError::Std(StdError::generic_err(
+                "Unauthorized: Only staker can harvest reward",
+            )));
+        };
     let mut farm_info = FARM_INFO.load(deps.storage)?;
-    // Get current phase index
-    let current_phase_index = farm_info.current_phase_index;
-    // Get staker info
-    let mut staker_info = STAKERS_INFO.load(deps.storage, info.sender.clone())?;
 
-    // Get all reward info
+    let current_time = env.block.time.seconds();
+    let current_phase_index: usize = farm_info.current_phase_index as usize;
+
     let (reward_amount, new_accrued_token_per_share) =
         claim_all_reward(&mut farm_info, &mut staker_info, current_time);
-
-    // Update staker reward debt
-    staker_info.reward_debt[current_phase_index as usize] =
-        staker_info.amount * new_accrued_token_per_share;
-    // Update staker info
-    STAKERS_INFO.save(deps.storage, info.sender.clone(), &staker_info)?;
-    // Save farm info
-    FARM_INFO.save(deps.storage, &farm_info)?;
 
     // Check if there is any reward to harvest
     if reward_amount == Uint128::zero() {
@@ -658,6 +615,12 @@ pub fn execute_harvest(
             "InsufficientFunds: Reward amount is zero",
         )));
     }
+
+    staker_info.reward_debt[current_phase_index] = staker_info.amount * new_accrued_token_per_share;
+    staker_info.joined_phase = current_phase_index as u64;
+
+    STAKERS_INFO.save(deps.storage, info.sender.clone(), &staker_info)?;
+    FARM_INFO.save(deps.storage, &farm_info)?;
 
     // Transfer reward token to the sender
     let transfer = match farm_info.reward_token {
@@ -675,74 +638,14 @@ pub fn execute_harvest(
         })),
     };
 
-    staker_info.joined_phase = current_phase_index;
-    // Update staker info
-    STAKERS_INFO.save(deps.storage, info.sender, &staker_info)?;
-
     let res = Response::new()
         .add_submessage(transfer)
-        .add_attribute("current_time", current_time.to_string())
         .add_attribute("method", "harvest")
-        .add_attribute("reward_amount", reward_amount.to_string());
+        .add_attribute("reward_amount", reward_amount.to_string())
+        .add_attribute("current_time", current_time.to_string());
 
     Ok(res)
 }
-
-// fn execute_update_phases_limit_per_user(
-//     deps: DepsMut,
-//     env: Env,
-//     info: MessageInfo,
-//     new_phases_limit_per_user: Uint128,
-// ) -> Result<Response, ContractError> {
-//     // Get config
-//     let config: Config = CONFIG.load(deps.storage)?;
-//     // Check if the message sender is the owner of the contract
-//     if config.farm_owner != info.sender {
-//         return Err(ContractError::Std(StdError::generic_err(
-//             "Unauthorized: Only owner can update phases limit per user",
-//         )));
-//     }
-
-//     // Get current time
-//     let current_time = env.block.time.seconds();
-//     // Get farm info
-//     let mut phases_info = FARM_INFO.load(deps.storage)?;
-//     // Get current phase index
-//     let current_phase_index = phases_info.current_phase_index;
-
-//     // Not allow updating phases limit per user when current time is greater than start time of the phase
-//     if current_time > phases_info.phases_info[current_phase_index as usize].start_time {
-//         return Err(ContractError::Std(StdError::generic_err(
-//             "Current time is greater than start time of the phase",
-//         )));
-//     }
-
-//     // Not allow new phases limit per user is less than previous phases limit per user
-//     if new_phases_limit_per_user
-//         < phases_info.phases_info[current_phase_index as usize]
-//             .phases_limit_per_user
-//             .unwrap_or(Uint128::zero())
-//     {
-//         return Err(ContractError::Std(StdError::generic_err(
-//             "New phases limit per user is less than previous phases limit per user",
-//         )));
-//     }
-
-//     // Update phases limit per user
-//     phases_info.phases_info[current_phase_index as usize].phases_limit_per_user =
-//         Some(new_phases_limit_per_user);
-//     // Save farm info
-//     FARM_INFO.save(deps.storage, &phases_info)?;
-
-//     let res = Response::new()
-//         .add_attribute("method", "update_phases_limit_per_user")
-//         .add_attribute(
-//             "new_phases_limit_per_user",
-//             new_phases_limit_per_user.to_string(),
-//         );
-
-//     Ok(res)
-// }
 
 pub fn execute_add_phase(
     deps: DepsMut,
@@ -752,7 +655,6 @@ pub fn execute_add_phase(
     new_end_time: u64,
     whitelist: Addr,
 ) -> Result<Response, ContractError> {
-    // Get config
     let config: Config = CONFIG.load(deps.storage)?;
 
     // Check if the message sender is the owner of the contract
@@ -776,22 +678,19 @@ pub fn execute_add_phase(
         )));
     }
 
-    // Get farm info
     let mut farm_info: FarmInfo = FARM_INFO.load(deps.storage)?;
-    // Get current farm info length
     let phases_length = farm_info.phases_info.len();
-    // Get current phase index
-    let current_phase_index = farm_info.current_phase_index;
+    let current_phase_index: usize = farm_info.current_phase_index as usize;
 
     // Not allow add new phase when new start time is less than end time of the current phase
-    if new_start_time < farm_info.phases_info[current_phase_index as usize].end_time {
+    if new_start_time < farm_info.phases_info[current_phase_index].end_time {
         return Err(ContractError::Std(StdError::generic_err(
             "New start time is less than end time of the current phase",
         )));
     }
 
     // Not allow add new phase when previous phase is not active yet
-    if phases_length as u64 - 1 > current_phase_index {
+    if phases_length - 1 > current_phase_index {
         return Err(ContractError::Std(StdError::generic_err(
             "Previous phase is not active",
         )));
