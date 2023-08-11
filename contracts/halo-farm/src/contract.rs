@@ -598,7 +598,7 @@ pub fn execute_harvest(
             staker_info
         } else {
             return Err(ContractError::Std(StdError::generic_err(
-                "Unauthorized: Sender is not staker",
+                "Unauthorized: Only staker can harvest reward",
             )));
         };
     let mut farm_info = FARM_INFO.load(deps.storage)?;
