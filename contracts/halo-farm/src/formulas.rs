@@ -50,7 +50,6 @@ impl PhaseInfo {
             let new_accrued_token_per_share = self.accrued_token_per_share
                 + (Decimal::new(reward) / Decimal::new(staked_token_balance));
 
-
             let new_last_reward_time = if current_time < self.end_time {
                 current_time
             } else {
@@ -86,7 +85,11 @@ mod test_update_reward_ratio_and_time {
         let (new_accrued_token_per_share, new_last_reward_time) =
             phase_info.update_reward_ratio_and_time(150, Uint128::zero());
         assert_eq!(new_accrued_token_per_share, Decimal::zero());
-        assert_eq!(new_last_reward_time, 100);
+        // In this case, last reward time should be updated to current time
+        // for the contract operation, this case only happens when calling deposit()
+        // -> last_reward_time should be updated to current time
+        // Withdraw(), Harvest() or QueryPendingReward will not trigger this case.
+        assert_eq!(new_last_reward_time, 150);
     }
 
     #[test]
@@ -120,6 +123,6 @@ mod test_update_reward_ratio_and_time {
         let (new_accrued_token_per_share, new_last_reward_time) =
             phase_info.update_reward_ratio_and_time(250, Uint128::new(100));
         assert_eq!(new_accrued_token_per_share, Decimal::percent(1000));
-        assert_eq!(new_last_reward_time, 250);
+        assert_eq!(new_last_reward_time, 200);
     }
 }

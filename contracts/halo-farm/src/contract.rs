@@ -363,11 +363,9 @@ fn claim_all_reward(
     }
 
     let mut phase_info = farm_info.phases_info[current_phase_index as usize].clone();
-
-    // Get staked token balance
     let staked_token_balance = farm_info.staked_token_balance;
 
-    let(new_accrued_token_per_share, new_last_reward_time) =
+    let (new_accrued_token_per_share, new_last_reward_time) =
         phase_info.update_reward_ratio_and_time(current_time, staked_token_balance);
 
     phase_info.last_reward_time = new_last_reward_time;
