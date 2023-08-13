@@ -29,7 +29,7 @@ pub fn calc_reward_amount(
 
 impl PhaseInfo {
     pub fn update_reward_ratio_and_time(
-        &self,
+        &mut self,
         current_time: u64,
         staked_token_balance: Uint128,
     ) -> (Decimal, u64) {
@@ -41,6 +41,8 @@ impl PhaseInfo {
         // Check if there is any staked token in the farming pool
         if staked_token_balance == Uint128::zero() {
             // No staked token in the farming pool, save last reward time and return
+            self.last_reward_time = current_time;
+            self.accrued_token_per_share = Decimal::zero();
             (Decimal::zero(), current_time)
         } else {
             let multiplier = get_multiplier(self.last_reward_time, current_time, self.end_time);
@@ -55,6 +57,10 @@ impl PhaseInfo {
             } else {
                 self.end_time
             };
+
+            self.last_reward_time = new_last_reward_time;
+            self.accrued_token_per_share = new_accrued_token_per_share;
+
             (new_accrued_token_per_share, new_last_reward_time)
         }
     }
@@ -79,7 +85,7 @@ mod test_update_reward_ratio_and_time {
 
     #[test]
     fn test_no_staked_token_balance() {
-        let phase_info = get_phase_info();
+        let mut phase_info = get_phase_info();
 
         // No staked token in the farming pool
         let (new_accrued_token_per_share, new_last_reward_time) =
@@ -94,7 +100,7 @@ mod test_update_reward_ratio_and_time {
 
     #[test]
     fn test_current_time_before_last_reward_time() {
-        let phase_info = get_phase_info();
+        let mut phase_info = get_phase_info();
 
         // Staked token in the farming pool but current time is before last reward time
         let (new_accrued_token_per_share, new_last_reward_time) =
@@ -106,7 +112,7 @@ mod test_update_reward_ratio_and_time {
 
     #[test]
     fn test_current_time_after_start_time() {
-        let phase_info = get_phase_info();
+        let mut phase_info = get_phase_info();
 
         // Staked token in the farming pool and current time is after start time
         let (new_accrued_token_per_share, new_last_reward_time) =
@@ -117,7 +123,7 @@ mod test_update_reward_ratio_and_time {
 
     #[test]
     fn test_current_time_after_end_time() {
-        let phase_info = get_phase_info();
+        let mut phase_info = get_phase_info();
 
         // Staked token in the farming pool and current time is after end time
         let (new_accrued_token_per_share, new_last_reward_time) =

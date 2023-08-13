@@ -248,7 +248,7 @@ pub fn claim_all_reward(
     current_time: u64,
 ) -> (Uint128, Decimal) {
     let mut reward_amount = Uint128::zero();
-    let current_phase_index = farm_info.current_phase_index;
+    let &current_phase_index = &farm_info.current_phase_index;
 
     // If staker has joined previous phases, loops all farm info to get reward per second from current phase index to staker joined phases
     for i in staker_info.joined_phase..current_phase_index {
@@ -267,23 +267,18 @@ pub fn claim_all_reward(
         staker_info.reward_debt.push(Uint128::zero());
     }
 
-    let mut phase_info = farm_info.phases_info[current_phase_index as usize].clone();
+    let phase_info = &mut farm_info.phases_info[current_phase_index as usize];
     let staked_token_balance = farm_info.staked_token_balance;
 
-    let (new_accrued_token_per_share, new_last_reward_time) =
-        phase_info.update_reward_ratio_and_time(current_time, staked_token_balance);
+    phase_info.update_reward_ratio_and_time(current_time, staked_token_balance);
 
-    phase_info.last_reward_time = new_last_reward_time;
-    phase_info.accrued_token_per_share = new_accrued_token_per_share;
-
-    farm_info.phases_info[current_phase_index as usize] = phase_info;
     reward_amount += calc_reward_amount(
         staker_info.amount,
-        new_accrued_token_per_share,
+        phase_info.accrued_token_per_share,
         staker_info.reward_debt[current_phase_index as usize],
     );
 
-    (reward_amount, new_accrued_token_per_share)
+    (reward_amount, phase_info.accrued_token_per_share)
 }
 
 pub fn execute_deposit(
@@ -626,7 +621,7 @@ pub fn execute_activate_phase(
     // Get farm info
     let farm_info: FarmInfo = FARM_INFO.load(deps.storage)?;
     // Get current phase index
-    let current_phase_index = farm_info.current_phase_index as usize;
+    let current_phase_index:usize = *&farm_info.current_phase_index as usize;
 
     // Not allow active phase when current phase index is equal to farm info length
     // If sender want to active new phase, they have to add new phase first
@@ -663,15 +658,10 @@ pub fn execute_activate_phase(
     let mut farm_info: FarmInfo = FARM_INFO.load(deps.storage)?;
 
     // Get phase info from farm info
-    let phase_info = farm_info.phases_info[current_phase_index].clone();
+    let phase_info = &mut farm_info.phases_info[current_phase_index];
 
-    // get new reward ratio and time
-    let (new_accrued_token_per_share, _new_last_reward_time) =
-        phase_info.update_reward_ratio_and_time(phase_info.end_time, staked_token_balance);
-
-    farm_info.phases_info[current_phase_index].last_reward_time = phase_info.end_time;
-    farm_info.phases_info[current_phase_index].accrued_token_per_share =
-        new_accrued_token_per_share;
+    // Update reward ratio and time
+    phase_info.update_reward_ratio_and_time(phase_info.end_time, staked_token_balance);
 
     // Increase current phase index to activate new phase
     farm_info.current_phase_index += 1;
