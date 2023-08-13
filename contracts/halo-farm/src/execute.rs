@@ -368,7 +368,7 @@ pub fn execute_deposit(
         staker_info.amount * farm_info.phases_info[current_phase_index].accrued_token_per_share;
     staker_info.joined_phase = current_phase_index as u64;
 
-    FARM_INFO.save(deps.storage, &farm_info)?;
+    FARM_INFO.save(deps.storage, farm_info)?;
     STAKERS_INFO.save(deps.storage, info.sender, &staker_info)?;
 
     res = res
@@ -461,7 +461,7 @@ pub fn execute_withdraw(
         STAKERS_INFO.save(deps.storage, info.sender, &staker_info)?;
     }
     // Save farm info
-    FARM_INFO.save(deps.storage, &farm_info)?;
+    FARM_INFO.save(deps.storage, farm_info)?;
 
     res = res
         .add_submessage(withdraw)
@@ -506,7 +506,7 @@ pub fn execute_harvest(
     staker_info.joined_phase = current_phase_index as u64;
 
     STAKERS_INFO.save(deps.storage, info.sender.clone(), &staker_info)?;
-    FARM_INFO.save(deps.storage, &farm_info)?;
+    FARM_INFO.save(deps.storage, farm_info)?;
 
     // Transfer reward token to the sender
     let transfer = match &farm_info.reward_token {
@@ -621,11 +621,11 @@ pub fn execute_activate_phase(
     // Get farm info
     let farm_info: FarmInfo = FARM_INFO.load(deps.storage)?;
     // Get current phase index
-    let current_phase_index: usize = *&farm_info.current_phase_index as usize;
+    let current_phase_index = farm_info.current_phase_index;
 
     // Not allow active phase when current phase index is equal to farm info length
     // If sender want to active new phase, they have to add new phase first
-    if farm_info.phases_info.len() == current_phase_index {
+    if farm_info.phases_info.len() == current_phase_index as usize {
         return Err(ContractError::Std(StdError::generic_err(
             "Phase is already activated",
         )));
@@ -636,8 +636,8 @@ pub fn execute_activate_phase(
 
     // Not allow activating phase when current time is less than end time of the current phase
     // or greater than start time of the phase to be activated
-    if current_time < farm_info.phases_info[current_phase_index].end_time
-        || current_time > farm_info.phases_info[current_phase_index + 1].start_time
+    if current_time < farm_info.phases_info[current_phase_index as usize].end_time
+        || current_time > farm_info.phases_info[current_phase_index as usize + 1].start_time
     {
         return Err(ContractError::Std(StdError::generic_err(
             "Current time is not in range of the phase to be activated",
@@ -645,7 +645,7 @@ pub fn execute_activate_phase(
     }
 
     // Not allow activating phase when reward balance of this phase is zero
-    if farm_info.phases_info[current_phase_index + 1]
+    if farm_info.phases_info[current_phase_index as usize + 1]
         .reward_balance
         .is_zero()
     {
@@ -658,7 +658,7 @@ pub fn execute_activate_phase(
     let mut farm_info: FarmInfo = FARM_INFO.load(deps.storage)?;
 
     // Get phase info from farm info
-    let phase_info = &mut farm_info.phases_info[current_phase_index];
+    let phase_info = &mut farm_info.phases_info[current_phase_index as usize];
 
     // Update reward ratio and time
     phase_info.update_reward_ratio_and_time(phase_info.end_time, staked_token_balance);
