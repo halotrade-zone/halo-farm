@@ -246,7 +246,7 @@ pub fn claim_all_reward(
     farm_info: &mut FarmInfo,
     staker_info: &mut StakerInfo,
     current_time: u64,
-) -> (Uint128, Decimal) {
+) -> Uint128 {
     let mut reward_amount = Uint128::zero();
     let &current_phase_index = &farm_info.current_phase_index;
 
@@ -278,7 +278,7 @@ pub fn claim_all_reward(
         staker_info.reward_debt[current_phase_index as usize],
     );
 
-    (reward_amount, phase_info.accrued_token_per_share)
+    reward_amount
 }
 
 pub fn execute_deposit(
@@ -294,9 +294,9 @@ pub fn execute_deposit(
         )));
     }
 
-    let mut farm_info = FARM_INFO.load(deps.storage)?;
+    let farm_info = &mut FARM_INFO.load(deps.storage)?;
     let current_phase_index: usize = farm_info.current_phase_index as usize;
-    let phase_info = farm_info.phases_info[current_phase_index].clone();
+    let phase_info = &mut farm_info.phases_info[current_phase_index];
 
     // Not allow depositing if reward token is not added to the phase yet
     if phase_info.reward_balance == Uint128::zero() {
@@ -329,8 +329,7 @@ pub fn execute_deposit(
     }
 
     let mut res = Response::new();
-    let (reward_amount, new_accrued_token_per_share) =
-        claim_all_reward(&mut farm_info, &mut staker_info, current_time);
+    let reward_amount = claim_all_reward(farm_info, &mut staker_info, current_time);
 
     // If reward amount is greater than 0, transfer reward amount to staker
     if reward_amount > Uint128::zero() {
@@ -365,7 +364,8 @@ pub fn execute_deposit(
     farm_info.staked_token_balance += amount;
 
     staker_info.amount += amount;
-    staker_info.reward_debt[current_phase_index] = staker_info.amount * new_accrued_token_per_share;
+    staker_info.reward_debt[current_phase_index] =
+        staker_info.amount * farm_info.phases_info[current_phase_index].accrued_token_per_share;
     staker_info.joined_phase = current_phase_index as u64;
 
     FARM_INFO.save(deps.storage, &farm_info)?;
@@ -393,7 +393,7 @@ pub fn execute_withdraw(
         )));
     }
 
-    let mut farm_info = FARM_INFO.load(deps.storage)?;
+    let farm_info = &mut FARM_INFO.load(deps.storage)?;
     let current_phase_index: usize = farm_info.current_phase_index as usize;
     let mut staker_info =
         if let Some(staker_info) = STAKERS_INFO.may_load(deps.storage, info.sender.clone())? {
@@ -413,8 +413,7 @@ pub fn execute_withdraw(
     let mut res = Response::new();
     let current_time = env.block.time.seconds();
 
-    let (reward_amount, new_accrued_token_per_share) =
-        claim_all_reward(&mut farm_info, &mut staker_info, current_time);
+    let reward_amount = claim_all_reward(farm_info, &mut staker_info, current_time);
 
     // If reward amount is greater than 0, transfer reward token to the sender
     if reward_amount > Uint128::zero() {
@@ -450,7 +449,8 @@ pub fn execute_withdraw(
 
     // Update staker amount
     staker_info.amount -= amount;
-    staker_info.reward_debt[current_phase_index] = staker_info.amount * new_accrued_token_per_share;
+    staker_info.reward_debt[current_phase_index] =
+        staker_info.amount * farm_info.phases_info[current_phase_index].accrued_token_per_share;
     staker_info.joined_phase = current_phase_index as u64;
 
     // Check if staker amount is zero, remove staker info from storage
@@ -487,13 +487,12 @@ pub fn execute_harvest(
                 "Unauthorized: Only staker can harvest reward",
             )));
         };
-    let mut farm_info = FARM_INFO.load(deps.storage)?;
+    let farm_info = &mut FARM_INFO.load(deps.storage)?;
 
     let current_time = env.block.time.seconds();
     let current_phase_index: usize = farm_info.current_phase_index as usize;
 
-    let (reward_amount, new_accrued_token_per_share) =
-        claim_all_reward(&mut farm_info, &mut staker_info, current_time);
+    let reward_amount = claim_all_reward(farm_info, &mut staker_info, current_time);
 
     // Check if there is any reward to harvest
     if reward_amount == Uint128::zero() {
@@ -502,14 +501,15 @@ pub fn execute_harvest(
         )));
     }
 
-    staker_info.reward_debt[current_phase_index] = staker_info.amount * new_accrued_token_per_share;
+    staker_info.reward_debt[current_phase_index] =
+        staker_info.amount * farm_info.phases_info[current_phase_index].accrued_token_per_share;
     staker_info.joined_phase = current_phase_index as u64;
 
     STAKERS_INFO.save(deps.storage, info.sender.clone(), &staker_info)?;
     FARM_INFO.save(deps.storage, &farm_info)?;
 
     // Transfer reward token to the sender
-    let transfer = match farm_info.reward_token {
+    let transfer = match &farm_info.reward_token {
         TokenInfo::Token { contract_addr } => SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
             contract_addr: contract_addr.to_string(),
             msg: to_binary(&Cw20ExecuteMsg::Transfer {
@@ -621,7 +621,7 @@ pub fn execute_activate_phase(
     // Get farm info
     let farm_info: FarmInfo = FARM_INFO.load(deps.storage)?;
     // Get current phase index
-    let current_phase_index:usize = *&farm_info.current_phase_index as usize;
+    let current_phase_index: usize = *&farm_info.current_phase_index as usize;
 
     // Not allow active phase when current phase index is equal to farm info length
     // If sender want to active new phase, they have to add new phase first

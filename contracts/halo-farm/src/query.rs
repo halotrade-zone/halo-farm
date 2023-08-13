@@ -68,8 +68,7 @@ pub fn query_pending_reward(
         .load(deps.storage, Addr::unchecked(address))
         .unwrap();
 
-    let (reward_amount, _new_accrued_token_per_share) =
-        claim_all_reward(&mut farm_info, &mut staker_info, current_time);
+    let reward_amount = claim_all_reward(&mut farm_info, &mut staker_info, current_time);
 
     Ok(PendingRewardResponse {
         info: farm_info.reward_token,
