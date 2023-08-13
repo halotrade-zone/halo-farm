@@ -46,7 +46,7 @@ pub fn query_farm_info(deps: Deps) -> StdResult<FarmInfo> {
 pub fn query_pending_reward(
     deps: Deps,
     env: Env,
-    address: String
+    address: String,
 ) -> StdResult<PendingRewardResponse> {
     // Get current time
     let current_time = env.block.time.seconds();
