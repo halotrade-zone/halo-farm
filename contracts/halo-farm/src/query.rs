@@ -1,9 +1,15 @@
-use cosmwasm_std::{QuerierWrapper, Addr, StdResult, Uint128, QueryRequest, WasmQuery, to_binary, BalanceResponse, BankQuery, Deps, Env};
-
+use cosmwasm_std::{
+    to_binary, Addr, BalanceResponse, BankQuery, Deps, Env, QuerierWrapper, QueryRequest,
+    StdResult, Uint128, WasmQuery,
+};
 use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
 
-use crate::{state::{FarmInfo, FARM_INFO, STAKERS_INFO, PendingRewardResponse, StakerInfoResponse, StakerInfo}, execute::claim_all_reward};
-
+use crate::{
+    execute::claim_all_reward,
+    state::{
+        FarmInfo, PendingRewardResponse, StakerInfo, StakerInfoResponse, FARM_INFO, STAKERS_INFO,
+    },
+};
 pub fn query_token_balance(
     querier: &QuerierWrapper,
     contract_addr: Addr,
@@ -37,7 +43,11 @@ pub fn query_farm_info(deps: Deps) -> StdResult<FarmInfo> {
     FARM_INFO.load(deps.storage)
 }
 
-pub fn query_pending_reward(deps: Deps, env: Env, address: String) -> StdResult<PendingRewardResponse> {
+pub fn query_pending_reward(
+    deps: Deps,
+    env: Env,
+    address: String
+) -> StdResult<PendingRewardResponse> {
     // Get current time
     let current_time = env.block.time.seconds();
     // Get farm info

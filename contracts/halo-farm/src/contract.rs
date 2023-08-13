@@ -3,8 +3,7 @@ use std::env;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response,
-    StdResult, Uint128,
+    to_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
 };
 
 use cw2::set_contract_version;
@@ -15,15 +14,15 @@ const CONTRACT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 use crate::{
     error::ContractError,
-    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
-    state::{
-        Config, FarmInfo, PhaseInfo, CONFIG, FARM_INFO,
-    },
     execute::{
-        execute_add_reward_balance, execute_deposit, execute_withdraw, execute_harvest,
-        execute_add_phase, execute_activate_phase, execute_remove_phase
+        execute_activate_phase, execute_add_phase, execute_add_reward_balance, execute_deposit,
+        execute_harvest, execute_remove_phase, execute_withdraw,
     },
-    query::{query_farm_info, query_pending_reward, query_total_lp_token_staked, query_staker_info},
+    msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
+    query::{
+        query_farm_info, query_pending_reward, query_staker_info, query_total_lp_token_staked,
+    },
+    state::{Config, FarmInfo, PhaseInfo, CONFIG, FARM_INFO},
 };
 
 #[cfg_attr(not(feature = "library"), entry_point)]

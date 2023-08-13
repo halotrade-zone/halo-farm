@@ -1,6 +1,13 @@
-use cosmwasm_std::{DepsMut, Env, MessageInfo, Uint128, Response, StdError, SubMsg, CosmosMsg, WasmMsg, to_binary, has_coins, Coin, coin, Decimal, BankMsg, Addr};
+use crate::{
+    error::ContractError,
+    formulas::calc_reward_amount,
+    state::{Config, FarmInfo, PhaseInfo, StakerInfo, TokenInfo, CONFIG, FARM_INFO, STAKERS_INFO},
+};
+use cosmwasm_std::{
+    coin, has_coins, to_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Env, MessageInfo,
+    Response, StdError, SubMsg, Uint128, WasmMsg,
+};
 use cw20::Cw20ExecuteMsg;
-use crate::{error::ContractError, state::{FARM_INFO, TokenInfo, PhaseInfo, Config, CONFIG, FarmInfo, StakerInfo, STAKERS_INFO}, formulas::calc_reward_amount};
 
 pub fn execute_add_reward_balance(
     deps: DepsMut,
