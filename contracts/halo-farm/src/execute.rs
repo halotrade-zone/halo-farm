@@ -296,10 +296,9 @@ pub fn execute_deposit(
 
     let farm_info = &mut FARM_INFO.load(deps.storage)?;
     let current_phase_index: usize = farm_info.current_phase_index as usize;
-    let phase_info = &mut farm_info.phases_info[current_phase_index];
 
     // Not allow depositing if reward token is not added to the phase yet
-    if phase_info.reward_balance == Uint128::zero() {
+    if farm_info.phases_info[current_phase_index].reward_balance == Uint128::zero() {
         return Err(ContractError::Std(StdError::generic_err("Empty phase")));
     }
 
@@ -313,7 +312,7 @@ pub fn execute_deposit(
 
     let current_time = env.block.time.seconds();
     // Not allow depositing when current time is greater than end time of the phase
-    if current_time > phase_info.end_time {
+    if current_time > farm_info.phases_info[current_phase_index].end_time {
         return Err(ContractError::Std(StdError::generic_err(
             "Current time is not in the range of the phase",
         )));
