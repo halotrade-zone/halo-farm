@@ -40,7 +40,11 @@ pub fn instantiate(
 
     CONFIG.save(deps.storage, &config)?;
 
-    Ok(Response::new())
+    Ok(Response::new().add_attributes([
+        ("method", "instantiate"),
+        ("owner", config.owner.as_str()),
+        ("farm_code_id", config.farm_code_id.to_string().as_str()),
+    ]))
 }
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -206,10 +210,9 @@ pub fn reply(deps: DepsMut, _env: Env, msg: Reply) -> StdResult<Response> {
     NUMBER_OF_FARMS.save(deps.storage, &(farm_key))?;
 
     Ok(Response::new().add_attributes(vec![
-        ("action", "reply_on_create_farm_success"),
+        ("method", "reply"),
         ("farm_id", farm_key.to_string().as_str()),
         ("farm_contract_addr", farm_contract),
-        ("staked_token_addr", farm_info.staked_token.as_ref()),
     ]))
 }
 

@@ -24,7 +24,7 @@ pub fn execute_add_reward_balance(
     // Not allow to add reward balance to activated phase
     if phase_index <= current_phase_index && current_phase_index != 0 {
         return Err(ContractError::Std(StdError::generic_err(
-            "Can not add reward balance to activated phase",
+            "Phase activated",
         )));
     }
 
