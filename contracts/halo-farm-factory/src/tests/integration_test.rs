@@ -3982,5 +3982,969 @@ mod tests {
                 Uint128::from(998_400_000_000u128 + pending_reward_admin_30s.amount.u128())
             );
         }
+
+        // Create a new farm contract with 1 phases
+        // Phase 0: 10 seconds with 1000 NATIVE_2 reward starting from 5 seconds after contract creation
+        // Increase 1 second to make 1 second passed
+        // ADMIN deposit 1000 lp token
+        // Increase 1 second to make 2 seconds passed
+        // USER_1 deposit 1000 lp token
+        // Increase 1 second to make 3 seconds passed
+        // ADMIN withdraw 1000 lp token
+        // -> ADMIN Reward should be 0 NATIVE_2
+        // Increase 1 second to make 4 seconds passed
+        // ADMIN deposit 1000 lp token
+        // Increase 1 second to make 5 seconds passed
+        // USER_1 deposit 1000 lp token
+        // Increase 1 second to make 6 seconds passed -> 1 second after phase 0 start
+        // ADMIN query pending reward 1s: -> (1000 / (1000 + 2000) * 1 * 100) = 33,333 NATIVE_2
+        // USER_1 query pending reward 1s: -> (2000 / (1000 + 2000) * 1 * 100) = 66,667 NATIVE_2
+        //
+        // Increase 1 second to make 7 seconds passed
+        // ADMIN query pending reward 2s: -> (1000 / (1000 + 2000) * 2 * 100) = 66,667 NATIVE_2
+        // USER_1 query pending reward 2s: -> (2000 / (1000 + 2000) * 2 * 100) = 133,333 NATIVE_2
+        // ADMIN withdraw 500 lp token
+        // ADMIN Receive 66,667 NATIVE_2
+        //
+        // Increase 1 second to make 8 seconds passed
+        // ADMIN query pending reward 1s: -> (500 / (500 + 2000) * 1 * 100) = 20 NATIVE_2
+        // USER_1 query pending reward 1s: -> (2000 / (500 + 2000) * 1 * 100) = 80 NATIVE_2
+        //                         and 2s: 133,333 NATIVE_2 (Not claimed yet)
+        //                         ->  3s: 213,333 NATIVE_2
+        // Increase 1 second to make 9 seconds passed
+        // ADMIN query pending reward 2s: -> (500 / (500 + 2000) * 2 * 100) = 40 NATIVE_2
+        // USER_1 query pending reward 2s: -> (2000 / (500 + 2000) * 2 * 100) = 160 NATIVE_2
+        //                         and 2s: 133,333 NATIVE_2 (Not claimed yet)
+        //                         ->  4s: 293,333 NATIVE_2
+        // ADMIN deposit 1000 lp token
+        // -> ADMIN will harvest 40 NATIVE_2 as deposit happened.
+        //
+        // Increase 1 second to make 10 seconds passed
+        // ADMIN query pending reward 1s: -> (1500 / (1500 + 2000) * 1 * 100) = 42,857 NATIVE_2
+        // USER_1 query pending reward 1s: -> (2000 / (1500 + 2000) * 1 * 100) = 57,143 NATIVE_2
+        //                         and 4s: 293,333 NATIVE_2 (Not claimed yet)
+        //                         ->  5s: 350,476 NATIVE_2
+        // Increase 1 second to make 11 seconds passed
+        // ADMIN query pending reward 2s: -> (1500 / (1500 + 2000) * 2 * 100) = 85,714 NATIVE_2
+        // USER_1 query pending reward 2s: -> (2000 / (1500 + 2000) * 2 * 100) = 114,286 NATIVE_2
+        //                         and 4s: 293,333 NATIVE_2 (Not claimed yet)
+        //                         ->  6s: 407,619 NATIVE_2
+        // ADMIN harvest reward: 85,714 NATIVE_2
+        // Increase 1 second to make 12 seconds passed
+        // ADMIN query pending reward 1s: -> (1500 / (1500 + 2000) * 1 * 100) = 42,857 NATIVE_2
+        // USER_1 query pending reward 3s: -> (2000 / (1500 + 2000) * 3 * 100) = 171,428 NATIVE_2
+        //                         and 4s: 293,333 NATIVE_2 (Not claimed yet)
+        //                         ->  7s: 464,761 NATIVE_2
+        //
+        // Increase 3 seconds to make 15 seconds passed (END OF PHASE 0)
+        // ADMIN query pending reward 4s: -> (1500 / (1500 + 2000) * 4 * 100) = 171,428 NATIVE_2
+        // USER_1 query pending reward 6s: -> (2000 / (1500 + 2000) * 1 * 100) = 342,857 NATIVE_2
+        //                         and 4s: 293,333 NATIVE_2 (Not claimed yet)
+        //                         ->  7s: 636,190 NATIVE_2
+        // Increase 1 second to make 16 seconds passed (ONE SECOND AFTER PHASE 0 ENDED)
+        // ADMIN query pending reward 4s: -> (1500 / (1500 + 2000) * 4 * 100) = 171,428 NATIVE_2
+        // ADMIN harvest reward: 171,428 NATIVE_2 by WITHDRAWING ALL LP TOKEN
+        //
+        // Increase 1 second to make 17 seconds passed
+        // USER_1 query pending reward 6s: -> (2000 / (1500 + 2000) * 1 * 100) = 342,857 NATIVE_2
+        //                         and 4s: 293,333 NATIVE_2 (Not claimed yet)
+        //                         ->  7s: 636,190 NATIVE_2
+        // USER_1 harvest reward: 636,190 NATIVE_2
+
+        #[test]
+        fn proper_deposit_before_start_time() {
+            // get integration test app and contracts
+            let (mut app, contracts) = instantiate_contracts();
+            // ADMIN already has 1_000_000 NATIVE_DENOM_2 as initial balance in instantiate_contracts()
+            // get farm factory contract
+            let factory_contract = &contracts[0].contract_addr;
+            // get halo lp token contract
+            let lp_token_contract = &contracts[1].contract_addr;
+            // get current block time
+            let current_block_time = app.block_info().time.seconds();
+
+            // Mint 2000 HALO LP tokens to ADMIN
+            let mint_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::Mint {
+                recipient: ADMIN.to_string(),
+                amount: Uint128::from(2 * MOCK_1000_HALO_LP_TOKEN_AMOUNT),
+            };
+
+            // Execute minting
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked(lp_token_contract.clone()),
+                &mint_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // Mint 2000 HALO LP tokens to USER_1
+            let mint_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::Mint {
+                recipient: USER_1.to_string(),
+                amount: Uint128::from(2 * MOCK_1000_HALO_LP_TOKEN_AMOUNT),
+            };
+
+            // Execute minting
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked(lp_token_contract.clone()),
+                &mint_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // native token info
+            let native_token_info = TokenInfo::NativeToken {
+                denom: NATIVE_DENOM_2.to_string(),
+            };
+
+            // create farm contract by factory contract
+            let create_farm_msg = crate::msg::ExecuteMsg::CreateFarm {
+                staked_token: Addr::unchecked(lp_token_contract.clone()),
+                reward_token: native_token_info,
+                start_time: current_block_time + 5,
+                end_time: current_block_time + 5 + 10,
+                phases_limit_per_user: None,
+                whitelist: Addr::unchecked(ADMIN.to_string()),
+            };
+
+            // Execute create farm
+            let response_create_farm = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked(factory_contract.clone()),
+                &create_farm_msg,
+                &[],
+            );
+
+            assert!(response_create_farm.is_ok());
+
+            // add reward balance to farm contract
+            let add_reward_balance_msg = FarmExecuteMsg::AddRewardBalance {
+                phase_index: 0u64,
+                amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
+            };
+
+            // Execute add reward balance
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked("contract3"),
+                &add_reward_balance_msg,
+                &[Coin {
+                    amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
+                    denom: NATIVE_DENOM_2.to_string(),
+                }],
+            );
+
+            assert!(response.is_ok());
+
+            // Increase allowence of HALO LP tokens to farm contract
+            let increase_allowance_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
+                spender: Addr::unchecked("contract3").to_string(),
+                amount: Uint128::from(10 * MOCK_1000_HALO_LP_TOKEN_AMOUNT),
+                expires: None,
+            };
+
+            // Execute increase allowance by ADMIN
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked(lp_token_contract.clone()),
+                &increase_allowance_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // Execute increase allowance by USER_1
+            let response = app.execute_contract(
+                Addr::unchecked(USER_1.to_string()),
+                Addr::unchecked(lp_token_contract.clone()),
+                &increase_allowance_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // Increase 1 second to make 1 seconds passed
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // ADMIN deposit 1000 HALO LP tokens to farm contract
+            let deposit_msg = FarmExecuteMsg::Deposit {
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT),
+            };
+
+            // Execute deposit
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked("contract3"),
+                &deposit_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // Increase 1 second to make 2 seconds passed
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // USER_1 deposit 1000 HALO LP tokens to farm contract
+            let deposit_msg = FarmExecuteMsg::Deposit {
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT),
+            };
+
+            // Execute deposit
+            let response = app.execute_contract(
+                Addr::unchecked(USER_1.to_string()),
+                Addr::unchecked("contract3"),
+                &deposit_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // Increase 1 second to make 3 seconds passed
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // ADMIN query pending reward
+            let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&FarmQueryMsg::PendingReward {
+                    address: ADMIN.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_admin_3s: PendingRewardResponse = from_binary(&res).unwrap();
+
+            // It should be 0
+            assert_eq!(
+                pending_reward_admin_3s,
+                PendingRewardResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::zero(),
+                    time_query: 1571797422
+                }
+            );
+
+            // ADMIN withdraw 1000 HALO LP tokens from farm contract
+            let withdraw_msg = FarmExecuteMsg::Withdraw {
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT),
+            };
+
+            // Execute withdraw
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked("contract3"),
+                &withdraw_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // Increase 1 second to make 4 seconds passed
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // ADMIN deposit 1000 HALO LP tokens to farm contract
+            let deposit_msg = FarmExecuteMsg::Deposit {
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT),
+            };
+
+            // Execute deposit
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked("contract3"),
+                &deposit_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // Increase 1 second to make 5 seconds passed
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // USER_1 deposit 1000 HALO LP tokens to farm contract
+            let deposit_msg = FarmExecuteMsg::Deposit {
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT),
+            };
+
+            // Execute deposit
+            let response = app.execute_contract(
+                Addr::unchecked(USER_1.to_string()),
+                Addr::unchecked("contract3"),
+                &deposit_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // Increase 1 second to make 6 seconds passed -> 1 second after phase 0 start
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // ADMIN query pending reward
+            let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&FarmQueryMsg::PendingReward {
+                    address: ADMIN.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_admin_6s: PendingRewardResponse = from_binary(&res).unwrap();
+
+            // It should be 33,333 NATIVE_2
+            assert_eq!(
+                pending_reward_admin_6s,
+                PendingRewardResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(33_333_333u128),
+                    time_query: 1571797425
+                }
+            );
+
+            // USER_1 query pending reward
+            let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&FarmQueryMsg::PendingReward {
+                    address: USER_1.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_user_6s: PendingRewardResponse = from_binary(&res).unwrap();
+
+            // It should be 66,666 NATIVE_2
+            assert_eq!(
+                pending_reward_user_6s,
+                PendingRewardResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(66_666_666u128),
+                    time_query: 1571797425
+                }
+            );
+
+            // Increase 1 second to make 7 seconds passed -> 2 seconds after phase 0 start
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // ADMIN query pending reward
+            let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&FarmQueryMsg::PendingReward {
+                    address: ADMIN.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_admin_7s: PendingRewardResponse = from_binary(&res).unwrap();
+
+            // It should be 66,667 NATIVE_2
+            assert_eq!(
+                pending_reward_admin_7s,
+                PendingRewardResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(66_666_666u128),
+                    time_query: 1571797426
+                }
+            );
+
+            // USER_1 query pending reward
+            let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&FarmQueryMsg::PendingReward {
+                    address: USER_1.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_user_7s: PendingRewardResponse = from_binary(&res).unwrap();
+
+            // It should be 133,333 NATIVE_2
+            assert_eq!(
+                pending_reward_user_7s,
+                PendingRewardResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(133_333_333u128),
+                    time_query: 1571797426
+                }
+            );
+
+            // ADMIN withdraw 500 HALO LP tokens from farm contract
+            let withdraw_msg = FarmExecuteMsg::Withdraw {
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
+            };
+
+            // Execute withdraw
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked("contract3"),
+                &withdraw_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // query ADMIN's balance of RewardToken NATIVE_2
+            let req: QueryRequest<BankQuery> = QueryRequest::Bank(BankQuery::Balance {
+                address: ADMIN.to_string(),
+                denom: NATIVE_DENOM_2.to_string(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let balance: BankBalanceResponse = from_binary(&res).unwrap();
+
+            // It should be 66,667 NATIVE_2
+            assert_eq!(
+                balance.amount.amount,
+                Uint128::from(
+                    INIT_1000_000_NATIVE_BALANCE_2 - ADD_1000_NATIVE_BALANCE_2
+                        + pending_reward_admin_7s.amount.u128() // amount: Uint128::from(66_666_666u128),
+                )
+            );
+
+            // Increase 1 second to make 8 seconds passed -> 3 seconds after phase 0 start
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // ADMIN query pending reward
+            let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&FarmQueryMsg::PendingReward {
+                    address: ADMIN.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_admin_8s: PendingRewardResponse = from_binary(&res).unwrap();
+
+            // It should be 20 NATIVE_2
+            assert_eq!(
+                pending_reward_admin_8s,
+                PendingRewardResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(20_000_000u128),
+                    time_query: 1571797427
+                }
+            );
+
+            // USER_1 query pending reward
+            let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&FarmQueryMsg::PendingReward {
+                    address: USER_1.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_user_8s: PendingRewardResponse = from_binary(&res).unwrap();
+
+            // It should be 213,333 NATIVE_2
+            assert_eq!(
+                pending_reward_user_8s,
+                PendingRewardResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(213_333_333u128),
+                    time_query: 1571797427
+                }
+            );
+
+            // Increase 1 second to make 9 seconds passed -> 4 seconds after phase 0 start
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // ADMIN query pending reward
+            let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&FarmQueryMsg::PendingReward {
+                    address: ADMIN.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_admin_9s: PendingRewardResponse = from_binary(&res).unwrap();
+
+            // It should be 40 NATIVE_2
+            assert_eq!(
+                pending_reward_admin_9s,
+                PendingRewardResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(40_000_000u128),
+                    time_query: 1571797428
+                }
+            );
+
+            // USER_1 query pending reward
+            let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&FarmQueryMsg::PendingReward {
+                    address: USER_1.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_user_9s: PendingRewardResponse = from_binary(&res).unwrap();
+
+            // It should be 293,333 NATIVE_2
+            assert_eq!(
+                pending_reward_user_9s,
+                PendingRewardResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(293_333_333u128),
+                    time_query: 1571797428
+                }
+            );
+
+            // ADMIN deposit 1000 HALO LP tokens to farm contract
+            let deposit_msg = FarmExecuteMsg::Deposit {
+                amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT),
+            };
+
+            // Execute deposit
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked("contract3"),
+                &deposit_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // Increase 1 second to make 10 seconds passed -> 5 seconds after phase 0 start
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // ADMIN query pending reward
+            let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&FarmQueryMsg::PendingReward {
+                    address: ADMIN.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_admin_10s: PendingRewardResponse = from_binary(&res).unwrap();
+
+            // It should be 42,857 NATIVE_2
+            assert_eq!(
+                pending_reward_admin_10s,
+                PendingRewardResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(42_857_143u128),
+                    time_query: 1571797429
+                }
+            );
+
+            // USER_1 query pending reward
+            let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&FarmQueryMsg::PendingReward {
+                    address: USER_1.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_user_10s: PendingRewardResponse = from_binary(&res).unwrap();
+
+            // It should be 350,476 NATIVE_2
+            assert_eq!(
+                pending_reward_user_10s,
+                PendingRewardResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(350_476_190u128),
+                    time_query: 1571797429
+                }
+            );
+
+            // Increase 1 second to make 11 seconds passed -> 6 seconds after phase 0 start
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // ADMIN query pending reward
+            let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&FarmQueryMsg::PendingReward {
+                    address: ADMIN.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_admin_11s: PendingRewardResponse = from_binary(&res).unwrap();
+
+            // It should be 85,714 NATIVE_2
+            assert_eq!(
+                pending_reward_admin_11s,
+                PendingRewardResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(85_714_286u128),
+                    time_query: 1571797430
+                }
+            );
+
+            // USER_1 query pending reward
+            let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&FarmQueryMsg::PendingReward {
+                    address: USER_1.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_user_11s: PendingRewardResponse = from_binary(&res).unwrap();
+
+            // It should be 407,619 NATIVE_2
+            assert_eq!(
+                pending_reward_user_11s,
+                PendingRewardResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(407_619_047u128),
+                    time_query: 1571797430
+                }
+            );
+
+            // ADMIN harvest reward
+            let harvest_msg = FarmExecuteMsg::Harvest {};
+
+            // Execute harvest
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked("contract3"),
+                &harvest_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // query ADMIN's balance of RewardToken NATIVE_2
+            let req: QueryRequest<BankQuery> = QueryRequest::Bank(BankQuery::Balance {
+                address: ADMIN.to_string(),
+                denom: NATIVE_DENOM_2.to_string(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let balance: BankBalanceResponse = from_binary(&res).unwrap();
+
+            assert_eq!(
+                balance.amount.amount,
+                Uint128::from(
+                    INIT_1000_000_NATIVE_BALANCE_2 - ADD_1000_NATIVE_BALANCE_2
+                        + pending_reward_admin_7s.amount.u128()
+                        + pending_reward_admin_9s.amount.u128() // Uint128::from(293_333_333u128),
+                        + pending_reward_admin_11s.amount.u128() // Uint128::from(85_714_286u128),
+                )
+            );
+
+            // Increase 1 second to make 12 seconds passed -> 7 seconds after phase 0 start
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // ADMIN query pending reward
+            let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&FarmQueryMsg::PendingReward {
+                    address: ADMIN.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_admin_12s: PendingRewardResponse = from_binary(&res).unwrap();
+
+            // It should be 42,857 NATIVE_2
+            assert_eq!(
+                pending_reward_admin_12s,
+                PendingRewardResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(42_857_143u128),
+                    time_query: 1571797431
+                }
+            );
+
+            // USER_1 query pending reward
+            let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&FarmQueryMsg::PendingReward {
+                    address: USER_1.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_user_12s: PendingRewardResponse = from_binary(&res).unwrap();
+
+            // It should be 464,761 NATIVE_2
+            assert_eq!(
+                pending_reward_user_12s,
+                PendingRewardResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(464_761_904u128),
+                    time_query: 1571797431
+                }
+            );
+
+            //(END OF PHASE 0) - Increase 3 seconds to make 15 seconds passed -> 10 seconds after phase 0 start (END OF PHASE 0)
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(3),
+                height: app.block_info().height + 3,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // ADMIN query pending reward
+            let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&FarmQueryMsg::PendingReward {
+                    address: ADMIN.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_admin_15s: PendingRewardResponse = from_binary(&res).unwrap();
+
+            // It should be 171,428 NATIVE_2
+            assert_eq!(
+                pending_reward_admin_15s,
+                PendingRewardResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(171_428_572u128),
+                    time_query: 1571797434
+                }
+            );
+
+            // USER_1 query pending reward
+            let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&FarmQueryMsg::PendingReward {
+                    address: USER_1.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_user_15s: PendingRewardResponse = from_binary(&res).unwrap();
+
+            // It should be 636,190 NATIVE_2
+            assert_eq!(
+                pending_reward_user_15s,
+                PendingRewardResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(636_190_476u128),
+                    time_query: 1571797434
+                }
+            );
+
+            // Increase 1 second to make 16 seconds passed -> (ONE SECOND AFTER PHASE 0 ENDED)
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // ADMIN query pending reward
+            let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&FarmQueryMsg::PendingReward {
+                    address: ADMIN.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_admin_16s: PendingRewardResponse = from_binary(&res).unwrap();
+
+            // It should be 171,428 NATIVE_2
+            assert_eq!(
+                pending_reward_admin_16s,
+                PendingRewardResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(171_428_572u128),
+                    time_query: 1571797435
+                }
+            );
+
+            // ADMIN withdraw ALL HALO LP tokens from farm contract
+            let withdraw_msg = FarmExecuteMsg::Withdraw {
+                amount: Uint128::from(
+                    MOCK_1000_HALO_LP_TOKEN_AMOUNT + MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2,
+                ),
+            };
+
+            // Execute withdraw
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked("contract3"),
+                &withdraw_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // query ADMIN's balance of RewardToken NATIVE_2
+            let req: QueryRequest<BankQuery> = QueryRequest::Bank(BankQuery::Balance {
+                address: ADMIN.to_string(),
+                denom: NATIVE_DENOM_2.to_string(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let balance: BankBalanceResponse = from_binary(&res).unwrap();
+
+            assert_eq!(
+                balance.amount.amount,
+                Uint128::from(
+                    INIT_1000_000_NATIVE_BALANCE_2 - ADD_1000_NATIVE_BALANCE_2
+                        + pending_reward_admin_7s.amount.u128()
+                        + pending_reward_admin_9s.amount.u128()
+                        + pending_reward_admin_11s.amount.u128()
+                        + pending_reward_admin_16s.amount.u128()
+                )
+            );
+
+            // Increase 1 second to make 17 seconds passed -> (TWO SECOND AFTER PHASE 0 ENDED)
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // USER_1 query pending reward
+            let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: "contract3".to_string(),
+                msg: to_binary(&FarmQueryMsg::PendingReward {
+                    address: USER_1.to_string(),
+                })
+                .unwrap(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_user_17s: PendingRewardResponse = from_binary(&res).unwrap();
+
+            // It should be 636,190 NATIVE_2
+            assert_eq!(
+                pending_reward_user_17s,
+                PendingRewardResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: Uint128::from(636_190_476u128),
+                    time_query: 1571797436
+                }
+            );
+
+            // USER_1 harvest reward
+            let harvest_msg = FarmExecuteMsg::Harvest {};
+
+            // Execute harvest
+            let response = app.execute_contract(
+                Addr::unchecked(USER_1.to_string()),
+                Addr::unchecked("contract3"),
+                &harvest_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // query USER_1's balance of RewardToken NATIVE_2
+            let req: QueryRequest<BankQuery> = QueryRequest::Bank(BankQuery::Balance {
+                address: USER_1.to_string(),
+                denom: NATIVE_DENOM_2.to_string(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let balance: BankBalanceResponse = from_binary(&res).unwrap();
+
+            assert_eq!(
+                balance.amount.amount,
+                Uint128::from(pending_reward_user_17s.amount.u128())
+            );
+        }
     }
 }
