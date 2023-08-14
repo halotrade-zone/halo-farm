@@ -8,14 +8,12 @@ use crate::{
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
     to_binary, Addr, Binary, CosmosMsg, Deps, DepsMut, Env, MessageInfo, QuerierWrapper,
-    QueryRequest, Reply, ReplyOn, Response, StdError, StdResult, SubMsg, Uint128, WasmMsg,
-    WasmQuery,
+    QueryRequest, Reply, ReplyOn, Response, StdResult, SubMsg, WasmMsg, WasmQuery,
 };
 use cw2::set_contract_version;
 use cw_utils::parse_reply_instantiate_data;
-use halo_farm::msg::InstantiateMsg as FarmInstantiateMsg;
 use halo_farm::msg::QueryMsg as FarmQueryMsg;
-use halo_farm::state::{FarmInfo, TokenInfo};
+use halo_farm::state::FarmInfo;
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:halo-farm-factory";
@@ -59,24 +57,9 @@ pub fn execute(
             owner,
             farm_code_id,
         } => execute_update_config(deps, env, info, owner, farm_code_id),
-        ExecuteMsg::CreateFarm {
-            staked_token,
-            reward_token,
-            start_time,
-            end_time,
-            phases_limit_per_user,
-            whitelist,
-        } => execute_create_farm(
-            deps,
-            env,
-            info,
-            staked_token,
-            reward_token,
-            start_time,
-            end_time,
-            phases_limit_per_user,
-            whitelist,
-        ),
+        ExecuteMsg::CreateFarm { create_farm_msg } => {
+            execute_create_farm(deps, env, info, create_farm_msg)
+        }
     }
 }
 
@@ -117,50 +100,20 @@ pub fn execute_update_config(
 #[allow(clippy::too_many_arguments)]
 pub fn execute_create_farm(
     deps: DepsMut,
-    env: Env,
+    _env: Env,
     info: MessageInfo,
-    staked_token: Addr,
-    reward_token: TokenInfo,
-    start_time: u64,
-    end_time: u64,
-    phases_limit_per_user: Option<Uint128>,
-    whitelist: Addr,
+    create_farm_msg: Binary,
 ) -> Result<Response, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
-    // get current time
-    let current_time = env.block.time.seconds();
     // permission check
     if info.sender != config.owner {
         return Err(ContractError::Unauthorized {});
-    }
-
-    // Not allow start time is greater than end time
-    if start_time >= end_time {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Start time is greater than end time",
-        )));
-    }
-
-    // Not allow to create a farm when current time is greater than start time
-    if current_time > start_time {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Current time is greater than start time",
-        )));
     }
 
     Ok(Response::new()
         .add_attributes(vec![
             ("method", "create_farm"),
             ("farm_owner", info.sender.as_str()),
-            ("staked_token", staked_token.as_str()),
-            ("reward_token", &format!("{}", reward_token)),
-            ("start_time", start_time.to_string().as_str()),
-            ("end_time", end_time.to_string().as_str()),
-            (
-                "phases_limit_per_user",
-                &format!("{:?}", phases_limit_per_user),
-            ),
-            ("whitelist", &format!("{:?}", whitelist)),
         ])
         .add_submessage(SubMsg {
             id: 1,
@@ -170,15 +123,7 @@ pub fn execute_create_farm(
                 funds: vec![],
                 admin: Some(config.owner.to_string()),
                 label: "farm".to_string(),
-                msg: to_binary(&FarmInstantiateMsg {
-                    staked_token,
-                    reward_token,
-                    start_time,
-                    end_time,
-                    phases_limit_per_user,
-                    farm_owner: info.sender,
-                    whitelist,
-                })?,
+                msg: create_farm_msg,
             }),
             reply_on: ReplyOn::Success,
         }))
