@@ -53,7 +53,7 @@ pub fn instantiate(
     // Validate staked token format
     if deps
         .api
-        .addr_validate(&msg.staked_token.to_string())
+        .addr_validate(msg.staked_token.as_ref())
         .is_err()
     {
         return Err(ContractError::Std(StdError::generic_err(
@@ -71,7 +71,7 @@ pub fn instantiate(
             }
         }
         TokenInfo::Token { ref contract_addr } => {
-            if deps.api.addr_validate(&contract_addr.to_string()).is_err() {
+            if deps.api.addr_validate(contract_addr.as_ref()).is_err() {
                 return Err(ContractError::Std(StdError::generic_err(
                     "Invalid reward token address",
                 )));
@@ -80,7 +80,7 @@ pub fn instantiate(
     }
 
     // Validate whitelist format
-    if deps.api.addr_validate(&msg.whitelist.to_string()).is_err() {
+    if deps.api.addr_validate(msg.whitelist.as_ref()).is_err() {
         return Err(ContractError::Std(StdError::generic_err(
             "Invalid whitelist address",
         )));
