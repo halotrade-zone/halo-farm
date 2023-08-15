@@ -23,9 +23,7 @@ pub fn execute_add_reward_balance(
 
     // Not allow to add reward balance to activated phase
     if phase_index <= current_phase_index && current_phase_index != 0 {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Phase activated",
-        )));
+        return Err(ContractError::Std(StdError::generic_err("Phase activated")));
     }
 
     // Check the message sender is the whitelisted address
