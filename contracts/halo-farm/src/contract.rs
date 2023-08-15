@@ -79,7 +79,6 @@ pub fn instantiate(
         }
     }
 
-
     // Validate whitelist format
     if deps.api.addr_validate(&msg.whitelist.to_string()).is_err() {
         return Err(ContractError::Std(StdError::generic_err(
