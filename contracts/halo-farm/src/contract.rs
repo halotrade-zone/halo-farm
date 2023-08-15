@@ -51,11 +51,7 @@ pub fn instantiate(
     }
 
     // Validate staked token format
-    if deps
-        .api
-        .addr_validate(msg.staked_token.as_ref())
-        .is_err()
-    {
+    if deps.api.addr_validate(msg.staked_token.as_ref()).is_err() {
         return Err(ContractError::Std(StdError::generic_err(
             "Invalid staked token address",
         )));
