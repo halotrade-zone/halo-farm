@@ -4130,7 +4130,7 @@ mod tests {
             // create farm binary message
             let create_farm_binary_msg = to_binary(&FarmInstantiateMsg {
                 staked_token: Addr::unchecked(lp_token_contract.clone()),
-                reward_token: native_token_info.clone(),
+                reward_token: native_token_info,
                 start_time: current_block_time + 5,
                 end_time: current_block_time + 5 + 10,
                 phases_limit_per_user: None,
