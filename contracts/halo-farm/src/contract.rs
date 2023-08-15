@@ -22,7 +22,7 @@ use crate::{
     query::{
         query_farm_info, query_pending_reward, query_staker_info, query_total_lp_token_staked,
     },
-    state::{Config, FarmInfo, PhaseInfo, CONFIG, FARM_INFO},
+    state::{Config, FarmInfo, PhaseInfo, CONFIG, FARM_INFO, TokenInfo},
 };
 
 #[cfg_attr(not(feature = "library"), entry_point)]
@@ -51,23 +51,47 @@ pub fn instantiate(
     }
 
     // Validate staked token format
-    if deps.api.addr_validate(&msg.staked_token.to_string()).is_err() {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Invalid staked token address",
+    if deps
+        .api
+        .addr_validate(&msg.staked_token.to_string())
+        .is_err()
+        {
+            return Err(ContractError::Std(StdError::generic_err(
+                "Invalid staked token address",
         )));
     }
 
     // Validate reward token format
-    if deps.api.addr_validate(&msg.reward_token.to_string()).is_err() {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Invalid reward token address",
-        )));
+    match msg.reward_token {
+        TokenInfo::NativeToken { ref denom } => {
+            if denom.is_empty() {
+                return Err(ContractError::Std(StdError::generic_err(
+                    "Reward denom is empty",
+                )));
+            }
+        },
+        TokenInfo::Token { ref contract_addr } => {
+            if deps.
+                api
+                .addr_validate(&contract_addr.to_string())
+                .is_err()
+            {
+                return Err(ContractError::Std(StdError::generic_err(
+                    "Invalid reward token address",
+                )));
+            }
+        },
     }
 
+
     // Validate whitelist format
-    if deps.api.addr_validate(&msg.whitelist.to_string()).is_err() {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Invalid whitelist address",
+    if deps
+        .api
+        .addr_validate(&msg.whitelist.to_string())
+        .is_err()
+        {
+            return Err(ContractError::Std(StdError::generic_err(
+                "Invalid whitelist address",
         )));
     }
 
