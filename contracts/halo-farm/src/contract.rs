@@ -50,6 +50,34 @@ pub fn instantiate(
         )));
     }
 
+    // Validate staked token format
+    if deps.api.addr_validate(&msg.staked_token.to_string()).is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Invalid staked token address",
+        )));
+    }
+
+    // Validate reward token format
+    if deps.api.addr_validate(&msg.reward_token.to_string()).is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Invalid reward token address",
+        )));
+    }
+
+    // Validate whitelist format
+    if deps.api.addr_validate(&msg.whitelist.to_string()).is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Invalid whitelist address",
+        )));
+    }
+
+    // Validate phases limit per user
+    if msg.phases_limit_per_user.is_some() && msg.phases_limit_per_user.unwrap().is_zero() {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Invalid phases limit per user",
+        )));
+    }
+
     let config = Config {
         farm_owner: msg.farm_owner,
     };
