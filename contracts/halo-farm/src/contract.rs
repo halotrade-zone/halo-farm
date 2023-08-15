@@ -3,9 +3,9 @@ use std::env;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128, StdError,
+    to_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
+    Uint128,
 };
-
 use cw2::set_contract_version;
 
 // version info for migration info
@@ -36,7 +36,7 @@ pub fn instantiate(
     // get current time
     let current_time = env.block.time.seconds();
 
-     // Not allow start time is greater than end time
+    // Not allow start time is greater than end time
     if msg.start_time >= msg.end_time {
         return Err(ContractError::Std(StdError::generic_err(
             "Start time is greater than end time",

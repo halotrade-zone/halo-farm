@@ -1,8 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Binary, Uint128};
+use cosmwasm_std::Binary;
 
 use crate::state::{ConfigResponse, FactoryFarmInfo};
-use halo_farm::state::TokenInfo;
 
 #[cw_serde]
 pub struct InstantiateMsg {
