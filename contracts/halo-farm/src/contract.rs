@@ -3,9 +3,9 @@ use std::env;
 #[cfg(not(feature = "library"))]
 use cosmwasm_std::entry_point;
 use cosmwasm_std::{
-    to_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdResult, Uint128,
+    to_binary, Binary, Decimal, Deps, DepsMut, Env, MessageInfo, Response, StdError, StdResult,
+    Uint128,
 };
-
 use cw2::set_contract_version;
 
 // version info for migration info
@@ -22,17 +22,72 @@ use crate::{
     query::{
         query_farm_info, query_pending_reward, query_staker_info, query_total_lp_token_staked,
     },
-    state::{Config, FarmInfo, PhaseInfo, CONFIG, FARM_INFO},
+    state::{Config, FarmInfo, PhaseInfo, TokenInfo, CONFIG, FARM_INFO},
 };
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn instantiate(
     deps: DepsMut,
-    _env: Env,
+    env: Env,
     _info: MessageInfo,
     msg: InstantiateMsg,
-) -> StdResult<Response> {
+) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
+    // get current time
+    let current_time = env.block.time.seconds();
+
+    // Not allow start time is greater than end time
+    if msg.start_time >= msg.end_time {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Start time is greater than end time",
+        )));
+    }
+
+    // Not allow to create a farm when current time is greater than start time
+    if current_time > msg.start_time {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Current time is greater than start time",
+        )));
+    }
+
+    // Validate staked token format
+    if deps.api.addr_validate(msg.staked_token.as_ref()).is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Invalid staked token address",
+        )));
+    }
+
+    // Validate reward token format
+    match msg.reward_token {
+        TokenInfo::NativeToken { ref denom } => {
+            if denom.is_empty() {
+                return Err(ContractError::Std(StdError::generic_err(
+                    "Reward denom is empty",
+                )));
+            }
+        }
+        TokenInfo::Token { ref contract_addr } => {
+            if deps.api.addr_validate(contract_addr.as_ref()).is_err() {
+                return Err(ContractError::Std(StdError::generic_err(
+                    "Invalid reward token address",
+                )));
+            }
+        }
+    }
+
+    // Validate whitelist format
+    if deps.api.addr_validate(msg.whitelist.as_ref()).is_err() {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Invalid whitelist address",
+        )));
+    }
+
+    // Validate phases limit per user
+    if msg.phases_limit_per_user.is_some() && msg.phases_limit_per_user.unwrap().is_zero() {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Invalid phases limit per user",
+        )));
+    }
 
     let config = Config {
         farm_owner: msg.farm_owner,

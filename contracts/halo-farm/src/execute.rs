@@ -23,9 +23,7 @@ pub fn execute_add_reward_balance(
 
     // Not allow to add reward balance to activated phase
     if phase_index <= current_phase_index && current_phase_index != 0 {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Can not add reward balance to activated phase",
-        )));
+        return Err(ContractError::Std(StdError::generic_err("Phase activated")));
     }
 
     // Check the message sender is the whitelisted address
@@ -626,7 +624,7 @@ pub fn execute_activate_phase(
     // If sender want to active new phase, they have to add new phase first
     if farm_info.phases_info.len() == current_phase_index as usize {
         return Err(ContractError::Std(StdError::generic_err(
-            "Phase is already activated",
+            "Invalid action: Add new phase first",
         )));
     }
 

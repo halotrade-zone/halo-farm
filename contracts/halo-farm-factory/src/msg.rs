@@ -1,8 +1,7 @@
 use cosmwasm_schema::{cw_serde, QueryResponses};
-use cosmwasm_std::{Addr, Uint128};
+use cosmwasm_std::Binary;
 
 use crate::state::{ConfigResponse, FactoryFarmInfo};
-use halo_farm::state::TokenInfo;
 
 #[cw_serde]
 pub struct InstantiateMsg {
@@ -19,18 +18,15 @@ pub enum ExecuteMsg {
     },
     /// CreateFarm instantiates farm contract
     CreateFarm {
-        /// Staked LP Token address
-        staked_token: Addr,
-        /// Reward Token address (CW20 or Native)
-        reward_token: TokenInfo,
-        /// Start time
-        start_time: u64,
-        /// End time
-        end_time: u64,
-        /// The phases limit of staked tokens per user (0 for unlimited)
-        phases_limit_per_user: Option<Uint128>,
-        /// Whitelisted addresses
-        whitelist: Addr,
+        /// Create farm binary message to instantiate farm contract
+        /// This message contains:
+        /// staked_token: Addr - Staked LP Token address
+        /// reward_token: TokenInfo - Reward Token address (CW20 or Native)
+        /// start_time: u64 - Start time
+        /// end_time: u64 - End time
+        /// phases_limit_per_user: Option<Uint128> - The phases limit of staked tokens per user (0 for unlimited)
+        /// whitelist: Addr - Whitelisted addresses
+        create_farm_msg: Binary,
     },
 }
 

@@ -39,7 +39,10 @@ mod tests {
                 },
             },
         };
-        use halo_farm::msg::{ExecuteMsg as FarmExecuteMsg, QueryMsg as FarmQueryMsg};
+        use halo_farm::msg::{
+            ExecuteMsg as FarmExecuteMsg, InstantiateMsg as FarmInstantiateMsg,
+            QueryMsg as FarmQueryMsg,
+        };
 
         #[test]
         fn proper_operation() {
@@ -105,14 +108,20 @@ mod tests {
             // get current block time
             let current_block_time = app.block_info().time.seconds();
 
-            // create farm contract by factory contract
-            let create_farm_msg = crate::msg::ExecuteMsg::CreateFarm {
+            // create farm binary message
+            let create_farm_binary_msg = to_binary(&FarmInstantiateMsg {
                 staked_token: Addr::unchecked(lp_token_contract.clone()),
                 reward_token: native_token_info.clone(),
                 start_time: current_block_time,
                 end_time: current_block_time + 100,
                 phases_limit_per_user: None,
+                farm_owner: Addr::unchecked(ADMIN.to_string()),
                 whitelist: Addr::unchecked(ADMIN.to_string()),
+            });
+
+            // Create farm message
+            let create_farm_msg = crate::msg::ExecuteMsg::CreateFarm {
+                create_farm_msg: create_farm_binary_msg.unwrap(),
             };
 
             // Execute create farm
@@ -559,14 +568,20 @@ mod tests {
                 denom: NATIVE_DENOM_2.to_string(),
             };
 
-            // create farm contract by factory contract
-            let create_farm_msg = crate::msg::ExecuteMsg::CreateFarm {
+            // create farm binary message
+            let create_farm_binary_msg = to_binary(&FarmInstantiateMsg {
                 staked_token: Addr::unchecked(lp_token_contract.clone()),
                 reward_token: native_token_info.clone(),
                 start_time: current_block_time,
                 end_time: current_block_time + 100,
                 phases_limit_per_user: None,
+                farm_owner: Addr::unchecked(ADMIN.to_string()),
                 whitelist: Addr::unchecked(ADMIN.to_string()),
+            });
+
+            // Create farm message
+            let create_farm_msg = crate::msg::ExecuteMsg::CreateFarm {
+                create_farm_msg: create_farm_binary_msg.unwrap(),
             };
 
             // Execute create farm
@@ -2254,14 +2269,20 @@ mod tests {
                 contract_addr: Addr::unchecked(reward_token_contract.clone()),
             };
 
-            // create farm contract by factory contract
-            let create_farm_msg = crate::msg::ExecuteMsg::CreateFarm {
+            // create farm binary message
+            let create_farm_binary_msg = to_binary(&FarmInstantiateMsg {
                 staked_token: Addr::unchecked(lp_token_contract.clone()),
                 reward_token: reward_token_info.clone(),
                 start_time: current_block_time,
                 end_time: current_block_time + 100,
                 phases_limit_per_user: None,
+                farm_owner: Addr::unchecked(ADMIN.to_string()),
                 whitelist: Addr::unchecked(ADMIN.to_string()),
+            });
+
+            // Create farm message
+            let create_farm_msg = crate::msg::ExecuteMsg::CreateFarm {
+                create_farm_msg: create_farm_binary_msg.unwrap(),
             };
 
             // Execute create farm by ADMIN
@@ -3272,14 +3293,20 @@ mod tests {
                 denom: NATIVE_DENOM_2.to_string(),
             };
 
-            // create farm contract by factory contract
-            let create_farm_msg = crate::msg::ExecuteMsg::CreateFarm {
+            // create farm binary message
+            let create_farm_binary_msg = to_binary(&FarmInstantiateMsg {
                 staked_token: Addr::unchecked(lp_token_contract.clone()),
                 reward_token: native_token_info.clone(),
                 start_time: current_block_time,
                 end_time: current_block_time + 10,
                 phases_limit_per_user: None,
+                farm_owner: Addr::unchecked(ADMIN.to_string()),
                 whitelist: Addr::unchecked(ADMIN.to_string()),
+            });
+
+            // Create farm message
+            let create_farm_msg = crate::msg::ExecuteMsg::CreateFarm {
+                create_farm_msg: create_farm_binary_msg.unwrap(),
             };
 
             // Execute create farm
@@ -4100,14 +4127,20 @@ mod tests {
                 denom: NATIVE_DENOM_2.to_string(),
             };
 
-            // create farm contract by factory contract
-            let create_farm_msg = crate::msg::ExecuteMsg::CreateFarm {
+            // create farm binary message
+            let create_farm_binary_msg = to_binary(&FarmInstantiateMsg {
                 staked_token: Addr::unchecked(lp_token_contract.clone()),
                 reward_token: native_token_info,
                 start_time: current_block_time + 5,
                 end_time: current_block_time + 5 + 10,
                 phases_limit_per_user: None,
+                farm_owner: Addr::unchecked(ADMIN.to_string()),
                 whitelist: Addr::unchecked(ADMIN.to_string()),
+            });
+
+            // Create farm message
+            let create_farm_msg = crate::msg::ExecuteMsg::CreateFarm {
+                create_farm_msg: create_farm_binary_msg.unwrap(),
             };
 
             // Execute create farm
