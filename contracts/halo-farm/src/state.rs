@@ -46,8 +46,8 @@ pub enum TokenInfo {
 impl fmt::Display for TokenInfo {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            TokenInfo::NativeToken { denom } => write!(f, "{}", denom),
-            TokenInfo::Token { contract_addr } => write!(f, "{}", contract_addr),
+            TokenInfo::NativeToken { denom } => write!(f, "{denom}"),
+            TokenInfo::Token { contract_addr } => write!(f, "{contract_addr}"),
         }
     }
 }
