@@ -12,7 +12,7 @@ workflows:
 jobs:
   halo-farm:
     docker:
-      - image: rust:1.66.0
+      - image: rust:1.67.0
     working_directory: ~/project/contracts/halo-farm
     steps:
       - checkout:
@@ -22,7 +22,7 @@ jobs:
           command: rustc --version; cargo --version; rustup --version
       - restore_cache:
           keys:
-            - cargocache-halo-farm-rust:1.66.0-{{ checksum "~/project/Cargo.lock" }}
+            - cargocache-halo-farm-rust:1.67.0-{{ checksum "~/project/Cargo.lock" }}
       - run:
           name: Unit Tests
           environment:
@@ -44,11 +44,11 @@ jobs:
           paths:
             - /usr/local/cargo/registry
             - target
-          key: cargocache-halo-farm-rust:1.66.0-{{ checksum "~/project/Cargo.lock" }}
+          key: cargocache-halo-farm-rust:1.67.0-{{ checksum "~/project/Cargo.lock" }}
 
   halo-farm-factory:
     docker:
-      - image: rust:1.66.0
+      - image: rust:1.67.0
     working_directory: ~/project/contracts/halo-farm-factory
     steps:
       - checkout:
@@ -58,7 +58,7 @@ jobs:
           command: rustc --version; cargo --version; rustup --version
       - restore_cache:
           keys:
-            - cargocache-halo-farm-factory-rust:1.66.0-{{ checksum "~/project/Cargo.lock" }}
+            - cargocache-halo-farm-factory-rust:1.67.0-{{ checksum "~/project/Cargo.lock" }}
       - run:
           name: Unit Tests
           environment:
@@ -80,11 +80,11 @@ jobs:
           paths:
             - /usr/local/cargo/registry
             - target
-          key: cargocache-halo-farm-factory-rust:1.66.0-{{ checksum "~/project/Cargo.lock" }}
+          key: cargocache-halo-farm-factory-rust:1.67.0-{{ checksum "~/project/Cargo.lock" }}
 
   lint:
     docker:
-      - image: rust:1.66.0
+      - image: rust:1.67.0
     steps:
       - checkout
       - run:
@@ -92,7 +92,7 @@ jobs:
           command: rustc --version; cargo --version; rustup --version; rustup target list --installed
       - restore_cache:
           keys:
-            - cargocache-v2-lint-rust:1.66.0-{{ checksum "Cargo.lock" }}
+            - cargocache-v2-lint-rust:1.67.0-{{ checksum "Cargo.lock" }}
       - run:
           name: Add rustfmt component
           command: rustup component add rustfmt
@@ -111,7 +111,7 @@ jobs:
             - target/debug/.fingerprint
             - target/debug/build
             - target/debug/deps
-          key: cargocache-v2-lint-rust:1.66.0-{{ checksum "Cargo.lock" }}
+          key: cargocache-v2-lint-rust:1.67.0-{{ checksum "Cargo.lock" }}
 
   coverage:
     machine: true
@@ -127,7 +127,7 @@ jobs:
   # We also sanity-check the resultant wasm files.
   wasm-build:
     docker:
-      - image: rust:1.66.0
+      - image: rust:1.67.0
     steps:
       - checkout:
           path: ~/project
@@ -136,7 +136,7 @@ jobs:
           command: rustc --version; cargo --version; rustup --version
       - restore_cache:
           keys:
-            - cargocache-wasm-rust:1.66.0-{{ checksum "~/project/Cargo.lock" }}
+            - cargocache-wasm-rust:1.67.0-{{ checksum "~/project/Cargo.lock" }}
       - run:
           name: Add wasm32 target
           command: rustup target add wasm32-unknown-unknown
@@ -155,7 +155,7 @@ jobs:
       - save_cache:
           paths:
             - /usr/local/cargo/registry
-          key: cargocache-wasm-rust:1.66.0-{{ checksum "~/project/Cargo.lock" }}
+          key: cargocache-wasm-rust:1.67.0-{{ checksum "~/project/Cargo.lock" }}
       - run:
           name: Check wasm contracts
           command: cosmwasm-check ./target/wasm32-unknown-unknown/release/*.wasm
