@@ -4,8 +4,8 @@ use crate::{
     state::{Config, FarmInfo, PhaseInfo, StakerInfo, TokenInfo, CONFIG, FARM_INFO, STAKERS_INFO},
 };
 use cosmwasm_std::{
-    coin, has_coins, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Env, MessageInfo,
-    Response, StdError, Uint128, wasm_execute,
+    coin, has_coins, wasm_execute, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Env,
+    MessageInfo, Response, StdError, Uint128,
 };
 use cw20::Cw20ExecuteMsg;
 
@@ -153,7 +153,9 @@ pub fn execute_remove_phase(
                 res = res.add_message(CosmosMsg::Bank(BankMsg::Send {
                     to_address: whitelist.to_string(),
                     amount: vec![coin(
-                        farm_info.phases_info[phase_index as usize].reward_balance.into(),
+                        farm_info.phases_info[phase_index as usize]
+                            .reward_balance
+                            .into(),
                         denom,
                     )],
                 }))
@@ -471,7 +473,8 @@ pub fn execute_harvest(
         }
     };
 
-    let res = res.add_attribute("method", "harvest")
+    let res = res
+        .add_attribute("method", "harvest")
         .add_attribute("reward_amount", reward_amount.to_string())
         .add_attribute("current_time", current_time.to_string());
 
