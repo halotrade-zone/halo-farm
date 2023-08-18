@@ -35,7 +35,7 @@ Where:
 }
 ```
 Where:
-- `create_farm_msg`: The message that will be sent to the farm contract to create a new farm. The message must be base64 encoded. For more information about the message, please refer to the [halo-farm](../halo-farm/README.md) contract.
+- `create_farm_msg`: The message that will be sent to the farm contract to create a new farm. The message must be base64 encoded. For more information about the message, please refer to the InstantiateMsg of [halo-farm](../halo-farm/README.md) contract.
 
 ## QueryMsg
 ### Config
@@ -69,5 +69,3 @@ Returns the information of the farm with the given id.
 ```
 #[returns(Vec<FactoryFarmInfo>)]
 Returns the list of farms. The list is paginated and the `start_after` field is used to determine the starting point of the list. The `limit` field is used to determine the number of farms to return.
-
-
