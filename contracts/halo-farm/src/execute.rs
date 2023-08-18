@@ -5,7 +5,7 @@ use crate::{
 };
 use cosmwasm_std::{
     coin, has_coins, to_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Env, MessageInfo,
-    Response, StdError, SubMsg, Uint128, WasmMsg,
+    Response, StdError, SubMsg, Uint128, WasmMsg, coins,
 };
 use cw20::Cw20ExecuteMsg;
 
@@ -148,12 +148,12 @@ pub fn execute_remove_phase(
             })),
             TokenInfo::NativeToken { denom } => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
                 to_address: whitelist.to_string(),
-                amount: vec![coin(
+                amount: coins(
                     farm_info.phases_info[phase_index as usize]
                         .reward_balance
                         .into(),
                     denom,
-                )],
+                ),
             })),
         };
         res = res.add_submessage(transfer_reward).add_attribute(
@@ -274,7 +274,7 @@ pub fn execute_deposit(
             })),
             TokenInfo::NativeToken { denom } => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
                 to_address: info.sender.to_string(),
-                amount: vec![coin(reward_amount.into(), denom)],
+                amount: coins(reward_amount.into(), denom),
             })),
         };
         res = res.add_submessage(transfer_reward);
@@ -358,7 +358,7 @@ pub fn execute_withdraw(
             })),
             TokenInfo::NativeToken { denom } => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
                 to_address: info.sender.to_string(),
-                amount: vec![coin(reward_amount.into(), denom)],
+                amount: coins(reward_amount.into(), denom),
             })),
         };
         res = res.add_submessage(transfer_reward);
@@ -450,7 +450,7 @@ pub fn execute_harvest(
         })),
         TokenInfo::NativeToken { denom } => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
             to_address: info.sender.to_string(),
-            amount: vec![coin(reward_amount.into(), denom)],
+            amount: coins(reward_amount.into(), denom),
         })),
     };
 

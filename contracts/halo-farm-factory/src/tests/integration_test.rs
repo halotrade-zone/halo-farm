@@ -3231,7 +3231,7 @@ mod tests {
         // ADMIN pending reward 2s: (2000 / (1000 + 500 + 1000) * 2 * 100) = 160 NATIVE_2 (Re-check)
         // ----- Phase 2 -----
         // Increase 1s (26 seconds passed)
-        // Extend end time by ADMIN more 10 seconds with start_time at 29 seconds
+        // Add new phase by ADMIN more 10 seconds with start_time at 29 seconds
         // Increase 1s (27 seconds passed)
         // Add 1000 NATIVE_2 reward balance amount to farm contract by ADMIN in phase 2
         // Increase 1s (28 seconds passed)
@@ -3244,8 +3244,14 @@ mod tests {
         // -> Reward balance 29s: 160 NATIVE_2
         //                    1s: (2000 / (1000 + 500 + 1000) * 1 * 100) = 80 NATIVE_2
         // -> Reward balance 30s: 240 NATIVE_2
+        // Increase 10s (40 seconds passed) -> Phase 2 ends
+        // ----- Phase 3 -----
+        // Add new phase by ADMIN more 2 seconds with start_time at 42 seconds
+        // Add 10 NATIVE_2 reward balance amount to farm contract by ADMIN in phase 3
+        // Increase 1s (41 seconds passed)
+        // Remove phase 3 by ADMIN
         #[test]
-        fn proper_harvest_with_multipe_phases() {
+        fn proper_harvest_with_multiple_phases() {
             // get integration test app and contracts
             let (mut app, contracts) = instantiate_contracts();
             // ADMIN already has 1_000_000 NATIVE_DENOM_2 as initial balance in instantiate_contracts()
@@ -4007,6 +4013,103 @@ mod tests {
             assert_eq!(
                 balance.amount.amount,
                 Uint128::from(998_400_000_000u128 + pending_reward_admin_30s.amount.u128())
+            );
+
+            // Increase 10 second to make 40 seconds passed -> Phase 2 ends
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(10),
+                height: app.block_info().height + 10,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // Add new phase 3 with 10 seconds and start time at 42 seconds
+            let add_phase_msg = FarmExecuteMsg::AddPhase {
+                new_start_time: 1571797461, // 42 seconds
+                new_end_time: 1571797461 + 10,
+                whitelist: Addr::unchecked(ADMIN.to_string()),
+            };
+
+            // Execute add phase by ADMIN
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked("contract3"),
+                &add_phase_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // Add 10 NATIVE_2 to reward balance
+            let add_reward_balance_msg = FarmExecuteMsg::AddRewardBalance {
+                phase_index: 3u64,
+                amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
+            };
+
+            // Execute add reward balance
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked("contract3"),
+                &add_reward_balance_msg,
+                &[Coin {
+                    amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
+                    denom: NATIVE_DENOM_2.to_string(),
+                }],
+            );
+
+            assert!(response.is_ok());
+
+            // query balance of ADMIN in native token
+            let req: QueryRequest<BankQuery> = QueryRequest::Bank(BankQuery::Balance {
+                address: ADMIN.to_string(),
+                denom: NATIVE_DENOM_2.to_string(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let balance: BankBalanceResponse = from_binary(&res).unwrap();
+
+            assert_eq!(
+                balance.amount.amount,
+                Uint128::from(
+                    998_400_000_000u128 + pending_reward_admin_30s.amount.u128()
+                        - ADD_1000_NATIVE_BALANCE_2
+                )
+            );
+
+            // Increase 1 second to make 41 seconds passed
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // Remove phase 3 by ADMIN
+            let remove_phase_msg = FarmExecuteMsg::RemovePhase {
+                phase_index: 3u64,
+            };
+
+            // Execute remove phase by ADMIN
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked("contract3"),
+                &remove_phase_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // query balance of ADMIN in native token
+            let req: QueryRequest<BankQuery> = QueryRequest::Bank(BankQuery::Balance {
+                address: ADMIN.to_string(),
+                denom: NATIVE_DENOM_2.to_string(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let balance: BankBalanceResponse = from_binary(&res).unwrap();
+
+            assert_eq!(
+                balance.amount.amount,
+                Uint128::from(
+                    998_400_000_000u128 + pending_reward_admin_30s.amount.u128())
             );
         }
 
