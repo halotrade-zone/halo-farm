@@ -101,73 +101,6 @@ pub fn execute_add_reward_balance(
         .add_attribute("amount", amount.to_string()))
 }
 
-// pub fn execute_remove_reward_balance(
-//     deps: DepsMut,
-//     env: Env,
-//     info: MessageInfo,
-//     phase_index: u64,
-// ) -> Result<Response, ContractError> {
-//     let current_time = env.block.time;
-//     // Get phase info in farm info
-//     let phase_info = FARM_INFO.load(deps.storage)?.phases_info[phase_index as usize].clone();
-//     let reward_token_balance: Uint128;
-//     // Check the message sender is the whitelisted address
-//     if !phase_info.whitelist.contains(&info.sender) {
-//         return Err(ContractError::Unauthorized {});
-//     }
-
-//     // Only can remove reward balance when the phase is inactive
-//     if current_time.seconds() < phase_info.start_time || current_time.seconds() > phase_info.end_time {
-//         return Err(ContractError::Std(StdError::generic_err(
-//             "Can not remove reward balance when the phase is active",
-//         )));
-//     }
-
-//     // Transfer all remaining reward token balance to the sender
-//     let transfer_reward = match phase_info.reward_token {
-//         TokenInfo::Token { contract_addr } => {
-//             // Query reward token balance of the phase
-//             reward_token_balance = query_token_balance(&deps.querier, contract_addr.clone(), env.contract.address.clone())?;
-//             // Check if the reward token balance of the phase is greater than 0
-//             if reward_token_balance > Uint128::zero() {
-//                 SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-//                     contract_addr,
-//                     msg: to_binary(&Cw20ExecuteMsg::Transfer {
-//                         recipient: info.sender.to_string(),
-//                         amount: reward_token_balance,
-//                     })?,
-//                     funds: vec![],
-//                 }))
-//             } else {
-//                 return Err(ContractError::Std(StdError::generic_err(
-//                     "InvalidZeroAmount: Reward token balance is 0",
-//                 )));
-//             }
-//         }
-//         TokenInfo::NativeToken { denom } =>{
-//             // Query reward token balance of the phase
-//             reward_token_balance = query_balance(&deps.querier, env.contract.address.clone(), denom.clone())?;
-//             // Check if the reward token balance of the phase is greater than 0
-//             if reward_token_balance > Uint128::zero() {
-//                 SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-//                     to_address: info.sender.to_string(),
-//                     amount: vec![coin(reward_token_balance.into(), denom)],
-//                 }))
-//             } else {
-//                 return Err(ContractError::Std(StdError::generic_err(
-//                     "InvalidZeroAmount: Reward token balance is 0",
-//                 )));
-//             }
-//         }
-//     };
-
-//     Ok(Response::new().add_submessage(transfer_reward)
-//         .add_attribute("method", "remove_reward_balance")
-//         .add_attribute("phase_index", phase_index.to_string())
-//         .add_attribute("reward_token_balance", reward_token_balance.to_string())
-//     )
-// }
-
 pub fn execute_remove_phase(
     deps: DepsMut,
     info: MessageInfo,
@@ -539,27 +472,15 @@ pub fn execute_add_phase(
     whitelist: Addr,
 ) -> Result<Response, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
-
     // Check if the message sender is the owner of the contract
     if config.farm_owner != info.sender {
         return Err(ContractError::Std(StdError::generic_err(
             "Unauthorized: Only owner can add new phase",
         )));
     }
-    // Not allow new start time is greater than new end time
-    if new_start_time >= new_end_time {
-        return Err(ContractError::Std(StdError::generic_err(
-            "New start time is greater than new end time",
-        )));
-    }
-    // Get current time
-    let current_time = env.block.time.seconds();
-    // Not allow to add new phase when current time is greater than new start time
-    if current_time > new_start_time {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Current time is greater than new start time",
-        )));
-    }
+
+    // Validate time range
+    validate_time_range(env, new_start_time, new_end_time)?;
 
     let mut farm_info: FarmInfo = FARM_INFO.load(deps.storage)?;
     let phases_length = farm_info.phases_info.len();
@@ -673,4 +594,27 @@ pub fn execute_activate_phase(
             &farm_info.current_phase_index.to_string(),
         ),
     ]))
+}
+
+// validate time when creating new farm
+pub fn validate_time_range(
+    env: Env,
+    start_time: u64,
+    end_time: u64,
+) -> Result<(), ContractError> {
+    // Not allow start time is greater than end time
+    if start_time >= end_time {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Start time is greater than end time",
+        )));
+    }
+
+    // Not allow to create a farm when current time is greater than start time
+    if env.block.time.seconds() > start_time {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Current time is greater than start time",
+        )));
+    }
+
+    Ok(())
 }

@@ -16,7 +16,7 @@ use crate::{
     error::ContractError,
     execute::{
         execute_activate_phase, execute_add_phase, execute_add_reward_balance, execute_deposit,
-        execute_harvest, execute_remove_phase, execute_withdraw,
+        execute_harvest, execute_remove_phase, execute_withdraw, validate_time_range,
     },
     msg::{ExecuteMsg, InstantiateMsg, QueryMsg},
     query::{
@@ -33,22 +33,8 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     set_contract_version(deps.storage, CONTRACT_NAME, CONTRACT_VERSION)?;
-    // get current time
-    let current_time = env.block.time.seconds();
-
-    // Not allow start time is greater than end time
-    if msg.start_time >= msg.end_time {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Start time is greater than end time",
-        )));
-    }
-
-    // Not allow to create a farm when current time is greater than start time
-    if current_time > msg.start_time {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Current time is greater than start time",
-        )));
-    }
+    // Validate time range
+    validate_time_range(env, msg.start_time, msg.end_time)?;
 
     // Validate staked token format
     if deps.api.addr_validate(msg.staked_token.as_ref()).is_err() {
