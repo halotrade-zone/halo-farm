@@ -15,29 +15,30 @@ mod tests {
     mod execute_proper_operation {
         use std::str::FromStr;
 
+        use crate::state::{
+            FarmInfo, PendingRewardResponse, PhaseInfo, StakerInfoResponse, TokenInfo,
+        };
         use cosmwasm_std::{
             from_binary, to_binary, Addr, BalanceResponse as BankBalanceResponse, BankQuery,
             BlockInfo, Coin, Decimal, Querier, QueryRequest, Uint128, WasmQuery,
         };
         use cw20::{BalanceResponse, Cw20ExecuteMsg};
         use cw_multi_test::Executor;
-        use crate::state::{
-            FarmInfo, PendingRewardResponse, PhaseInfo, StakerInfoResponse, TokenInfo,
-        };
 
-        use crate::tests::{
-                env_setup::env::{
-                    instantiate_contracts, ADMIN, NATIVE_BALANCE_2, NATIVE_DENOM_2, USER_1, halo_farm_contract_template,
-                },
-                integration_test::tests::{
-                    ADD_1000_NATIVE_BALANCE_2, INIT_1000_000_NATIVE_BALANCE_2,
-                    MOCK_1000_HALO_LP_TOKEN_AMOUNT, MOCK_1000_HALO_REWARD_TOKEN_AMOUNT,
-                    MOCK_150_HALO_LP_TOKEN_AMOUNT,
-                },
-            };
         use crate::msg::{
             ExecuteMsg as FarmExecuteMsg, InstantiateMsg as FarmInstantiateMsg,
             QueryMsg as FarmQueryMsg,
+        };
+        use crate::tests::{
+            env_setup::env::{
+                halo_farm_contract_template, instantiate_contracts, ADMIN, NATIVE_BALANCE_2,
+                NATIVE_DENOM_2, USER_1,
+            },
+            integration_test::tests::{
+                ADD_1000_NATIVE_BALANCE_2, INIT_1000_000_NATIVE_BALANCE_2,
+                MOCK_1000_HALO_LP_TOKEN_AMOUNT, MOCK_1000_HALO_REWARD_TOKEN_AMOUNT,
+                MOCK_150_HALO_LP_TOKEN_AMOUNT,
+            },
         };
 
         #[test]
@@ -45,7 +46,7 @@ mod tests {
             // get integration test app and contracts
             let (mut app, contracts) = instantiate_contracts();
             // get farm factory contract code id
-            let halo_contract_code_id =app.store_code(halo_farm_contract_template());
+            let halo_contract_code_id = app.store_code(halo_farm_contract_template());
             // query balance of ADMIN in native token
             let req: QueryRequest<BankQuery> = QueryRequest::Bank(BankQuery::Balance {
                 address: ADMIN.to_string(),
@@ -471,7 +472,7 @@ mod tests {
             // get integration test app and contracts
             let (mut app, contracts) = instantiate_contracts();
             // get farm factory contract code id
-            let halo_contract_code_id =app.store_code(halo_farm_contract_template());
+            let halo_contract_code_id = app.store_code(halo_farm_contract_template());
             // ADMIN already has 1_000_000 NATIVE_DENOM_2 as initial balance in instantiate_contracts()
             // get halo lp token contract
             let lp_token_contract = &contracts[0].contract_addr;
@@ -2150,7 +2151,7 @@ mod tests {
             // get integration test app and contracts
             let (mut app, contracts) = instantiate_contracts();
             // get farm factory contract code id
-            let halo_contract_code_id =app.store_code(halo_farm_contract_template());
+            let halo_contract_code_id = app.store_code(halo_farm_contract_template());
             // ADMIN already has 1_000_000 NATIVE_DENOM_2 as initial balance in instantiate_contracts()
             // get halo lp token contract
             let lp_token_contract = &contracts[0].contract_addr;
@@ -2239,10 +2240,7 @@ mod tests {
             // query farm contract address
             let farm_info: FarmInfo = app
                 .wrap()
-                .query_wasm_smart(
-                    halo_farm_contract_addr.clone(),
-                    &FarmQueryMsg::Farm {},
-                )
+                .query_wasm_smart(halo_farm_contract_addr.clone(), &FarmQueryMsg::Farm {})
                 .unwrap();
 
             // assert phases info
@@ -2743,8 +2741,11 @@ mod tests {
 
             // Extend end time by ADMIN more 10 seconds
             let extend_end_time_msg = FarmExecuteMsg::AddPhase {
-                new_start_time: farm_info.phases_info[farm_info.current_phase_index as usize].end_time,
-                new_end_time: farm_info.phases_info[farm_info.current_phase_index as usize].end_time + 10,
+                new_start_time: farm_info.phases_info[farm_info.current_phase_index as usize]
+                    .end_time,
+                new_end_time: farm_info.phases_info[farm_info.current_phase_index as usize]
+                    .end_time
+                    + 10,
                 whitelist: Addr::unchecked(ADMIN.to_string()),
             };
 
@@ -3037,8 +3038,12 @@ mod tests {
 
             // Extend end time by ADMIN more 10 seconds
             let extend_end_time_msg = FarmExecuteMsg::AddPhase {
-                new_start_time: farm_info.phases_info[farm_info.current_phase_index as usize].end_time + 10,
-                new_end_time: farm_info.phases_info[farm_info.current_phase_index as usize].end_time + 20,
+                new_start_time: farm_info.phases_info[farm_info.current_phase_index as usize]
+                    .end_time
+                    + 10,
+                new_end_time: farm_info.phases_info[farm_info.current_phase_index as usize]
+                    .end_time
+                    + 20,
                 whitelist: Addr::unchecked(ADMIN.to_string()),
             };
 
@@ -3204,7 +3209,7 @@ mod tests {
             // get integration test app and contracts
             let (mut app, contracts) = instantiate_contracts();
             // get farm factory contract code id
-            let halo_contract_code_id =app.store_code(halo_farm_contract_template());
+            let halo_contract_code_id = app.store_code(halo_farm_contract_template());
             // ADMIN already has 1_000_000 NATIVE_DENOM_2 as initial balance in instantiate_contracts()
             // get halo lp token contract
             let lp_token_contract = &contracts[0].contract_addr;
@@ -4129,7 +4134,7 @@ mod tests {
             // get integration test app and contracts
             let (mut app, contracts) = instantiate_contracts();
             // get farm factory contract code id
-            let halo_contract_code_id =app.store_code(halo_farm_contract_template());
+            let halo_contract_code_id = app.store_code(halo_farm_contract_template());
             // ADMIN already has 1_000_000 NATIVE_DENOM_2 as initial balance in instantiate_contracts()
             // get halo lp token contract
             let lp_token_contract = &contracts[0].contract_addr;

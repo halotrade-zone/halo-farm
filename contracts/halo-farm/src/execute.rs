@@ -615,11 +615,7 @@ pub fn execute_activate_phase(
 }
 
 // validate time when creating new farm
-pub fn validate_time_range(
-    env: Env,
-    start_time: u64,
-    end_time: u64,
-) -> Result<(), ContractError> {
+pub fn validate_time_range(env: Env, start_time: u64, end_time: u64) -> Result<(), ContractError> {
     // Not allow start time is greater than end time
     if start_time >= end_time {
         return Err(ContractError::Std(StdError::generic_err(
