@@ -4083,9 +4083,7 @@ mod tests {
             });
 
             // Remove phase 3 by ADMIN
-            let remove_phase_msg = FarmExecuteMsg::RemovePhase {
-                phase_index: 3u64,
-            };
+            let remove_phase_msg = FarmExecuteMsg::RemovePhase { phase_index: 3u64 };
 
             // Execute remove phase by ADMIN
             let response = app.execute_contract(
@@ -4108,8 +4106,7 @@ mod tests {
 
             assert_eq!(
                 balance.amount.amount,
-                Uint128::from(
-                    998_400_000_000u128 + pending_reward_admin_30s.amount.u128())
+                Uint128::from(998_400_000_000u128 + pending_reward_admin_30s.amount.u128())
             );
         }
 
