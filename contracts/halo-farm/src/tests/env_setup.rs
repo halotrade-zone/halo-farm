@@ -10,7 +10,7 @@ pub mod env {
 
     use cw20_base::msg::InstantiateMsg as Cw20InstantiateMsg;
 
-    use halo_farm::contract::{
+    use crate::contract::{
         execute as HaloFarmExecute, instantiate as HaloFarmInstantiate, query as HaloFarmQuery,
     };
 

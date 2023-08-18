@@ -23,7 +23,6 @@ optimize = """docker run --rm -v "$(pwd)":/code \
 
 [workspace.dependencies]
 halo-farm         = { path = "./contracts/halo-farm", features = ["library"]}
-halo-farm-factory = { path = "./contracts/halo-farm-factory", features = ["library"]}
 bigint            = "4.4.3"
 cosmwasm-schema   = "1.1.8"
 cosmwasm-std      = "1.1.8"

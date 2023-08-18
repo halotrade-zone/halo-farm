@@ -5,3 +5,6 @@ pub mod formulas;
 pub mod msg;
 pub mod query;
 pub mod state;
+
+#[cfg(test)]
+mod tests;

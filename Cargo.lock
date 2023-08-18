@@ -462,6 +462,7 @@ dependencies = [
  "cw-utils",
  "cw2",
  "cw20",
+ "cw20-base",
  "getrandom",
  "schemars",
  "serde",

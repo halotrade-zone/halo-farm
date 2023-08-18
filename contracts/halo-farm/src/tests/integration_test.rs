@@ -21,7 +21,7 @@ mod tests {
         };
         use cw20::{BalanceResponse, Cw20ExecuteMsg};
         use cw_multi_test::Executor;
-        use halo_farm::state::{
+        use crate::state::{
             FarmInfo, PendingRewardResponse, PhaseInfo, StakerInfoResponse, TokenInfo,
         };
 
@@ -35,7 +35,7 @@ mod tests {
                     MOCK_150_HALO_LP_TOKEN_AMOUNT,
                 },
             };
-        use halo_farm::msg::{
+        use crate::msg::{
             ExecuteMsg as FarmExecuteMsg, InstantiateMsg as FarmInstantiateMsg,
             QueryMsg as FarmQueryMsg,
         };
