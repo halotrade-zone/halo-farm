@@ -9,7 +9,7 @@ mod tests {
     const ADD_1000_NATIVE_BALANCE_2: u128 = 1_000_000_000u128;
 
     // create a lp token contract
-    // create farm contract by factory contract
+    // create farm contract
     // deposit some lp token to the farm contract
     // withdraw some lp token from the farm contract
     mod execute_proper_operation {
@@ -45,8 +45,8 @@ mod tests {
         fn proper_operation() {
             // get integration test app and contracts
             let (mut app, contracts) = instantiate_contracts();
-            // get farm factory contract code id
-            let halo_contract_code_id = app.store_code(halo_farm_contract_template());
+            // get farm contract code id
+            let halo_farm_contract_code_id = app.store_code(halo_farm_contract_template());
             // query balance of ADMIN in native token
             let req: QueryRequest<BankQuery> = QueryRequest::Bank(BankQuery::Balance {
                 address: ADMIN.to_string(),
@@ -118,7 +118,7 @@ mod tests {
             // instantiate contract
             let halo_farm_contract_addr = app
                 .instantiate_contract(
-                    halo_contract_code_id,
+                    halo_farm_contract_code_id,
                     Addr::unchecked(ADMIN),
                     &halo_farm_instantiate_msg,
                     &[],
@@ -383,7 +383,7 @@ mod tests {
             );
         }
 
-        // Create farm contract by factory contract
+        // Create farm contract
         // ----- Phase 0 -----
         // Add 1000 NATIVE_2 reward balance amount to farm contract by ADMIN in phase 0
         // with end time 100 seconds -> 10 NATIVE_2 per second
@@ -471,8 +471,8 @@ mod tests {
         fn proper_operation_with_multiple_users() {
             // get integration test app and contracts
             let (mut app, contracts) = instantiate_contracts();
-            // get farm factory contract code id
-            let halo_contract_code_id = app.store_code(halo_farm_contract_template());
+            // get farm contract code id
+            let halo_farm_contract_code_id = app.store_code(halo_farm_contract_template());
             // ADMIN already has 1_000_000 NATIVE_DENOM_2 as initial balance in instantiate_contracts()
             // get halo lp token contract
             let lp_token_contract = &contracts[0].contract_addr;
@@ -530,7 +530,7 @@ mod tests {
             // instantiate contract
             let halo_farm_contract_addr = app
                 .instantiate_contract(
-                    halo_contract_code_id,
+                    halo_farm_contract_code_id,
                     Addr::unchecked(ADMIN),
                     &halo_farm_instantiate_msg,
                     &[],
@@ -2103,7 +2103,7 @@ mod tests {
         // Mint 1000 HALO LP token for ADMIN
         // Mint 500 HALO LP token for USER_1
         // Mint 1000 HALO REWARD token for ADMIN
-        // Create farm contract by factory contract
+        // Create farm contract
         // Add 1000 HALO REWARD token reward balance to farm contract by ADMIN
         // with end time 100 seconds
         // -> 10 HALO REWARD token per second
@@ -2150,8 +2150,8 @@ mod tests {
         fn proper_operation_with_reward_token_decimal_18() {
             // get integration test app and contracts
             let (mut app, contracts) = instantiate_contracts();
-            // get farm factory contract code id
-            let halo_contract_code_id = app.store_code(halo_farm_contract_template());
+            // get farm contract code id
+            let halo_farm_contract_code_id = app.store_code(halo_farm_contract_template());
             // ADMIN already has 1_000_000 NATIVE_DENOM_2 as initial balance in instantiate_contracts()
             // get halo lp token contract
             let lp_token_contract = &contracts[0].contract_addr;
@@ -2228,7 +2228,7 @@ mod tests {
             // instantiate contract
             let halo_farm_contract_addr = app
                 .instantiate_contract(
-                    halo_contract_code_id,
+                    halo_farm_contract_code_id,
                     Addr::unchecked(ADMIN),
                     &halo_farm_instantiate_msg,
                     &[],
@@ -3208,8 +3208,8 @@ mod tests {
         fn proper_harvest_with_multiple_phases() {
             // get integration test app and contracts
             let (mut app, contracts) = instantiate_contracts();
-            // get farm factory contract code id
-            let halo_contract_code_id = app.store_code(halo_farm_contract_template());
+            // get farm contract code id
+            let halo_farm_contract_code_id = app.store_code(halo_farm_contract_template());
             // ADMIN already has 1_000_000 NATIVE_DENOM_2 as initial balance in instantiate_contracts()
             // get halo lp token contract
             let lp_token_contract = &contracts[0].contract_addr;
@@ -3267,7 +3267,7 @@ mod tests {
             // instantiate contract
             let halo_farm_contract_addr = app
                 .instantiate_contract(
-                    halo_contract_code_id,
+                    halo_farm_contract_code_id,
                     Addr::unchecked(ADMIN),
                     &halo_farm_instantiate_msg,
                     &[],
@@ -4133,8 +4133,8 @@ mod tests {
         fn proper_deposit_before_start_time() {
             // get integration test app and contracts
             let (mut app, contracts) = instantiate_contracts();
-            // get farm factory contract code id
-            let halo_contract_code_id = app.store_code(halo_farm_contract_template());
+            // get farm contract code id
+            let halo_farm_contract_code_id = app.store_code(halo_farm_contract_template());
             // ADMIN already has 1_000_000 NATIVE_DENOM_2 as initial balance in instantiate_contracts()
             // get halo lp token contract
             let lp_token_contract = &contracts[0].contract_addr;
@@ -4192,7 +4192,7 @@ mod tests {
             // instantiate contract
             let halo_farm_contract_addr = app
                 .instantiate_contract(
-                    halo_contract_code_id,
+                    halo_farm_contract_code_id,
                     Addr::unchecked(ADMIN),
                     &halo_farm_instantiate_msg,
                     &[],
