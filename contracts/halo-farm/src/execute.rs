@@ -4,8 +4,8 @@ use crate::{
     state::{Config, FarmInfo, PhaseInfo, StakerInfo, TokenInfo, CONFIG, FARM_INFO, STAKERS_INFO},
 };
 use cosmwasm_std::{
-    coin, has_coins, to_binary, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Env, MessageInfo,
-    Response, StdError, SubMsg, Uint128, WasmMsg, coins,
+    coins, has_coins, wasm_execute, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Env,
+    MessageInfo, Response, StdError, Uint128,
 };
 use cw20::Cw20ExecuteMsg;
 
@@ -47,16 +47,16 @@ pub fn execute_add_reward_balance(
     //    to the new farm contract address by calling cw20 contract transfer_from method.
     match farm_info.reward_token.clone() {
         TokenInfo::Token { contract_addr } => {
-            let transfer = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: contract_addr.to_string(),
-                msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
+            let transfer = wasm_execute(
+                contract_addr.to_string(),
+                &Cw20ExecuteMsg::TransferFrom {
                     owner: info.sender.to_string(),
                     recipient: env.contract.address.to_string(),
                     amount,
-                })?,
-                funds: vec![],
-            }));
-            res = res.add_submessage(transfer);
+                },
+                vec![],
+            )?;
+            res = res.add_message(transfer);
         }
         TokenInfo::NativeToken { denom } => {
             // If reward token is native token, check the denom and amount of asset is valid
@@ -137,26 +137,31 @@ pub fn execute_remove_phase(
             .whitelist
             .clone();
         // Transfer reward balance to whitelist address
-        let transfer_reward = match farm_info.reward_token.clone() {
-            TokenInfo::Token { contract_addr } => SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: contract_addr.to_string(),
-                msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: whitelist.to_string(),
-                    amount: farm_info.phases_info[phase_index as usize].reward_balance,
-                })?,
-                funds: vec![],
-            })),
-            TokenInfo::NativeToken { denom } => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                to_address: whitelist.to_string(),
-                amount: coins(
-                    farm_info.phases_info[phase_index as usize]
-                        .reward_balance
-                        .into(),
-                    denom,
-                ),
-            })),
+        match farm_info.reward_token.clone() {
+            TokenInfo::Token { contract_addr } => {
+                let transfer_reward = wasm_execute(
+                    contract_addr.to_string(),
+                    &Cw20ExecuteMsg::Transfer {
+                        recipient: whitelist.to_string(),
+                        amount: farm_info.phases_info[phase_index as usize].reward_balance,
+                    },
+                    vec![],
+                )?;
+                res = res.add_message(transfer_reward);
+            }
+            TokenInfo::NativeToken { denom } => {
+                res = res.add_message(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: whitelist.to_string(),
+                    amount: coins(
+                        farm_info.phases_info[phase_index as usize]
+                            .reward_balance
+                            .into(),
+                        denom,
+                    ),
+                }))
+            }
         };
-        res = res.add_submessage(transfer_reward).add_attribute(
+        res = res.add_attribute(
             "transfer_reward",
             farm_info.phases_info[phase_index as usize]
                 .reward_balance
@@ -263,33 +268,37 @@ pub fn execute_deposit(
 
     // If reward amount is greater than 0, transfer reward amount to staker
     if reward_amount > Uint128::zero() {
-        let transfer_reward = match farm_info.reward_token.clone() {
-            TokenInfo::Token { contract_addr } => SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: contract_addr.to_string(),
-                msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: info.sender.to_string(),
-                    amount: reward_amount,
-                })?,
-                funds: vec![],
-            })),
-            TokenInfo::NativeToken { denom } => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                to_address: info.sender.to_string(),
-                amount: coins(reward_amount.into(), denom),
-            })),
+        match farm_info.reward_token.clone() {
+            TokenInfo::Token { contract_addr } => {
+                let transfer_reward = wasm_execute(
+                    contract_addr.to_string(),
+                    &Cw20ExecuteMsg::Transfer {
+                        recipient: info.sender.to_string(),
+                        amount: reward_amount,
+                    },
+                    vec![],
+                )?;
+                res = res.add_message(transfer_reward);
+            }
+            TokenInfo::NativeToken { denom } => {
+                res = res.add_message(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: info.sender.to_string(),
+                    amount: coins(reward_amount.into(), denom),
+                }))
+            }
         };
-        res = res.add_submessage(transfer_reward);
     }
 
     // Deposit staked token to the farm contract
-    let transfer = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: farm_info.staked_token.to_string(),
-        msg: to_binary(&Cw20ExecuteMsg::TransferFrom {
+    let transfer = wasm_execute(
+        farm_info.staked_token.to_string(),
+        &Cw20ExecuteMsg::TransferFrom {
             owner: info.sender.to_string(),
             recipient: env.contract.address.to_string(),
             amount,
-        })?,
-        funds: vec![],
-    }));
+        },
+        vec![],
+    )?;
 
     farm_info.staked_token_balance += amount;
 
@@ -302,7 +311,7 @@ pub fn execute_deposit(
     STAKERS_INFO.save(deps.storage, info.sender, &staker_info)?;
 
     res = res
-        .add_submessage(transfer)
+        .add_message(transfer)
         .add_attribute("current_time", current_time.to_string())
         .add_attribute("method", "deposit")
         .add_attribute("deposit_amount", amount.to_string())
@@ -347,33 +356,36 @@ pub fn execute_withdraw(
 
     // If reward amount is greater than 0, transfer reward token to the sender
     if reward_amount > Uint128::zero() {
-        let transfer_reward = match farm_info.reward_token.clone() {
-            TokenInfo::Token { contract_addr } => SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-                contract_addr: contract_addr.to_string(),
-                msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                    recipient: info.sender.to_string(),
-                    amount: reward_amount,
-                })?,
-                funds: vec![],
-            })),
-            TokenInfo::NativeToken { denom } => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-                to_address: info.sender.to_string(),
-                amount: coins(reward_amount.into(), denom),
-            })),
+        match farm_info.reward_token.clone() {
+            TokenInfo::Token { contract_addr } => {
+                let transfer_reward = wasm_execute(
+                    contract_addr.to_string(),
+                    &Cw20ExecuteMsg::Transfer {
+                        recipient: info.sender.to_string(),
+                        amount: reward_amount,
+                    },
+                    vec![],
+                )?;
+                res = res.add_message(transfer_reward);
+            }
+            TokenInfo::NativeToken { denom } => {
+                res = res.add_message(CosmosMsg::Bank(BankMsg::Send {
+                    to_address: info.sender.to_string(),
+                    amount: coins(reward_amount.into(), denom),
+                }))
+            }
         };
-        res = res.add_submessage(transfer_reward);
     }
 
     // Withdraw staked token from the farm contract by using cw20 transfer message
-    let withdraw = SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-        contract_addr: farm_info.staked_token.to_string(),
-        msg: to_binary(&Cw20ExecuteMsg::Transfer {
+    let withdraw = wasm_execute(
+        farm_info.staked_token.to_string(),
+        &Cw20ExecuteMsg::Transfer {
             recipient: info.sender.to_string(),
             amount,
-        })?,
-        funds: vec![],
-    }));
-
+        },
+        vec![],
+    )?;
     // Decrease staked token balance
     farm_info.staked_token_balance -= amount;
 
@@ -394,7 +406,7 @@ pub fn execute_withdraw(
     FARM_INFO.save(deps.storage, farm_info)?;
 
     res = res
-        .add_submessage(withdraw)
+        .add_message(withdraw)
         .add_attribute("method", "withdraw")
         .add_attribute("withdraw_amount", amount.to_string())
         .add_attribute("harvest_reward_amount", reward_amount.to_string())
@@ -437,25 +449,31 @@ pub fn execute_harvest(
 
     STAKERS_INFO.save(deps.storage, info.sender.clone(), &staker_info)?;
     FARM_INFO.save(deps.storage, farm_info)?;
+    // Init response
+    let mut res = Response::new();
 
     // Transfer reward token to the sender
-    let transfer = match &farm_info.reward_token {
-        TokenInfo::Token { contract_addr } => SubMsg::new(CosmosMsg::Wasm(WasmMsg::Execute {
-            contract_addr: contract_addr.to_string(),
-            msg: to_binary(&Cw20ExecuteMsg::Transfer {
-                recipient: info.sender.to_string(),
-                amount: reward_amount,
-            })?,
-            funds: vec![],
-        })),
-        TokenInfo::NativeToken { denom } => SubMsg::new(CosmosMsg::Bank(BankMsg::Send {
-            to_address: info.sender.to_string(),
-            amount: coins(reward_amount.into(), denom),
-        })),
+    match &farm_info.reward_token {
+        TokenInfo::Token { contract_addr } => {
+            let transfer_reward = wasm_execute(
+                contract_addr.to_string(),
+                &Cw20ExecuteMsg::Transfer {
+                    recipient: info.sender.to_string(),
+                    amount: reward_amount,
+                },
+                vec![],
+            )?;
+            res = res.add_message(transfer_reward);
+        }
+        TokenInfo::NativeToken { denom } => {
+            res = res.add_message(CosmosMsg::Bank(BankMsg::Send {
+                to_address: info.sender.to_string(),
+                amount: coins(reward_amount.into(), denom),
+            }))
+        }
     };
 
-    let res = Response::new()
-        .add_submessage(transfer)
+    let res = res
         .add_attribute("method", "harvest")
         .add_attribute("reward_amount", reward_amount.to_string())
         .add_attribute("current_time", current_time.to_string());
