@@ -1,10 +1,10 @@
-use cosmwasm_std::{Addr, Deps, Env, StdResult, Uint128};
 use crate::{
     execute::claim_all_reward,
     state::{
         FarmInfo, PendingRewardResponse, StakerInfo, StakerInfoResponse, FARM_INFO, STAKERS_INFO,
     },
 };
+use cosmwasm_std::{Addr, Deps, Env, StdResult, Uint128};
 
 pub fn query_farm_info(deps: Deps) -> StdResult<FarmInfo> {
     FARM_INFO.load(deps.storage)
