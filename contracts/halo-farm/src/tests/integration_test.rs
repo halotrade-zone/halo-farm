@@ -157,7 +157,7 @@ mod tests {
                 farm_info,
                 FarmInfo {
                     staked_token: Addr::unchecked(lp_token_contract.clone()),
-                    reward_token: native_token_info.clone(),
+                    reward_token: native_token_info,
                     current_phase_index: 0u64,
                     phases_info: vec![PhaseInfo {
                         start_time: current_block_time,
@@ -341,7 +341,7 @@ mod tests {
             // Execute withdraw
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                halo_farm_contract_addr.clone(),
+                halo_farm_contract_addr,
                 &withdraw_msg,
                 &[],
             );
@@ -2061,7 +2061,7 @@ mod tests {
             // Execute harvest by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                halo_farm_contract_addr.clone(),
+                halo_farm_contract_addr,
                 &harvest_msg,
                 &[],
             );
@@ -3119,7 +3119,7 @@ mod tests {
             // Execute remove phase by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                halo_farm_contract_addr.clone(),
+                halo_farm_contract_addr,
                 &remove_phase_msg,
                 &[],
             );
@@ -4039,7 +4039,7 @@ mod tests {
             // Execute remove phase by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                halo_farm_contract_addr.clone(),
+                halo_farm_contract_addr,
                 &remove_phase_msg,
                 &[],
             );
@@ -5006,7 +5006,7 @@ mod tests {
             // Execute harvest
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                halo_farm_contract_addr.clone(),
+                halo_farm_contract_addr,
                 &harvest_msg,
                 &[],
             );

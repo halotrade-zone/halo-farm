@@ -1,8 +1,4 @@
-use cosmwasm_std::{
-    to_binary, Addr, BalanceResponse, BankQuery, Deps, Env, QuerierWrapper, QueryRequest,
-    StdResult, Uint128, WasmQuery,
-};
-use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
+use cosmwasm_std::{ Addr, Deps, Env, StdResult, Uint128 };
 
 use crate::{
     execute::claim_all_reward,
