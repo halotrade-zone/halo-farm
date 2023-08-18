@@ -1,5 +1,4 @@
-use cosmwasm_std::{ Addr, Deps, Env, StdResult, Uint128 };
-
+use cosmwasm_std::{Addr, Deps, Env, StdResult, Uint128};
 use crate::{
     execute::claim_all_reward,
     state::{
