@@ -9,46 +9,44 @@ mod tests {
     const ADD_1000_NATIVE_BALANCE_2: u128 = 1_000_000_000u128;
 
     // create a lp token contract
-    // create farm contract by factory contract
+    // create farm contract
     // deposit some lp token to the farm contract
     // withdraw some lp token from the farm contract
     mod execute_proper_operation {
         use std::str::FromStr;
 
+        use crate::state::{
+            FarmInfo, PendingRewardResponse, PhaseInfo, StakerInfoResponse, TokenInfo,
+        };
         use cosmwasm_std::{
             from_binary, to_binary, Addr, BalanceResponse as BankBalanceResponse, BankQuery,
             BlockInfo, Coin, Decimal, Querier, QueryRequest, Uint128, WasmQuery,
         };
         use cw20::{BalanceResponse, Cw20ExecuteMsg};
         use cw_multi_test::Executor;
-        use halo_farm::state::{
-            FarmInfo, PendingRewardResponse, PhaseInfo, StakerInfoResponse, TokenInfo,
-        };
 
-        use crate::{
-            msg::QueryMsg,
-            state::FactoryFarmInfo,
-            tests::{
-                env_setup::env::{
-                    instantiate_contracts, ADMIN, NATIVE_BALANCE_2, NATIVE_DENOM_2, USER_1,
-                },
-                integration_test::tests::{
-                    ADD_1000_NATIVE_BALANCE_2, INIT_1000_000_NATIVE_BALANCE_2,
-                    MOCK_1000_HALO_LP_TOKEN_AMOUNT, MOCK_1000_HALO_REWARD_TOKEN_AMOUNT,
-                    MOCK_150_HALO_LP_TOKEN_AMOUNT,
-                },
-            },
-        };
-        use halo_farm::msg::{
+        use crate::msg::{
             ExecuteMsg as FarmExecuteMsg, InstantiateMsg as FarmInstantiateMsg,
             QueryMsg as FarmQueryMsg,
+        };
+        use crate::tests::{
+            env_setup::env::{
+                halo_farm_contract_template, instantiate_contracts, ADMIN, NATIVE_BALANCE_2,
+                NATIVE_DENOM_2, USER_1,
+            },
+            integration_test::tests::{
+                ADD_1000_NATIVE_BALANCE_2, INIT_1000_000_NATIVE_BALANCE_2,
+                MOCK_1000_HALO_LP_TOKEN_AMOUNT, MOCK_1000_HALO_REWARD_TOKEN_AMOUNT,
+                MOCK_150_HALO_LP_TOKEN_AMOUNT,
+            },
         };
 
         #[test]
         fn proper_operation() {
             // get integration test app and contracts
             let (mut app, contracts) = instantiate_contracts();
-
+            // get farm contract code id
+            let halo_farm_contract_code_id = app.store_code(halo_farm_contract_template());
             // query balance of ADMIN in native token
             let req: QueryRequest<BankQuery> = QueryRequest::Bank(BankQuery::Balance {
                 address: ADMIN.to_string(),
@@ -63,10 +61,8 @@ mod tests {
                 Uint128::from(INIT_1000_000_NATIVE_BALANCE_2)
             );
 
-            // get farm factory contract
-            let factory_contract = &contracts[0].contract_addr;
             // get halo lp token contract
-            let lp_token_contract = &contracts[1].contract_addr;
+            let lp_token_contract = &contracts[0].contract_addr;
 
             // Mint 1000 HALO LP tokens to ADMIN
             let mint_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::Mint {
@@ -108,8 +104,8 @@ mod tests {
             // get current block time
             let current_block_time = app.block_info().time.seconds();
 
-            // create farm binary message
-            let create_farm_binary_msg = to_binary(&FarmInstantiateMsg {
+            // create farm
+            let halo_farm_instantiate_msg = &FarmInstantiateMsg {
                 staked_token: Addr::unchecked(lp_token_contract.clone()),
                 reward_token: native_token_info.clone(),
                 start_time: current_block_time,
@@ -117,43 +113,19 @@ mod tests {
                 phases_limit_per_user: None,
                 farm_owner: Addr::unchecked(ADMIN.to_string()),
                 whitelist: Addr::unchecked(ADMIN.to_string()),
-            });
-
-            // Create farm message
-            let create_farm_msg = crate::msg::ExecuteMsg::CreateFarm {
-                create_farm_msg: create_farm_binary_msg.unwrap(),
             };
 
-            // Execute create farm
-            let response_create_farm = app.execute_contract(
-                Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked(factory_contract.clone()),
-                &create_farm_msg,
-                &[],
-            );
-
-            assert!(response_create_farm.is_ok());
-
-            // query farm contract address
-            let factory_farm_info: FactoryFarmInfo = app
-                .wrap()
-                .query_wasm_smart(
-                    factory_contract.clone(),
-                    &crate::msg::QueryMsg::Farm { farm_id: 1u64 },
+            // instantiate contract
+            let halo_farm_contract_addr = app
+                .instantiate_contract(
+                    halo_farm_contract_code_id,
+                    Addr::unchecked(ADMIN),
+                    &halo_farm_instantiate_msg,
+                    &[],
+                    "instantiate contract",
+                    None,
                 )
                 .unwrap();
-
-            // assert phases info
-            assert_eq!(
-                factory_farm_info,
-                FactoryFarmInfo {
-                    staked_token: Addr::unchecked(lp_token_contract),
-                    reward_token: native_token_info.clone(),
-                    start_time: current_block_time,
-                    end_time: current_block_time + 100,
-                    phases_limit_per_user: None,
-                }
-            );
 
             // add reward balance to farm contract
             let add_reward_balance_msg = FarmExecuteMsg::AddRewardBalance {
@@ -164,7 +136,7 @@ mod tests {
             // Execute add reward balance
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &add_reward_balance_msg,
                 &[Coin {
                     amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
@@ -177,7 +149,7 @@ mod tests {
             // query phases info after adding reward balance
             let farm_info: FarmInfo = app
                 .wrap()
-                .query_wasm_smart("contract3", &FarmQueryMsg::Farm {})
+                .query_wasm_smart(halo_farm_contract_addr.clone(), &FarmQueryMsg::Farm {})
                 .unwrap();
 
             // assert phases info
@@ -185,7 +157,7 @@ mod tests {
                 farm_info,
                 FarmInfo {
                     staked_token: Addr::unchecked(lp_token_contract.clone()),
-                    reward_token: native_token_info.clone(),
+                    reward_token: native_token_info,
                     current_phase_index: 0u64,
                     phases_info: vec![PhaseInfo {
                         start_time: current_block_time,
@@ -200,33 +172,9 @@ mod tests {
                 }
             );
 
-            // query all farms
-            let farms: Vec<FactoryFarmInfo> = app
-                .wrap()
-                .query_wasm_smart(
-                    Addr::unchecked(factory_contract.clone()),
-                    &QueryMsg::Farms {
-                        start_after: None,
-                        limit: None,
-                    },
-                )
-                .unwrap();
-
-            // assert farms info
-            assert_eq!(
-                farms,
-                vec![FactoryFarmInfo {
-                    staked_token: Addr::unchecked(lp_token_contract),
-                    reward_token: native_token_info,
-                    start_time: current_block_time,
-                    end_time: current_block_time + 100,
-                    phases_limit_per_user: None,
-                }]
-            );
-
             // Approve cw20 token to farm contract
             let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
-                spender: "contract3".to_string(), // Farm Contract
+                spender: halo_farm_contract_addr.to_string(), // Farm Contract
                 amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT),
                 expires: None,
             };
@@ -256,7 +204,7 @@ mod tests {
             // Execute deposit
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &deposit_msg,
                 &[],
             );
@@ -283,7 +231,7 @@ mod tests {
                 .query_wasm_smart(
                     lp_token_contract.clone(),
                     &cw20::Cw20QueryMsg::Balance {
-                        address: "contract3".to_string(),
+                        address: halo_farm_contract_addr.to_string(),
                     },
                 )
                 .unwrap();
@@ -303,7 +251,7 @@ mod tests {
 
             // Query pending reward
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -331,7 +279,7 @@ mod tests {
             // Execute harvest
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &harvest_msg,
                 &[],
             );
@@ -368,7 +316,7 @@ mod tests {
 
             // Query pending reward
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -393,7 +341,7 @@ mod tests {
             // Execute withdraw
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr,
                 &withdraw_msg,
                 &[],
             );
@@ -435,7 +383,7 @@ mod tests {
             );
         }
 
-        // Create farm contract by factory contract
+        // Create farm contract
         // ----- Phase 0 -----
         // Add 1000 NATIVE_2 reward balance amount to farm contract by ADMIN in phase 0
         // with end time 100 seconds -> 10 NATIVE_2 per second
@@ -523,11 +471,11 @@ mod tests {
         fn proper_operation_with_multiple_users() {
             // get integration test app and contracts
             let (mut app, contracts) = instantiate_contracts();
+            // get farm contract code id
+            let halo_farm_contract_code_id = app.store_code(halo_farm_contract_template());
             // ADMIN already has 1_000_000 NATIVE_DENOM_2 as initial balance in instantiate_contracts()
-            // get farm factory contract
-            let factory_contract = &contracts[0].contract_addr;
             // get halo lp token contract
-            let lp_token_contract = &contracts[1].contract_addr;
+            let lp_token_contract = &contracts[0].contract_addr;
             // get current block time
             let current_block_time = app.block_info().time.seconds();
 
@@ -568,8 +516,8 @@ mod tests {
                 denom: NATIVE_DENOM_2.to_string(),
             };
 
-            // create farm binary message
-            let create_farm_binary_msg = to_binary(&FarmInstantiateMsg {
+            // create farm
+            let halo_farm_instantiate_msg = &FarmInstantiateMsg {
                 staked_token: Addr::unchecked(lp_token_contract.clone()),
                 reward_token: native_token_info.clone(),
                 start_time: current_block_time,
@@ -577,22 +525,19 @@ mod tests {
                 phases_limit_per_user: None,
                 farm_owner: Addr::unchecked(ADMIN.to_string()),
                 whitelist: Addr::unchecked(ADMIN.to_string()),
-            });
-
-            // Create farm message
-            let create_farm_msg = crate::msg::ExecuteMsg::CreateFarm {
-                create_farm_msg: create_farm_binary_msg.unwrap(),
             };
 
-            // Execute create farm
-            let response_create_farm = app.execute_contract(
-                Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked(factory_contract.clone()),
-                &create_farm_msg,
-                &[],
-            );
-
-            assert!(response_create_farm.is_ok());
+            // instantiate contract
+            let halo_farm_contract_addr = app
+                .instantiate_contract(
+                    halo_farm_contract_code_id,
+                    Addr::unchecked(ADMIN),
+                    &halo_farm_instantiate_msg,
+                    &[],
+                    "instantiate contract",
+                    None,
+                )
+                .unwrap();
 
             // add reward balance to farm contract
             let add_reward_balance_msg = FarmExecuteMsg::AddRewardBalance {
@@ -603,7 +548,7 @@ mod tests {
             // Execute add reward balance
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &add_reward_balance_msg,
                 &[Coin {
                     amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
@@ -616,7 +561,7 @@ mod tests {
             // query phases info after adding reward balance
             let farm_info: FarmInfo = app
                 .wrap()
-                .query_wasm_smart("contract3", &FarmQueryMsg::Farm {})
+                .query_wasm_smart(halo_farm_contract_addr.clone(), &FarmQueryMsg::Farm {})
                 .unwrap();
 
             // assert phases info
@@ -641,7 +586,7 @@ mod tests {
 
             // Approve cw20 token to farm contract msg
             let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
-                spender: "contract3".to_string(), // Farm Contract
+                spender: halo_farm_contract_addr.to_string(), // Farm Contract
                 amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT),
                 expires: None,
             };
@@ -664,7 +609,7 @@ mod tests {
             // Execute deposit by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &deposit_msg,
                 &[],
             );
@@ -688,7 +633,7 @@ mod tests {
             // Execute deposit by USER_1
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &deposit_msg,
                 &[],
             );
@@ -704,7 +649,7 @@ mod tests {
 
             // Query pending reward by ADMIN
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -728,7 +673,7 @@ mod tests {
 
             // Query pending reward by USER_1
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -756,7 +701,7 @@ mod tests {
             // Execute harvest by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &harvest_msg,
                 &[],
             );
@@ -785,7 +730,7 @@ mod tests {
             // Execute harvest by USER_1
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &harvest_msg,
                 &[],
             );
@@ -815,7 +760,7 @@ mod tests {
 
             // Query pending reward by ADMIN
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -845,7 +790,7 @@ mod tests {
             // Execute withdraw by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &withdraw_msg,
                 &[],
             );
@@ -896,7 +841,7 @@ mod tests {
 
             // Query pending reward by USER_1
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -926,7 +871,7 @@ mod tests {
             // Execute withdraw by USER_1
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &withdraw_msg,
                 &[],
             );
@@ -975,7 +920,7 @@ mod tests {
 
             // Query pending reward by ADMIN
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -1003,7 +948,7 @@ mod tests {
             // Execute harvest by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &harvest_msg,
                 &[],
             );
@@ -1038,7 +983,7 @@ mod tests {
 
             // Query pending reward by USER_1
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -1066,7 +1011,7 @@ mod tests {
             // Execute harvest by USER_1
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &harvest_msg,
                 &[],
             );
@@ -1094,7 +1039,7 @@ mod tests {
 
             // Approve cw20 token to farm contract
             let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
-                spender: "contract3".to_string(), // Farm Contract
+                spender: halo_farm_contract_addr.to_string(), // Farm Contract
                 amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
                 expires: None,
             };
@@ -1118,7 +1063,7 @@ mod tests {
 
             // Query pending reward by ADMIN after 14 seconds
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -1148,7 +1093,7 @@ mod tests {
             // Execute deposit by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &deposit_msg,
                 &[],
             );
@@ -1190,7 +1135,7 @@ mod tests {
             // Execute deposit by USER_1
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &deposit_msg,
                 &[],
             );
@@ -1199,7 +1144,7 @@ mod tests {
 
             // Query pending reward by ADMIN after 16 seconds
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -1230,7 +1175,7 @@ mod tests {
 
             // Query pending reward by ADMIN after 18 seconds
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -1258,7 +1203,7 @@ mod tests {
             // Execute harvest by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &harvest_msg,
                 &[],
             );
@@ -1291,7 +1236,7 @@ mod tests {
 
             // Query pending reward by USER_1 after 18 seconds
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -1319,7 +1264,7 @@ mod tests {
             // Execute harvest by USER_1
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &harvest_msg,
                 &[],
             );
@@ -1360,7 +1305,7 @@ mod tests {
             // Execute extend end time by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &extend_end_time_msg,
                 &[],
             );
@@ -1376,7 +1321,7 @@ mod tests {
 
             // Query staked info of ADMIN
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::StakerInfo {
                     address: ADMIN.to_string(),
                 })
@@ -1393,7 +1338,7 @@ mod tests {
 
             // Query pending reward by ADMIN after 100 seconds (end time)
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -1421,7 +1366,7 @@ mod tests {
             // Execute harvest by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &harvest_msg,
                 &[],
             );
@@ -1455,7 +1400,7 @@ mod tests {
 
             // Query pending reward by USER_1 after 100 seconds (end time)
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -1498,7 +1443,7 @@ mod tests {
             // Execute add reward balance by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &add_reward_balance_msg,
                 &[Coin {
                     amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
@@ -1521,7 +1466,7 @@ mod tests {
             // Execute activate phase by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &activate_phase_msg,
                 &[],
             );
@@ -1531,7 +1476,7 @@ mod tests {
             // Query phases info after add reward balance
             let farm_info_1: FarmInfo = app
                 .wrap()
-                .query_wasm_smart("contract3", &FarmQueryMsg::Farm {})
+                .query_wasm_smart(halo_farm_contract_addr.clone(), &FarmQueryMsg::Farm {})
                 .unwrap();
 
             // assert phases info
@@ -1589,7 +1534,7 @@ mod tests {
 
             // Query pending reward by ADMIN after 135 seconds
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -1617,7 +1562,7 @@ mod tests {
             // Execute harvest by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &harvest_msg,
                 &[],
             );
@@ -1626,7 +1571,7 @@ mod tests {
 
             // Query staked info of ADMIN after join new phase
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::StakerInfo {
                     address: ADMIN.to_string(),
                 })
@@ -1670,7 +1615,7 @@ mod tests {
 
             // Query pending reward by USER_1 after 135 seconds
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -1698,7 +1643,7 @@ mod tests {
             // Execute harvest by USER_1
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &harvest_msg,
                 &[],
             );
@@ -1736,7 +1681,7 @@ mod tests {
 
             // Query pending reward by ADMIN after 150 seconds
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -1764,7 +1709,7 @@ mod tests {
             // Execute harvest by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &harvest_msg,
                 &[],
             );
@@ -1801,7 +1746,7 @@ mod tests {
 
             // Query pending reward by USER_1 after 150 seconds
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -1829,7 +1774,7 @@ mod tests {
             // Execute harvest by USER_1
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &harvest_msg,
                 &[],
             );
@@ -1868,7 +1813,7 @@ mod tests {
 
             // Query pending reward by ADMIN after 155 seconds
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -1898,7 +1843,7 @@ mod tests {
             // Execute withdraw by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &withdraw_msg,
                 &[],
             );
@@ -1907,7 +1852,7 @@ mod tests {
 
             // Query staked info of ADMIN after withdraw
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::StakerInfo {
                     address: ADMIN.to_string(),
                 })
@@ -1959,7 +1904,7 @@ mod tests {
 
             // Query pending reward by USER_1 after 160 seconds
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -1987,7 +1932,7 @@ mod tests {
             // Execute harvest by USER_1
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &harvest_msg,
                 &[],
             );
@@ -2025,7 +1970,7 @@ mod tests {
 
             // Query pending reward by ADMIN after 165 seconds
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -2054,7 +1999,7 @@ mod tests {
 
             // Approve cw20 token to farm contract
             let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
-                spender: "contract3".to_string(), // Farm Contract
+                spender: halo_farm_contract_addr.to_string(), // Farm Contract
                 amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
                 expires: None,
             };
@@ -2072,7 +2017,7 @@ mod tests {
             // Execute deposit by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &deposit_msg,
                 &[],
             );
@@ -2088,7 +2033,7 @@ mod tests {
 
             // Query pending reward by ADMIN after 170 seconds
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -2116,7 +2061,7 @@ mod tests {
             // Execute harvest by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr,
                 &harvest_msg,
                 &[],
             );
@@ -2158,7 +2103,7 @@ mod tests {
         // Mint 1000 HALO LP token for ADMIN
         // Mint 500 HALO LP token for USER_1
         // Mint 1000 HALO REWARD token for ADMIN
-        // Create farm contract by factory contract
+        // Create farm contract
         // Add 1000 HALO REWARD token reward balance to farm contract by ADMIN
         // with end time 100 seconds
         // -> 10 HALO REWARD token per second
@@ -2205,13 +2150,13 @@ mod tests {
         fn proper_operation_with_reward_token_decimal_18() {
             // get integration test app and contracts
             let (mut app, contracts) = instantiate_contracts();
+            // get farm contract code id
+            let halo_farm_contract_code_id = app.store_code(halo_farm_contract_template());
             // ADMIN already has 1_000_000 NATIVE_DENOM_2 as initial balance in instantiate_contracts()
-            // get farm factory contract
-            let factory_contract = &contracts[0].contract_addr;
             // get halo lp token contract
-            let lp_token_contract = &contracts[1].contract_addr;
+            let lp_token_contract = &contracts[0].contract_addr;
             // get halo reward token contract
-            let reward_token_contract = &contracts[2].contract_addr;
+            let reward_token_contract = &contracts[1].contract_addr;
 
             // get current block time
             let current_block_time = app.block_info().time.seconds();
@@ -2269,8 +2214,8 @@ mod tests {
                 contract_addr: Addr::unchecked(reward_token_contract.clone()),
             };
 
-            // create farm binary message
-            let create_farm_binary_msg = to_binary(&FarmInstantiateMsg {
+            // create farm
+            let halo_farm_instantiate_msg = &FarmInstantiateMsg {
                 staked_token: Addr::unchecked(lp_token_contract.clone()),
                 reward_token: reward_token_info.clone(),
                 start_time: current_block_time,
@@ -2278,47 +2223,49 @@ mod tests {
                 phases_limit_per_user: None,
                 farm_owner: Addr::unchecked(ADMIN.to_string()),
                 whitelist: Addr::unchecked(ADMIN.to_string()),
-            });
-
-            // Create farm message
-            let create_farm_msg = crate::msg::ExecuteMsg::CreateFarm {
-                create_farm_msg: create_farm_binary_msg.unwrap(),
             };
 
-            // Execute create farm by ADMIN
-            let response = app.execute_contract(
-                Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked(factory_contract.clone()),
-                &create_farm_msg,
-                &[],
-            );
-
-            assert!(response.is_ok());
+            // instantiate contract
+            let halo_farm_contract_addr = app
+                .instantiate_contract(
+                    halo_farm_contract_code_id,
+                    Addr::unchecked(ADMIN),
+                    &halo_farm_instantiate_msg,
+                    &[],
+                    "instantiate contract",
+                    None,
+                )
+                .unwrap();
 
             // query farm contract address
-            let factory_farm_info: FactoryFarmInfo = app
+            let farm_info: FarmInfo = app
                 .wrap()
-                .query_wasm_smart(
-                    factory_contract.clone(),
-                    &crate::msg::QueryMsg::Farm { farm_id: 1u64 },
-                )
+                .query_wasm_smart(halo_farm_contract_addr.clone(), &FarmQueryMsg::Farm {})
                 .unwrap();
 
             // assert phases info
             assert_eq!(
-                factory_farm_info,
-                FactoryFarmInfo {
+                farm_info,
+                FarmInfo {
                     staked_token: Addr::unchecked(lp_token_contract),
                     reward_token: reward_token_info,
-                    start_time: current_block_time,
-                    end_time: current_block_time + 100,
+                    current_phase_index: 0u64,
+                    phases_info: vec![PhaseInfo {
+                        start_time: current_block_time,
+                        end_time: current_block_time + 100,
+                        whitelist: Addr::unchecked(ADMIN.to_string()),
+                        reward_balance: Uint128::zero(),
+                        last_reward_time: current_block_time,
+                        accrued_token_per_share: Decimal::zero(),
+                    }],
                     phases_limit_per_user: None,
+                    staked_token_balance: Uint128::zero(),
                 }
             );
 
             // Increase allowance of reward token to farm contract
             let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
-                spender: "contract3".to_string(), // Farm Contract
+                spender: halo_farm_contract_addr.to_string(), // Farm Contract
                 amount: Uint128::from(MOCK_1000_HALO_REWARD_TOKEN_AMOUNT),
                 expires: None,
             };
@@ -2342,7 +2289,7 @@ mod tests {
             // Execute add reward by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &add_reward_balance_msg,
                 &[],
             );
@@ -2351,7 +2298,7 @@ mod tests {
 
             // Increase allowance of lp token to farm contract
             let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
-                spender: "contract3".to_string(), // Farm Contract
+                spender: halo_farm_contract_addr.to_string(), // Farm Contract
                 amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT),
                 expires: None,
             };
@@ -2374,7 +2321,7 @@ mod tests {
             // Execute deposit by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &deposit_msg,
                 &[],
             );
@@ -2390,7 +2337,7 @@ mod tests {
 
             // Query pending reward by ADMIN after 2 seconds
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -2418,7 +2365,7 @@ mod tests {
             // Execute harvest by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &harvest_msg,
                 &[],
             );
@@ -2444,7 +2391,7 @@ mod tests {
 
             // Increase allowance of lp token to farm contract
             let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
-                spender: "contract3".to_string(), // Farm Contract
+                spender: halo_farm_contract_addr.to_string(), // Farm Contract
                 amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
                 expires: None,
             };
@@ -2467,7 +2414,7 @@ mod tests {
             // Execute deposit by USER_1
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &deposit_msg,
                 &[],
             );
@@ -2483,7 +2430,7 @@ mod tests {
 
             // Query pending reward by USER_1 after 4 seconds
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -2511,7 +2458,7 @@ mod tests {
             // Execute harvest by USER_1
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &harvest_msg,
                 &[],
             );
@@ -2541,7 +2488,7 @@ mod tests {
 
             // query pending reward by ADMIN after 6 seconds
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -2571,7 +2518,7 @@ mod tests {
             // Execute withdraw by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &withdraw_msg,
                 &[],
             );
@@ -2605,7 +2552,7 @@ mod tests {
 
             // query pending reward by ADMIN after 7 seconds
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -2629,7 +2576,7 @@ mod tests {
 
             // Increase allowance of lp token to farm contract
             let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
-                spender: "contract3".to_string(), // Farm Contract
+                spender: halo_farm_contract_addr.to_string(), // Farm Contract
                 amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
                 expires: None,
             };
@@ -2652,7 +2599,7 @@ mod tests {
             // Execute deposit by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &deposit_msg,
                 &[],
             );
@@ -2668,7 +2615,7 @@ mod tests {
 
             // query pending reward by ADMIN after 8 seconds
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -2696,7 +2643,7 @@ mod tests {
             // Execute harvest by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &harvest_msg,
                 &[],
             );
@@ -2725,7 +2672,7 @@ mod tests {
 
             // query pending reward by USER_1 after 8 seconds
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -2753,7 +2700,7 @@ mod tests {
             // Execute harvest by USER_1
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &harvest_msg,
                 &[],
             );
@@ -2779,7 +2726,7 @@ mod tests {
 
             // Query total LP staked by calling TotalStaked query
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::TotalStaked {}).unwrap(),
             });
 
@@ -2794,15 +2741,18 @@ mod tests {
 
             // Extend end time by ADMIN more 10 seconds
             let extend_end_time_msg = FarmExecuteMsg::AddPhase {
-                new_start_time: factory_farm_info.end_time,
-                new_end_time: factory_farm_info.end_time + 10,
+                new_start_time: farm_info.phases_info[farm_info.current_phase_index as usize]
+                    .end_time,
+                new_end_time: farm_info.phases_info[farm_info.current_phase_index as usize]
+                    .end_time
+                    + 10,
                 whitelist: Addr::unchecked(ADMIN.to_string()),
             };
 
             // Execute extend end time by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &extend_end_time_msg,
                 &[],
             );
@@ -2818,7 +2768,7 @@ mod tests {
 
             // query pending reward by ADMIN after 100 seconds (Not harvest yet)
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -2842,7 +2792,7 @@ mod tests {
 
             // query pending reward by USER_1 after 100 seconds (Not harvest yet)
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -2883,7 +2833,7 @@ mod tests {
 
             // Increase allowance of reward token to farm contract
             let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
-                spender: "contract3".to_string(), // Farm Contract
+                spender: halo_farm_contract_addr.to_string(), // Farm Contract
                 amount: Uint128::from(MOCK_1000_HALO_REWARD_TOKEN_AMOUNT),
                 expires: None,
             };
@@ -2907,7 +2857,7 @@ mod tests {
             // Execute add reward by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &add_reward_balance_msg,
                 &[],
             );
@@ -2920,7 +2870,7 @@ mod tests {
             // Execute activate phase by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &activate_phase_msg,
                 &[],
             );
@@ -2936,7 +2886,7 @@ mod tests {
 
             // query pending reward by ADMIN after 101 seconds (Not harvest yet)
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -2960,7 +2910,7 @@ mod tests {
 
             // query pending reward by USER_1 after 101 seconds (Not harvest yet)
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -2990,7 +2940,7 @@ mod tests {
             // Execute withdraw by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &withdraw_msg,
                 &[],
             );
@@ -3037,7 +2987,7 @@ mod tests {
 
             // Increase allowance of lp token to farm contract
             let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
-                spender: "contract3".to_string(), // Farm Contract
+                spender: halo_farm_contract_addr.to_string(), // Farm Contract
                 amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
                 expires: None,
             };
@@ -3060,7 +3010,7 @@ mod tests {
             // Execute deposit by USER_1
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &deposit_msg,
                 &[],
             );
@@ -3088,15 +3038,19 @@ mod tests {
 
             // Extend end time by ADMIN more 10 seconds
             let extend_end_time_msg = FarmExecuteMsg::AddPhase {
-                new_start_time: factory_farm_info.end_time + 10,
-                new_end_time: factory_farm_info.end_time + 20,
+                new_start_time: farm_info.phases_info[farm_info.current_phase_index as usize]
+                    .end_time
+                    + 10,
+                new_end_time: farm_info.phases_info[farm_info.current_phase_index as usize]
+                    .end_time
+                    + 20,
                 whitelist: Addr::unchecked(ADMIN.to_string()),
             };
 
             // Execute extend end time by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &extend_end_time_msg,
                 &[],
             );
@@ -3105,7 +3059,7 @@ mod tests {
 
             // Increase allowance of reward token to farm contract
             let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
-                spender: "contract3".to_string(), // Farm Contract
+                spender: halo_farm_contract_addr.to_string(), // Farm Contract
                 amount: Uint128::from(10_000_000_000_000_000_000u128),
                 expires: None,
             };
@@ -3129,7 +3083,7 @@ mod tests {
             // Execute add reward by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &add_reward_balance_msg,
                 &[],
             );
@@ -3165,7 +3119,7 @@ mod tests {
             // Execute remove phase by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr,
                 &remove_phase_msg,
                 &[],
             );
@@ -3231,7 +3185,7 @@ mod tests {
         // ADMIN pending reward 2s: (2000 / (1000 + 500 + 1000) * 2 * 100) = 160 NATIVE_2 (Re-check)
         // ----- Phase 2 -----
         // Increase 1s (26 seconds passed)
-        // Extend end time by ADMIN more 10 seconds with start_time at 29 seconds
+        // Add new phase by ADMIN more 10 seconds with start_time at 29 seconds
         // Increase 1s (27 seconds passed)
         // Add 1000 NATIVE_2 reward balance amount to farm contract by ADMIN in phase 2
         // Increase 1s (28 seconds passed)
@@ -3244,15 +3198,21 @@ mod tests {
         // -> Reward balance 29s: 160 NATIVE_2
         //                    1s: (2000 / (1000 + 500 + 1000) * 1 * 100) = 80 NATIVE_2
         // -> Reward balance 30s: 240 NATIVE_2
+        // Increase 10s (40 seconds passed) -> Phase 2 ends
+        // ----- Phase 3 -----
+        // Add new phase by ADMIN more 2 seconds with start_time at 42 seconds
+        // Add 10 NATIVE_2 reward balance amount to farm contract by ADMIN in phase 3
+        // Increase 1s (41 seconds passed)
+        // Remove phase 3 by ADMIN
         #[test]
-        fn proper_harvest_with_multipe_phases() {
+        fn proper_harvest_with_multiple_phases() {
             // get integration test app and contracts
             let (mut app, contracts) = instantiate_contracts();
+            // get farm contract code id
+            let halo_farm_contract_code_id = app.store_code(halo_farm_contract_template());
             // ADMIN already has 1_000_000 NATIVE_DENOM_2 as initial balance in instantiate_contracts()
-            // get farm factory contract
-            let factory_contract = &contracts[0].contract_addr;
             // get halo lp token contract
-            let lp_token_contract = &contracts[1].contract_addr;
+            let lp_token_contract = &contracts[0].contract_addr;
             // get current block time
             let current_block_time = app.block_info().time.seconds();
 
@@ -3293,8 +3253,8 @@ mod tests {
                 denom: NATIVE_DENOM_2.to_string(),
             };
 
-            // create farm binary message
-            let create_farm_binary_msg = to_binary(&FarmInstantiateMsg {
+            // create farm
+            let halo_farm_instantiate_msg = &FarmInstantiateMsg {
                 staked_token: Addr::unchecked(lp_token_contract.clone()),
                 reward_token: native_token_info.clone(),
                 start_time: current_block_time,
@@ -3302,22 +3262,19 @@ mod tests {
                 phases_limit_per_user: None,
                 farm_owner: Addr::unchecked(ADMIN.to_string()),
                 whitelist: Addr::unchecked(ADMIN.to_string()),
-            });
-
-            // Create farm message
-            let create_farm_msg = crate::msg::ExecuteMsg::CreateFarm {
-                create_farm_msg: create_farm_binary_msg.unwrap(),
             };
 
-            // Execute create farm
-            let response_create_farm = app.execute_contract(
-                Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked(factory_contract.clone()),
-                &create_farm_msg,
-                &[],
-            );
-
-            assert!(response_create_farm.is_ok());
+            // instantiate contract
+            let halo_farm_contract_addr = app
+                .instantiate_contract(
+                    halo_farm_contract_code_id,
+                    Addr::unchecked(ADMIN),
+                    &halo_farm_instantiate_msg,
+                    &[],
+                    "instantiate contract",
+                    None,
+                )
+                .unwrap();
 
             // add reward balance to farm contract
             let add_reward_balance_msg = FarmExecuteMsg::AddRewardBalance {
@@ -3328,7 +3285,7 @@ mod tests {
             // Execute add reward balance
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &add_reward_balance_msg,
                 &[Coin {
                     amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
@@ -3341,7 +3298,7 @@ mod tests {
             // query phases info after adding reward balance
             let farm_info: FarmInfo = app
                 .wrap()
-                .query_wasm_smart("contract3", &FarmQueryMsg::Farm {})
+                .query_wasm_smart(halo_farm_contract_addr.clone(), &FarmQueryMsg::Farm {})
                 .unwrap();
 
             // assert phases info
@@ -3373,7 +3330,7 @@ mod tests {
 
             // Approve cw20 token to farm contract msg
             let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
-                spender: "contract3".to_string(), // Farm Contract
+                spender: halo_farm_contract_addr.to_string(), // Farm Contract
                 amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT * 10),
                 expires: None,
             };
@@ -3396,7 +3353,7 @@ mod tests {
             // Execute deposit by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &deposit_msg,
                 &[],
             );
@@ -3411,7 +3368,7 @@ mod tests {
 
             // query pending reward by ADMIN after 8 seconds
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -3448,7 +3405,7 @@ mod tests {
             // Execute extend end time by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &extend_end_time_msg,
                 &[],
             );
@@ -3464,7 +3421,7 @@ mod tests {
             // Execute add reward balance
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &add_reward_balance_msg,
                 &[Coin {
                     amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
@@ -3487,7 +3444,7 @@ mod tests {
             // Execute activate phase by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &activate_phase_msg,
                 &[],
             );
@@ -3512,7 +3469,7 @@ mod tests {
 
             // query pending reward by ADMIN after 14 seconds
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -3536,7 +3493,7 @@ mod tests {
 
             // Approve cw20 token to farm contract msg
             let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
-                spender: "contract3".to_string(), // Farm Contract
+                spender: halo_farm_contract_addr.to_string(), // Farm Contract
                 amount: Uint128::from(MOCK_1000_HALO_LP_TOKEN_AMOUNT / 2),
                 expires: None,
             };
@@ -3559,7 +3516,7 @@ mod tests {
             // Execute deposit by USER_1
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &deposit_msg,
                 &[],
             );
@@ -3575,7 +3532,7 @@ mod tests {
 
             // query pending reward by ADMIN after 20 seconds
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -3599,7 +3556,7 @@ mod tests {
 
             // query pending reward by USER_1 after 6 seconds
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -3645,7 +3602,7 @@ mod tests {
             // Execute deposit by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &deposit_msg,
                 &[],
             );
@@ -3671,7 +3628,7 @@ mod tests {
 
             // query pending reward of ADMIN after harvest
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -3695,7 +3652,7 @@ mod tests {
 
             // query pending reward by USER_1 after 6 seconds after ADMIN harvest
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -3726,7 +3683,7 @@ mod tests {
 
             // query pending reward by USER_1 after 8 seconds after ADMIN harvest
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -3750,7 +3707,7 @@ mod tests {
 
             // query pending reward by ADMIN
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -3785,7 +3742,7 @@ mod tests {
             // Execute harvest by USER_1
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &harvest_msg,
                 &[],
             );
@@ -3816,7 +3773,7 @@ mod tests {
 
             // query pending reward by ADMIN after 25 seconds after USER_1 harvest(Re-check)
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -3856,7 +3813,7 @@ mod tests {
             // Execute extend end time by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &extend_end_time_msg,
                 &[],
             );
@@ -3879,7 +3836,7 @@ mod tests {
             // Execute add reward balance
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &add_reward_balance_msg,
                 &[Coin {
                     amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
@@ -3913,7 +3870,7 @@ mod tests {
             // Execute activate phase by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &activate_phase_msg,
                 &[],
             );
@@ -3929,7 +3886,7 @@ mod tests {
 
             // query pending reward by ADMIN after 29 seconds after USER_1 harvest(Re-check)
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -3960,7 +3917,7 @@ mod tests {
 
             // query pending reward by ADMIN after 30 seconds after USER_1 harvest
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -3988,8 +3945,102 @@ mod tests {
             // Execute harvest by ADMIN
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &harvest_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // query balance of ADMIN in native token
+            let req: QueryRequest<BankQuery> = QueryRequest::Bank(BankQuery::Balance {
+                address: ADMIN.to_string(),
+                denom: NATIVE_DENOM_2.to_string(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let balance: BankBalanceResponse = from_binary(&res).unwrap();
+
+            assert_eq!(
+                balance.amount.amount,
+                Uint128::from(998_400_000_000u128 + pending_reward_admin_30s.amount.u128())
+            );
+
+            // Increase 10 second to make 40 seconds passed -> Phase 2 ends
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(10),
+                height: app.block_info().height + 10,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // Add new phase 3 with 10 seconds and start time at 42 seconds
+            let add_phase_msg = FarmExecuteMsg::AddPhase {
+                new_start_time: 1571797461, // 42 seconds
+                new_end_time: 1571797461 + 10,
+                whitelist: Addr::unchecked(ADMIN.to_string()),
+            };
+
+            // Execute add phase by ADMIN
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                halo_farm_contract_addr.clone(),
+                &add_phase_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // Add 10 NATIVE_2 to reward balance
+            let add_reward_balance_msg = FarmExecuteMsg::AddRewardBalance {
+                phase_index: 3u64,
+                amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
+            };
+
+            // Execute add reward balance
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                halo_farm_contract_addr.clone(),
+                &add_reward_balance_msg,
+                &[Coin {
+                    amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
+                    denom: NATIVE_DENOM_2.to_string(),
+                }],
+            );
+
+            assert!(response.is_ok());
+
+            // query balance of ADMIN in native token
+            let req: QueryRequest<BankQuery> = QueryRequest::Bank(BankQuery::Balance {
+                address: ADMIN.to_string(),
+                denom: NATIVE_DENOM_2.to_string(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let balance: BankBalanceResponse = from_binary(&res).unwrap();
+
+            assert_eq!(
+                balance.amount.amount,
+                Uint128::from(
+                    998_400_000_000u128 + pending_reward_admin_30s.amount.u128()
+                        - ADD_1000_NATIVE_BALANCE_2
+                )
+            );
+
+            // Increase 1 second to make 41 seconds passed
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(1),
+                height: app.block_info().height + 1,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // Remove phase 3 by ADMIN
+            let remove_phase_msg = FarmExecuteMsg::RemovePhase { phase_index: 3u64 };
+
+            // Execute remove phase by ADMIN
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                halo_farm_contract_addr,
+                &remove_phase_msg,
                 &[],
             );
 
@@ -4082,11 +4133,11 @@ mod tests {
         fn proper_deposit_before_start_time() {
             // get integration test app and contracts
             let (mut app, contracts) = instantiate_contracts();
+            // get farm contract code id
+            let halo_farm_contract_code_id = app.store_code(halo_farm_contract_template());
             // ADMIN already has 1_000_000 NATIVE_DENOM_2 as initial balance in instantiate_contracts()
-            // get farm factory contract
-            let factory_contract = &contracts[0].contract_addr;
             // get halo lp token contract
-            let lp_token_contract = &contracts[1].contract_addr;
+            let lp_token_contract = &contracts[0].contract_addr;
             // get current block time
             let current_block_time = app.block_info().time.seconds();
 
@@ -4127,8 +4178,8 @@ mod tests {
                 denom: NATIVE_DENOM_2.to_string(),
             };
 
-            // create farm binary message
-            let create_farm_binary_msg = to_binary(&FarmInstantiateMsg {
+            // create farm
+            let halo_farm_instantiate_msg = &FarmInstantiateMsg {
                 staked_token: Addr::unchecked(lp_token_contract.clone()),
                 reward_token: native_token_info,
                 start_time: current_block_time + 5,
@@ -4136,22 +4187,19 @@ mod tests {
                 phases_limit_per_user: None,
                 farm_owner: Addr::unchecked(ADMIN.to_string()),
                 whitelist: Addr::unchecked(ADMIN.to_string()),
-            });
-
-            // Create farm message
-            let create_farm_msg = crate::msg::ExecuteMsg::CreateFarm {
-                create_farm_msg: create_farm_binary_msg.unwrap(),
             };
 
-            // Execute create farm
-            let response_create_farm = app.execute_contract(
-                Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked(factory_contract.clone()),
-                &create_farm_msg,
-                &[],
-            );
-
-            assert!(response_create_farm.is_ok());
+            // instantiate contract
+            let halo_farm_contract_addr = app
+                .instantiate_contract(
+                    halo_farm_contract_code_id,
+                    Addr::unchecked(ADMIN),
+                    &halo_farm_instantiate_msg,
+                    &[],
+                    "instantiate contract",
+                    None,
+                )
+                .unwrap();
 
             // add reward balance to farm contract
             let add_reward_balance_msg = FarmExecuteMsg::AddRewardBalance {
@@ -4162,7 +4210,7 @@ mod tests {
             // Execute add reward balance
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &add_reward_balance_msg,
                 &[Coin {
                     amount: Uint128::from(ADD_1000_NATIVE_BALANCE_2),
@@ -4174,7 +4222,7 @@ mod tests {
 
             // Increase allowence of HALO LP tokens to farm contract
             let increase_allowance_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
-                spender: Addr::unchecked("contract3").to_string(),
+                spender: Addr::unchecked(halo_farm_contract_addr.clone()).to_string(),
                 amount: Uint128::from(10 * MOCK_1000_HALO_LP_TOKEN_AMOUNT),
                 expires: None,
             };
@@ -4214,7 +4262,7 @@ mod tests {
             // Execute deposit
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &deposit_msg,
                 &[],
             );
@@ -4236,7 +4284,7 @@ mod tests {
             // Execute deposit
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &deposit_msg,
                 &[],
             );
@@ -4252,7 +4300,7 @@ mod tests {
 
             // ADMIN query pending reward
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -4282,7 +4330,7 @@ mod tests {
             // Execute withdraw
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &withdraw_msg,
                 &[],
             );
@@ -4304,7 +4352,7 @@ mod tests {
             // Execute deposit
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &deposit_msg,
                 &[],
             );
@@ -4326,7 +4374,7 @@ mod tests {
             // Execute deposit
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &deposit_msg,
                 &[],
             );
@@ -4342,7 +4390,7 @@ mod tests {
 
             // ADMIN query pending reward
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -4366,7 +4414,7 @@ mod tests {
 
             // USER_1 query pending reward
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -4397,7 +4445,7 @@ mod tests {
 
             // ADMIN query pending reward
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -4421,7 +4469,7 @@ mod tests {
 
             // USER_1 query pending reward
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -4451,7 +4499,7 @@ mod tests {
             // Execute withdraw
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &withdraw_msg,
                 &[],
             );
@@ -4485,7 +4533,7 @@ mod tests {
 
             // ADMIN query pending reward
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -4509,7 +4557,7 @@ mod tests {
 
             // USER_1 query pending reward
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -4540,7 +4588,7 @@ mod tests {
 
             // ADMIN query pending reward
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -4564,7 +4612,7 @@ mod tests {
 
             // USER_1 query pending reward
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -4594,7 +4642,7 @@ mod tests {
             // Execute deposit
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &deposit_msg,
                 &[],
             );
@@ -4610,7 +4658,7 @@ mod tests {
 
             // ADMIN query pending reward
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -4634,7 +4682,7 @@ mod tests {
 
             // USER_1 query pending reward
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -4665,7 +4713,7 @@ mod tests {
 
             // ADMIN query pending reward
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -4689,7 +4737,7 @@ mod tests {
 
             // USER_1 query pending reward
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -4717,7 +4765,7 @@ mod tests {
             // Execute harvest
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &harvest_msg,
                 &[],
             );
@@ -4752,7 +4800,7 @@ mod tests {
 
             // ADMIN query pending reward
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -4776,7 +4824,7 @@ mod tests {
 
             // USER_1 query pending reward
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -4807,7 +4855,7 @@ mod tests {
 
             // ADMIN query pending reward
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -4831,7 +4879,7 @@ mod tests {
 
             // USER_1 query pending reward
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -4862,7 +4910,7 @@ mod tests {
 
             // ADMIN query pending reward
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: ADMIN.to_string(),
                 })
@@ -4894,7 +4942,7 @@ mod tests {
             // Execute withdraw
             let response = app.execute_contract(
                 Addr::unchecked(ADMIN.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr.clone(),
                 &withdraw_msg,
                 &[],
             );
@@ -4930,7 +4978,7 @@ mod tests {
 
             // USER_1 query pending reward
             let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
-                contract_addr: "contract3".to_string(),
+                contract_addr: halo_farm_contract_addr.to_string(),
                 msg: to_binary(&FarmQueryMsg::PendingReward {
                     address: USER_1.to_string(),
                 })
@@ -4958,7 +5006,7 @@ mod tests {
             // Execute harvest
             let response = app.execute_contract(
                 Addr::unchecked(USER_1.to_string()),
-                Addr::unchecked("contract3"),
+                halo_farm_contract_addr,
                 &harvest_msg,
                 &[],
             );

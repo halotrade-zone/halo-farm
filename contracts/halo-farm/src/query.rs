@@ -1,43 +1,10 @@
-use cosmwasm_std::{
-    to_binary, Addr, BalanceResponse, BankQuery, Deps, Env, QuerierWrapper, QueryRequest,
-    StdResult, Uint128, WasmQuery,
-};
-use cw20::{BalanceResponse as Cw20BalanceResponse, Cw20QueryMsg};
-
 use crate::{
     execute::claim_all_reward,
     state::{
         FarmInfo, PendingRewardResponse, StakerInfo, StakerInfoResponse, FARM_INFO, STAKERS_INFO,
     },
 };
-pub fn query_token_balance(
-    querier: &QuerierWrapper,
-    contract_addr: Addr,
-    account_addr: Addr,
-) -> StdResult<Uint128> {
-    let res: Cw20BalanceResponse = querier.query(&QueryRequest::Wasm(WasmQuery::Smart {
-        contract_addr: contract_addr.to_string(),
-        msg: to_binary(&Cw20QueryMsg::Balance {
-            address: account_addr.to_string(),
-        })?,
-    }))?;
-
-    // load balance form the token contract
-    Ok(res.balance)
-}
-
-pub fn query_balance(
-    querier: &QuerierWrapper,
-    account_addr: Addr,
-    denom: String,
-) -> StdResult<Uint128> {
-    // load price form the oracle
-    let balance: BalanceResponse = querier.query(&QueryRequest::Bank(BankQuery::Balance {
-        address: account_addr.to_string(),
-        denom,
-    }))?;
-    Ok(balance.amount.amount)
-}
+use cosmwasm_std::{Addr, Deps, Env, StdResult, Uint128};
 
 pub fn query_farm_info(deps: Deps) -> StdResult<FarmInfo> {
     FARM_INFO.load(deps.storage)

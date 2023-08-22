@@ -4,22 +4,15 @@ pub mod env {
     use cw20::MinterResponse;
     use cw_multi_test::{App, AppBuilder, Contract, ContractWrapper, Executor};
 
-    use crate::contract::{
-        execute as HaloFarmFactoryExecute, instantiate as HaloFarmFactoryInstantiate,
-        query as HaloFarmFactoryQuery, reply as HaloFarmFactoryReply,
-    };
-
     use cw20_base::contract::{
         execute as Cw20Execute, instantiate as Cw20Instantiate, query as Cw20Query,
     };
 
     use cw20_base::msg::InstantiateMsg as Cw20InstantiateMsg;
 
-    use halo_farm::contract::{
+    use crate::contract::{
         execute as HaloFarmExecute, instantiate as HaloFarmInstantiate, query as HaloFarmQuery,
     };
-
-    use crate::msg::InstantiateMsg as HaloFarmFactoryInstantiateMsg;
 
     pub const ADMIN: &str = "aura1000000000000000000000000000000000admin";
     pub const USER_1: &str = "aura1000000000000000000000000000000000user1";
@@ -57,17 +50,7 @@ pub mod env {
         })
     }
 
-    fn halo_farm_factory_contract_template() -> Box<dyn Contract<Empty>> {
-        let contract = ContractWrapper::new(
-            HaloFarmFactoryExecute,
-            HaloFarmFactoryInstantiate,
-            HaloFarmFactoryQuery,
-        )
-        .with_reply(HaloFarmFactoryReply);
-        Box::new(contract)
-    }
-
-    fn halo_farm_contract_template() -> Box<dyn Contract<Empty>> {
+    pub fn halo_farm_contract_template() -> Box<dyn Contract<Empty>> {
         let contract = ContractWrapper::new(HaloFarmExecute, HaloFarmInstantiate, HaloFarmQuery);
         Box::new(contract)
     }
@@ -86,34 +69,9 @@ pub mod env {
         let mut contract_info_vec: Vec<ContractInfo> = Vec::new();
 
         // store code of all contracts to the app and get the code ids
-        let halo_contract_code_id = app.store_code(halo_farm_factory_contract_template());
         let halo_lp_token_contract_code_id = app.store_code(halo_lp_token_contract_template());
         let halo_reward_decimal_18_token_contract_code_id =
             app.store_code(halo_lp_token_contract_template());
-
-        // halo farm factory contract
-        // create instantiate message for contract
-        let halo_farm_factory_instantiate_msg = HaloFarmFactoryInstantiateMsg {
-            farm_code_id: app.store_code(halo_farm_contract_template()),
-        };
-
-        // instantiate contract
-        let halo_farm_factory_contract_addr = app
-            .instantiate_contract(
-                halo_contract_code_id,
-                Addr::unchecked(ADMIN),
-                &halo_farm_factory_instantiate_msg,
-                &[],
-                "test instantiate contract",
-                None,
-            )
-            .unwrap();
-
-        // add contract info to vector
-        contract_info_vec.push(ContractInfo {
-            contract_addr: halo_farm_factory_contract_addr.to_string(),
-            contract_code_id: halo_contract_code_id,
-        });
 
         // halo lp token contract
         // create instantiate message for contract

@@ -4,7 +4,7 @@ use crate::{
     state::{Config, FarmInfo, PhaseInfo, StakerInfo, TokenInfo, CONFIG, FARM_INFO, STAKERS_INFO},
 };
 use cosmwasm_std::{
-    coin, has_coins, wasm_execute, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Env,
+    coins, has_coins, wasm_execute, Addr, BankMsg, Coin, CosmosMsg, Decimal, DepsMut, Env,
     MessageInfo, Response, StdError, Uint128,
 };
 use cw20::Cw20ExecuteMsg;
@@ -152,12 +152,12 @@ pub fn execute_remove_phase(
             TokenInfo::NativeToken { denom } => {
                 res = res.add_message(CosmosMsg::Bank(BankMsg::Send {
                     to_address: whitelist.to_string(),
-                    amount: vec![coin(
+                    amount: coins(
                         farm_info.phases_info[phase_index as usize]
                             .reward_balance
                             .into(),
                         denom,
-                    )],
+                    ),
                 }))
             }
         };
@@ -283,7 +283,7 @@ pub fn execute_deposit(
             TokenInfo::NativeToken { denom } => {
                 res = res.add_message(CosmosMsg::Bank(BankMsg::Send {
                     to_address: info.sender.to_string(),
-                    amount: vec![coin(reward_amount.into(), denom)],
+                    amount: coins(reward_amount.into(), denom),
                 }))
             }
         };
@@ -371,7 +371,7 @@ pub fn execute_withdraw(
             TokenInfo::NativeToken { denom } => {
                 res = res.add_message(CosmosMsg::Bank(BankMsg::Send {
                     to_address: info.sender.to_string(),
-                    amount: vec![coin(reward_amount.into(), denom)],
+                    amount: coins(reward_amount.into(), denom),
                 }))
             }
         };
@@ -468,7 +468,7 @@ pub fn execute_harvest(
         TokenInfo::NativeToken { denom } => {
             res = res.add_message(CosmosMsg::Bank(BankMsg::Send {
                 to_address: info.sender.to_string(),
-                amount: vec![coin(reward_amount.into(), denom)],
+                amount: coins(reward_amount.into(), denom),
             }))
         }
     };
@@ -490,27 +490,15 @@ pub fn execute_add_phase(
     whitelist: Addr,
 ) -> Result<Response, ContractError> {
     let config: Config = CONFIG.load(deps.storage)?;
-
     // Check if the message sender is the owner of the contract
     if config.farm_owner != info.sender {
         return Err(ContractError::Std(StdError::generic_err(
             "Unauthorized: Only owner can add new phase",
         )));
     }
-    // Not allow new start time is greater than new end time
-    if new_start_time >= new_end_time {
-        return Err(ContractError::Std(StdError::generic_err(
-            "New start time is greater than new end time",
-        )));
-    }
-    // Get current time
-    let current_time = env.block.time.seconds();
-    // Not allow to add new phase when current time is greater than new start time
-    if current_time > new_start_time {
-        return Err(ContractError::Std(StdError::generic_err(
-            "Current time is greater than new start time",
-        )));
-    }
+
+    // Validate time range
+    validate_time_range(env, new_start_time, new_end_time)?;
 
     let mut farm_info: FarmInfo = FARM_INFO.load(deps.storage)?;
     let phases_length = farm_info.phases_info.len();
@@ -624,4 +612,23 @@ pub fn execute_activate_phase(
             &farm_info.current_phase_index.to_string(),
         ),
     ]))
+}
+
+// validate time when creating new farm
+pub fn validate_time_range(env: Env, start_time: u64, end_time: u64) -> Result<(), ContractError> {
+    // Not allow start time is greater than end time
+    if start_time >= end_time {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Start time is greater than end time",
+        )));
+    }
+
+    // Not allow to create a farm when current time is greater than start time
+    if env.block.time.seconds() > start_time {
+        return Err(ContractError::Std(StdError::generic_err(
+            "Current time is greater than start time",
+        )));
+    }
+
+    Ok(())
 }
