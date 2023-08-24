@@ -19,7 +19,7 @@ mod tests {
             FarmInfo, PendingRewardResponse, PhaseInfo, StakerInfoResponse, TokenInfo,
         };
         use cosmwasm_std::{
-            from_binary, to_binary, Addr, BalanceResponse as BankBalanceResponse, BankQuery,
+            coins, from_binary, to_binary, Addr, BalanceResponse as BankBalanceResponse, BankQuery,
             BlockInfo, Coin, Decimal, Querier, QueryRequest, Uint128, WasmQuery,
         };
         use cw20::{BalanceResponse, Cw20ExecuteMsg};
@@ -5025,6 +5025,208 @@ mod tests {
             assert_eq!(
                 balance.amount.amount,
                 Uint128::from(pending_reward_user_17s.amount.u128())
+            );
+        }
+
+        // Create a new farm contract
+        // Add 300_000 NATIVE_2 reward balance to the contract
+        // Set duration 91 days
+        // Admin deposit 400_000_000_000 HALO LP tokens to the contract at starting time
+        // Set 91 days passed
+        // Admin withdraw 400_000_000_000 HALO LP tokens from the contract
+        #[test]
+        fn test_small_reward_and_large_staked_amounts() {
+            // get integration test app and contracts
+            let (mut app, contracts) = instantiate_contracts();
+            // get farm contract code id
+            let halo_farm_contract_code_id = app.store_code(halo_farm_contract_template());
+            // ADMIN already has 1_000_000 NATIVE_DENOM_2 as initial balance in instantiate_contracts()
+            // get halo lp token contract
+            let lp_token_contract = &contracts[0].contract_addr;
+            // get current block time
+            let current_block_time = app.block_info().time.seconds();
+
+            // Mint 400_000_000_000 HALO LP tokens to ADMIN
+            let mint_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::Mint {
+                recipient: ADMIN.to_string(),
+                amount: Uint128::from(400_000_000 * MOCK_1000_HALO_LP_TOKEN_AMOUNT),
+            };
+
+            // Execute minting
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked(lp_token_contract.clone()),
+                &mint_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // native token info
+            let native_token_info = TokenInfo::NativeToken {
+                denom: NATIVE_DENOM_2.to_string(),
+            };
+
+            // create farm
+            let halo_farm_instantiate_msg = &FarmInstantiateMsg {
+                staked_token: Addr::unchecked(lp_token_contract.clone()),
+                reward_token: native_token_info.clone(),
+                start_time: current_block_time,
+                end_time: current_block_time + 7_862_400,
+                phases_limit_per_user: None,
+                farm_owner: Addr::unchecked(ADMIN.to_string()),
+                whitelist: Addr::unchecked(ADMIN.to_string()),
+            };
+
+            // instantiate contract
+            let halo_farm_contract_addr = app
+                .instantiate_contract(
+                    halo_farm_contract_code_id,
+                    Addr::unchecked(ADMIN),
+                    &halo_farm_instantiate_msg,
+                    &[],
+                    "instantiate contract",
+                    None,
+                )
+                .unwrap();
+
+            // add reward balance to farm contract
+            let add_reward_balance_msg = FarmExecuteMsg::AddRewardBalance {
+                phase_index: 0u64,
+                amount: Uint128::from(300 * ADD_1000_NATIVE_BALANCE_2),
+            };
+
+            // Execute add reward balance
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                halo_farm_contract_addr.clone(),
+                &add_reward_balance_msg,
+                &[Coin {
+                    amount: Uint128::from(300 * ADD_1000_NATIVE_BALANCE_2),
+                    denom: NATIVE_DENOM_2.to_string(),
+                }],
+            );
+
+            assert!(response.is_ok());
+
+            // Approve cw20 token to farm contract msg
+            let approve_msg: Cw20ExecuteMsg = Cw20ExecuteMsg::IncreaseAllowance {
+                spender: halo_farm_contract_addr.to_string(), // Farm Contract
+                amount: Uint128::from(400_000_000 * MOCK_1000_HALO_LP_TOKEN_AMOUNT),
+                expires: None,
+            };
+
+            // Execute approve by ADMIN
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                Addr::unchecked(lp_token_contract.clone()),
+                &approve_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // Deposit lp token to the farm contract to execute deposit msg
+            let deposit_msg = FarmExecuteMsg::Deposit {
+                amount: Uint128::from(400_000_000 * MOCK_1000_HALO_LP_TOKEN_AMOUNT),
+            };
+
+            // Execute deposit by ADMIN
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                halo_farm_contract_addr.clone(),
+                &deposit_msg,
+                &[],
+            );
+            assert!(response.is_ok());
+
+            // change block time increase 7862401 seconds to make 91 days + 1 seconds passed
+            app.set_block(BlockInfo {
+                time: app.block_info().time.plus_seconds(7862401),
+                height: app.block_info().height + 7862401,
+                chain_id: app.block_info().chain_id,
+            });
+
+            // Query ADMIN's pending reward
+            let req: QueryRequest<FarmQueryMsg> = QueryRequest::Wasm(WasmQuery::Smart {
+                contract_addr: halo_farm_contract_addr.to_string(), // Farm Contract
+                msg: to_binary(&FarmQueryMsg::PendingReward {
+                    address: ADMIN.to_string(),
+                })
+                .unwrap(),
+            });
+
+            // Query ADMIN's pending reward
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let pending_reward_admin_91d: PendingRewardResponse = from_binary(&res).unwrap();
+
+            // It should be 300_000_000_000 NATIVE_2
+            assert_eq!(
+                pending_reward_admin_91d,
+                PendingRewardResponse {
+                    info: TokenInfo::NativeToken {
+                        denom: NATIVE_DENOM_2.to_string()
+                    },
+                    amount: 300_000_000_000u128.into(),
+                    time_query: 1579659820
+                }
+            );
+
+            // Harvest reward
+            let harvest_msg = FarmExecuteMsg::Harvest {};
+
+            // Execute harvest by ADMIN
+            let response = app.execute_contract(
+                Addr::unchecked(ADMIN.to_string()),
+                halo_farm_contract_addr.clone(),
+                &harvest_msg,
+                &[],
+            );
+
+            assert!(response.is_ok());
+
+            // query ADMIN's balance of RewardToken NATIVE_2
+            let req: QueryRequest<BankQuery> = QueryRequest::Bank(BankQuery::Balance {
+                address: ADMIN.to_string(),
+                denom: NATIVE_DENOM_2.to_string(),
+            });
+
+            let res = app.raw_query(&to_binary(&req).unwrap()).unwrap().unwrap();
+            let balance: BankBalanceResponse = from_binary(&res).unwrap();
+
+            // It should be 300_000_000_000 NATIVE_2
+            assert_eq!(
+                balance.amount.amount,
+                Uint128::from(
+                    INIT_1000_000_NATIVE_BALANCE_2 - 300 * ADD_1000_NATIVE_BALANCE_2
+                        + pending_reward_admin_91d.amount.u128()
+                )
+            );
+
+            // query phases info
+            let farm_info: FarmInfo = app
+                .wrap()
+                .query_wasm_smart(halo_farm_contract_addr.clone(), &FarmQueryMsg::Farm {})
+                .unwrap();
+
+            // assert phases info
+            assert_eq!(
+                farm_info,
+                FarmInfo {
+                    staked_token: Addr::unchecked(lp_token_contract.clone()),
+                    reward_token: native_token_info,
+                    current_phase_index: 0u64,
+                    phases_info: vec![PhaseInfo {
+                        start_time: current_block_time,
+                        end_time: current_block_time + 7_862_400,
+                        whitelist: Addr::unchecked(ADMIN.to_string()),
+                        reward_balance: Uint128::from(300 * ADD_1000_NATIVE_BALANCE_2),
+                        last_reward_time: current_block_time + 7_862_400,
+                        accrued_token_per_share: Decimal::from_str("0.00000075").unwrap(),
+                    }],
+                    phases_limit_per_user: None,
+                    staked_token_balance: Uint128::from(400_000_000_000_000_000u128),
+                }
             );
         }
     }
