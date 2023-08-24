@@ -19,7 +19,7 @@ mod tests {
             FarmInfo, PendingRewardResponse, PhaseInfo, StakerInfoResponse, TokenInfo,
         };
         use cosmwasm_std::{
-            coins, from_binary, to_binary, Addr, BalanceResponse as BankBalanceResponse, BankQuery,
+            from_binary, to_binary, Addr, BalanceResponse as BankBalanceResponse, BankQuery,
             BlockInfo, Coin, Decimal, Querier, QueryRequest, Uint128, WasmQuery,
         };
         use cw20::{BalanceResponse, Cw20ExecuteMsg};
@@ -5206,7 +5206,7 @@ mod tests {
             // query phases info
             let farm_info: FarmInfo = app
                 .wrap()
-                .query_wasm_smart(halo_farm_contract_addr.clone(), &FarmQueryMsg::Farm {})
+                .query_wasm_smart(halo_farm_contract_addr, &FarmQueryMsg::Farm {})
                 .unwrap();
 
             // assert phases info
