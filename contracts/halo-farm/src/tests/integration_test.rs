@@ -5033,7 +5033,7 @@ mod tests {
         // Set duration 91 days
         // Admin deposit 400_000_000_000 HALO LP tokens to the contract at starting time
         // Set 91 days passed
-        // Admin havest all reward
+        // Admin harvest all reward
         #[test]
         fn test_small_reward_and_large_staked_amounts() {
             // get integration test app and contracts
